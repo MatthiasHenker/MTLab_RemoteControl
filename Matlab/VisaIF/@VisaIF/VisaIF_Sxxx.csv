@@ -1,0 +1,37 @@
+// ---------------------------------------------------------------------------------------------------------
+// 2020-07-29
+// config file listing all available Visa measurement devices in room/lab Sxxx (playground for several labs)
+// required columns
+//   Device     : char array as unique identifier
+//   Instrument : one of the following classes: Scope, DMM, FGen, DCPwr, ACPwr, Swtch, PwrMeter, SpecAn, 
+//                RFSigGen, Counter, DownCnv, UpConv, Digitizer
+//   Type       : visa-usb or visa-tcpip only
+//   RsrcName   : regexp mathing the visa resource name, general form is 
+//                'USB0::0x<VID>::0x<PID>::<SID>' for visa-usb (select all serial IDs (SID) by regexp \w*)
+//                'TCPIP0::<ipaddress>'           for visa-tcpip
+//   OutBufSize : positive integer, specififying size of output buffer (512 is default)
+//   InBufSize  : positive integer, specififying size of input buffer  (512 is default)
+//   Extrawait  : float in range 0 .. 1, additional wait time (in s) between Visa write and read for visa 
+//                query, set to 0 (default) for all devices except Siglent DC Power Supplay SPD3303X
+//
+// use double-semikolon to separate columns (not allowed in header of table)
+// use # to comment out lines in actual table
+//
+// -------------------- config table starts in next line ---------------------------------------------------
+Device           ;; Vendor  ;; Product ;; Instrument ;; Type      ;; RsrcName                  ;; OutBufSize;; InBufSize
+#
+# OutBufSize: longest command is unknown ==> define a large default value
+# InBufSize : longest command is unknown ==> define a large default value
+#
+# Agilent Signal Generator (more powerful than 33220A)
+Agilent-33511B   ;; Agilent ;; Gen33511B  ;; FGen    ;; visa-usb  ;; USB0::0x0957::0x2707::\w+ ;;     2.1e6 ;;    100e3
+# 
+# Keysight Scope
+Keysight-DSOX1102A;; Keysight ;; DSOX1000 ;; Scope   ;; visa-usb  ;; USB0::0x2A8D::0x1787::\w+ ;;      20e3 ;;      2e6
+#
+# Rigol Scope
+# OutBufSize: longest command is unknown ==> define a large default value
+# InBufSize : longest command is unknown ==> define a large default value
+#             probably download of waveform data or screenshot (BMP-file?)
+#
+Rigol-DS2072A    ;; Rigol   ;; DS2072A ;; Scope      ;; visa-usb  ;; USB0::0x1AB1::0x04B0::\w+ ;;      20e3 ;;      2e6

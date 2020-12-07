@@ -1,0 +1,77 @@
+// -----------------------------------------------------------------------------------------------------------
+// 2020-07-29
+// config file listing all available Visa measurement devices in room/lab Z433
+// required columns
+//   Device     : char array as unique identifier
+//   Instrument : one of the following classes: Scope, DMM, FGen, DCPwr, ACPwr, Swtch, PwrMeter, SpecAn, 
+//                RFSigGen, Counter, DownCnv, UpConv, Digitizer
+//   Type       : visa-usb or visa-tcpip only
+//   RsrcName   : regexp mathing the visa resource name, general form is 
+//                'USB0::0x<VID>::0x<PID>::<SID>' for visa-usb (select all serial IDs (SID) by regexp \w*)
+//                'TCPIP0::<ipaddress>'           for visa-tcpip
+//   OutBufSize : positive integer, specififying size of output buffer (512 is default)
+//   InBufSize  : positive integer, specififying size of input buffer  (512 is default)
+//   Extrawait  : float in range 0 .. 1, additional wait time (in s) between Visa write and read for visa 
+//                query, set to 0 (default) for all devices except Siglent DC Power Supplay SPD3303X
+//
+// use double-semikolon to separate columns (not allowed in header of table)
+// use # to comment out lines in actual table
+//
+// test if short form TCPIP0::192.168.178.13 for TCPIP0::192.168.178.13::inst0 is okay
+// 
+// -------------------- config table starts in next line -----------------------------------------------------
+Device           ;; Vendor   ;; Product  ;; Instrument ;; Type      ;; RsrcName                  ;; OutBufSize;; InBufSize;; ExtraWait
+#
+# Siglent Spectrum Analyzer        (SID = SSA3XLBX2R0290)
+# OutBufSize: longest command is still unclear (nothing special  detected), default should be okay
+# InBufSize : longest command is query screenshot data (command HCOPY:SDUMP) with 1.8MBytes
+Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-tcpip;; TCPIP0::192.168.178.13    ;;       512 ;;      2e6 ;; 0
+Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-usb  ;; USB0::0xF4EC::0x1300::\w+ ;;       512 ;;      2e6 ;; 0
+# 
+# R&S Scope                        (SID = 112328)
+# tbd.
+RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.8     ;;       1e6 ;;     20e6 ;; 0
+RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-usb  ;; USB0::0x0AAD::0x01D6::\w+ ;;       1e6 ;;     20e6 ;; 0
+#
+# Siglent Scope                    (SID = SDS2XKCC2R0177)
+# OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
+# InBufSize : longest command is waveform download (command WF?) with max. 140MSamples = 140e6 Bytes + 
+#             some overhead, (screenshot data is about 1.1MBytes)
+#             download of WF data in one chunk is not possible (Matlab will crash) ==> download of larger 
+#             data blocks has to be done in chunks with max. 1.4MSamples ==> resulting waveform_setups
+#             (set measure = off at scope, otherwise download time + 50%):
+#             140  MSa = 100 * 1.4MSa (tested : 100x 4.2s via TCPIP or USB)
+#              56  MSa =  40 * 1.4MSa (tested :  40x 4.2s via TCPIP or USB)
+#              28  MSa =  20 * 1.4MSa (tested :  20x 4.2s via TCPIP or USB)
+#              14  MSa =  10 * 1.4MSa (tested :  10x 4.2s via TCPIP or USB)
+#               5.6MSa =   4 * 1.4MSa (tested :   4x 4.2s via TCPIP or USB)
+#               2.8MSa =   2 * 1.4MSa (tested :   2x 4.2s via TCPIP or USB)
+#               1.4MSa =   1 * 1.4MSa (tested :   1x 4.2s via TCPIP or USB)
+#               560kSa =   1 * 560kSa (tested :   1x 1.6s via TCPIP or USB)
+#               280kSa =   1 * 280kSa (tested :   1x 0.9s via TCPIP or USB)
+#               140kSa =   1 * 140kSa (tested :   1x 0.5s via TCPIP or USB)
+#               ...
+Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.9     ;;       512 ;;    1.5e6 ;; 0
+Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-usb  ;; USB0::0xF4EC::0xEE3A::\w+ ;;       512 ;;    1.5e6 ;; 0
+# 
+# Siglent DC Power Supply          (SID = SPD3XHBX2R0912)
+# OutBufSize: longest command is roughly about 30 characters, 512 bytes (default) is fine
+# InBufSize : longest command is about 60 characters (*IDN? response), 512 bytes (default) is fine
+# AddWait   : controller at DCPwr is slow, add a short pause between write & read
+Siglent-SPD3303X ;; Siglent  ;; SPD3300X ;; DCPwr      ;; visa-tcpip;; TCPIP0::192.168.178.5     ;;       512 ;;      512 ;; 0.5
+Siglent-SPD3303X ;; Siglent  ;; SPD3300X ;; DCPwr      ;; visa-usb  ;; USB0::0x0483::0x7540::\w+ ;;       512 ;;      512 ;; 0.5
+# 
+# Siglent Arbitrary Wave Generator (SID = SDG6XBAC2R0003)
+# OutBufSize: longest command is waveform upload (command  WVDT) with 
+#             10^6 Samples = 2 * 10^6 Bytes + some overhead
+# InBufSize : longest command is waveform download (command WVDT?) with 
+#             10^6 Samples = 2 * 10^6 Bytes + some overhead
+Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-tcpip;; TCPIP0::192.168.178.11    ;;   20.01e6 ;;  20.01e6 ;; 0
+Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-usb  ;; USB0::0xF4EC::0x1101::\w+ ;;   20.01e6 ;;  20.01e6 ;; 0
+# 
+# Keithley DMM                     (SID = 04380812)
+# OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
+# InBufSize : longest command is about xx characters actual value has to be clarified !!!!!!
+Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.7     ;;       512 ;;    16384 ;; 0
+Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-usb  ;; USB0::0x05E6::0x6500::\w+ ;;       512 ;;    16384 ;; 0
+# 

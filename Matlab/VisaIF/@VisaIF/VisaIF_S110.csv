@@ -1,0 +1,38 @@
+// ---------------------------------------------------------------------------------------------------------
+// 2020-07-29
+// config file listing all available Visa measurement devices in room/lab S110
+// required columns
+//   Device     : char array as unique identifier
+//   Instrument : one of the following classes: Scope, DMM, FGen, DCPwr, ACPwr, Swtch, PwrMeter, SpecAn, 
+//                RFSigGen, Counter, DownCnv, UpConv, Digitizer
+//   Type       : visa-usb or visa-tcpip only
+//   RsrcName   : regexp mathing the visa resource name, general form is 
+//                'USB0::0x<VID>::0x<PID>::<SID>' for visa-usb (select all serial IDs (SID) by regexp \w*)
+//                'TCPIP0::<ipaddress>'           for visa-tcpip
+//   OutBufSize : positive integer, specififying size of output buffer (512 is default)
+//   InBufSize  : positive integer, specififying size of input buffer  (512 is default)
+//   Extrawait  : float in range 0 .. 1, additional wait time (in s) between Visa write and read for visa 
+//                query, set to 0 (default) for all devices except Siglent DC Power Supplay SPD3303X
+//
+// use double-semikolon to separate columns (not allowed in header of table)
+// use # to comment out lines in actual table
+//
+// -------------------- config table starts in next line ---------------------------------------------------
+Device           ;; Vendor    ;; Product      ;; Instrument ;; Type      ;; RsrcName                   ;; OutBufSize;; InBufSize
+#
+# Tektronix Scopes
+# OutBufSize: longest command is waveform upload ==> 2500 * approx. 5 ascii-characters + overhead
+# InBufSize : longest command is download of screenshot image (*.bmp)  ==> approx. 76kB
+#
+Tek-TDS1001B     ;; Tektronix ;; TDS1000_2000 ;; Scope      ;; visa-usb  ;; USB0::0x0699::0x0362::\w+  ;;      20e3 ;;    90e3
+Tek-TDS1001C-EDU ;; Tektronix ;; TDS1000_2000 ;; Scope      ;; visa-usb  ;; USB0::0x0699::0x03AA::\w+  ;;      20e3 ;;    90e3
+Tek-TDS1001C-EDU ;; Tektronix ;; TDS1000_2000 ;; Scope      ;; demo      ;; USB0::0x0699::0x03AA::demo ;;      20e3 ;;    90e3
+Tek-TDS2001C     ;; Tektronix ;; TDS1000_2000 ;; Scope      ;; visa-usb  ;; USB0::0x0699::0x03A0::\w+  ;;      20e3 ;;    90e3
+#
+# Agilent Signal Generators
+# OutBufSize: longest command is waveform upload (DATA:DAC VOLATILE) as ascii-characters
+#             65536 * approx. 6 characters + overhead
+# InBufSize : no data download, short commands only
+# 
+Agilent-33220A   ;; Agilent   ;; Gen33220A    ;; FGen       ;; visa-usb  ;; USB0::0x0957::0x0407::\w+  ;;     500e3 ;;     512
+Agilent-33220A   ;; Agilent   ;; Gen33220A    ;; FGen       ;; demo      ;; USB0::0x0957::0x0407::demo ;;     500e3 ;;     512
