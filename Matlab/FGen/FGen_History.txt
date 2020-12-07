@@ -1,0 +1,53 @@
+% FGen support package (from newest to older versions)
+
+---------------------------------------------------------------------------
+Release v1.0.4 (same as FGen class) requires VisaIF v2.4.1
+  - FGen                                              v1.0.4   (2020-10-16)
+      released for course in winter term 2020/21,
+      BUG FIX: internal checkparams method (fix enableOutput)
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.0   (2020-08-04)
+      released for course in winter term 2020/21,
+      initial version (based on former class 
+      'FgenAgilent33220A' v1.0.1 2019-09-04)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.0.1   (2020-08-05)
+      nearly empty template ==> ToDo
+
+---------------------------------------------------------------------------
+Release v1.0.3 (same as FGen class) requires VisaIF v2.4.1
+  - FGen                                              v1.0.3   (2020-09-21)
+      released for course in winter term 2020/21,
+      new static method 'doc'
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.0   (2020-08-04)
+      released for course in winter term 2020/21,
+      initial version (based on former class 
+      'FgenAgilent33220A' v1.0.1 2019-09-04)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.0.1   (2020-08-05)
+      nearly empty template ==> ToDo
+
+---------------------------------------------------------------------------
+Release v1.0.2 (same as FGen class, 2020-08-05) requires VisaIF v2.4.0
+  - FGen                                              v1.0.2   (2020-08-05)
+      initial version, ready for tests
+      intended for public, no changes,
+      add Siglent package and updated package 
+      template (FGenMacros) in source dir and 
+      FGen_ReleaseCode.m
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.0   (2020-08-04)
+      initial version (based on former class 
+      'FgenAgilent33220A' v1.0.1 2019-09-04)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.0.1   (2020-08-05)
+      nearly empty template ==> ToDo
+
+---------------------------------------------------------------------------
+Release v1.0.1 (same as FGen class, 2020-08-04) requires VisaIF v2.4.0
+  - FGen                                              v1.0.1   (2020-08-04)
+      initial version, ready for tests
+      intended for public,
+      remove 'filenname' argument on arbWaveform
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.0   (2020-08-04)
+      initial version (based on former class 
+      'FgenAgilent33220A' v1.0.1 2019-09-04)
+  - FGen.Siglent.SDG6000X.FGenMacros                  n/a
+      coming soon (hopefully)
+
+---------------------------------------------------------------------------
