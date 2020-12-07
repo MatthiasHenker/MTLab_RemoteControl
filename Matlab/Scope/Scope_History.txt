@@ -1,0 +1,109 @@
+% Scope support package (from newest to older versions)
+
+
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.3   (2020-11-27)
+      BUG FIX: captureWaveform (in demo mode) causes error
+      released for course in winter term 2020/21,
+      'autoscale' with less messages,
+      initial version (based on former 
+      class 'ScopeTekTDS1001C' v1.3.2 2019-09-30)
+
+
+
+
+---------------------------------------------------------------------------
+Release v1.0.2 (same as Scope class) requires VisaIF v2.4.1
+  - Scope                                             v1.0.2   (2020-09-24)
+      released for course in winter term 2020/21,
+      new static method 'doc'
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.1.0   (2020-09-22)
+      released for course in winter term 2020/21,
+      fixes in method 'autoscale' and less messages,
+      fixes in captureWaveform
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.1.0   (2020-07-28)
+      no changes, nearly empty template,
+      makeScreenShot is implemented only
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.2   (2020-09-24)
+      released for course in winter term 2020/21,
+      'autoscale' with less messages,
+      initial version (based on former 
+      class 'ScopeTekTDS1001C' v1.3.2 2019-09-30)
+
+---------------------------------------------------------------------------
+Release v1.0.1 (same as Scope class) requires VisaIF v2.4.0
+  - Scope                                             v1.0.1   (2020-09-15)
+      no changes, initial version for tests with 
+      Tektronix and Keysight scope
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.0.0   (2020-09-15)
+      initial version for tests
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.1.0   (2020-07-28)
+      no changes, nearly empty template,
+      makeScreenShot is implemented only
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.1   (2020-09-08)
+      beautify code in runMeasurement  
+      initial version (based on former 
+      class 'ScopeTekTDS1001C' v1.3.2 2019-09-30)
+
+---------------------------------------------------------------------------
+Release v1.0.0 (same as Scope class, 2020-07-28) requires VisaIF v2.4.0
+  - Scope                                             v1.0.0   (2020-07-28)
+      initial version for tests with Tek and Keysight scope,
+      documentation in Scope header, for public (tests with SHK),
+      RootPackageDir changed from 'VisaIF' to 'Scope' 
+      ==> package name now always identical to class name 
+          ('@Scope' and '+Scope') thus, property 
+          RootPackageDir removed,
+      no class folders @ScopeMacros in packages dirs
+      anymore (...\VendorDir\ScopeMacros.m),
+      new static method 'listAvailablePackages',
+      method renamed from takeMeasurement to 
+      runMeasurement
+  - Scope.Keysight.DSOX1000.ScopeMacros               v0.0.1   (2020-07-28)
+      empty template,
+      method renamed from takeMeasurement to 
+      runMeasurement
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.1.0   (2020-07-28)
+      nearly empty template,
+      makeScreenShot is implemented only,
+      list supported file extensions,
+      method renamed from takeMeasurement to 
+      runMeasurement
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.0   (2020-07-28)
+      initial version (based on former class 
+      'ScopeTekTDS1001C' v1.3.2 2019-09-30),
+      minor bug fix (typo), list supported file 
+      extensions in makeScreenShot,
+      method renamed from takeMeasurement to 
+      runMeasurement
+
+---------------------------------------------------------------------------
+Release v0.9.1 (same as Scope class, 2020-07-23) requires VisaIF v2.3.1
+  - Scope                                             v0.9.1   (2020-07-23)
+      initial version for tests with Tek scope
+      no documentation yet, not for public yet
+  - Scope.Keysight.DSOX1000.ScopeMacros               v0.0.0   (2020-07-23)
+      empty template   
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.0.1   (2020-07-23)
+      nearly empty template
+      makeScreenShot is implemented only
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.0.0   (2020-07-23)
+      initial version (based on former class 
+      'ScopeTekTDS1001C' v1.3.2 2019-09-30)
+
+---------------------------------------------------------------------------
