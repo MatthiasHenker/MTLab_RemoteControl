@@ -1,0 +1,172 @@
+% VisaIF support package
+
+---------------------------------------------------------------------------
+Release v2.4.2 (2020-10-16) ==> released for winter term 2020/21
+  - VisaIF             v2.4.2  (2020-10-16)
+      no changes
+  - VisaDemo           v1.0.1  (2020-10-16)
+      BUG FIX: extend word length of frequency parameter for Agilent-33220A 
+      demo-mode (avoid error messages in FGen.configureOutput('freq', value))
+  - VisaIFLogEventData v2.0.0  (2020-05-25)
+      no changes
+  - VisaIFLogger       v2.0.0  (2020-05-25)
+      no changes
+
+---------------------------------------------------------------------------
+Release v2.4.1 (2020-09-21) ==> released for winter term 2020/21
+  - VisaIF             v2.4.1  (2020-09-21)
+      new static method 'doc', update of help in class header 
+  - VisaDemo           v1.0.0  (2020-05-06)
+      no changes
+  - VisaIFLogEventData v2.0.0  (2020-05-25)
+      no changes
+  - VisaIFLogger       v2.0.0  (2020-05-25)
+      no changes
+
+---------------------------------------------------------------------------
+Release v2.4.0 (2020-07-28)
+  - VisaIF             v2.4.0  (2020-07-28)
+      new Keysight scope DSOX1000X in config-file VisaIF_Sxxx.csv,
+      update of documentation in VisaIF,
+      new static protected method 'listSupportedPackages(className)' for 
+      usage in sub classes like Scope, FGen, DMM, ... 
+  - VisaDemo           v1.0.0  (2020-05-06)
+      no changes
+  - VisaIFLogEventData v2.0.0  (2020-05-25)
+      no changes
+  - VisaIFLogger       v2.0.0  (2020-05-25)
+      no changes
+
+---------------------------------------------------------------------------
+Release v2.3.1 (2020-07-23)
+  - VisaIF             v2.3.1  (2020-06-04)
+      set property DeviceName to protected  
+  - VisaDemo           v1.0.0  (2020-05-06) initial version
+      no changes
+  - VisaIFLogEventData v2.0.0  (2020-05-25)
+      no changes
+  - VisaIFLogger       v2.0.0  (2020-05-25)
+      no changes
+
+---------------------------------------------------------------------------
+Release v2.3.0 (2020-05-25)
+  - VisaIF             v2.3.0  (2020-05-25)
+      property ShowMessages is of type char now; enables several display 
+      levels; 'none' (false), 'few' -> new, 'all' (true); inputs of type 
+      logical and double are still accepted and internally converted;
+      add new property to event data passes to VisaIFLogEventData 
+      (CmdLength in bytes) 
+  - VisaDemo           v1.0.0  (2020-05-06) initial version
+      no changes
+  - VisaIFLogEventData v2.0.0  (2020-05-25)
+      simplify code; reorder event data; add new event data (CmdLength); 
+      declare types (double and char) of properties to avoid additional 
+      checks and conversions
+  - VisaIFLogger       v2.0.0  (2020-05-25)
+      restructured code; parameters of constructor changed: no mandatory 
+      parameters, always former 'ListenToAll' option is internaly selected;
+      ShowMessages introduced as property and optional parameter;
+      some properties renamed or removed; some new properties introduced
+
+---------------------------------------------------------------------------
+Release v2.2.0 (2020-05-21) ==> for internal use only
+  - VisaIF             v2.2.0  (2020-05-21)
+  - VisaDemo           v1.0.0  (2020-05-06) initial version
+  - VisaIFLogEventData v1.0.0  (2020-05-21) initial version
+  - VisaIFLogger       v1.0.0  (2020-05-21) initial version
+      integration of VisaIFLogEventData and VisaIFLogger for centralized
+      logging of command history; bug fixing
+
+---------------------------------------------------------------------------
+Release v2.1.0 (2020-05-18) ==> for internal use only
+  - VisaIF          v2.1.0
+  - VisaDemo        v1.0.0 (initial version)
+  - LoggerEventData v?.?.? (first test version)
+  - VisaIFLogger    v?.?.? (first test version)
+      new static method introduced (filterConfigFiles) to accept regexp 
+      input for device name (VisaIF constructor) and as preparation for 
+      common IVI-like sub classes, new properties (read only) Vendor and 
+      Product
+
+---------------------------------------------------------------------------
+Release v2.0.0 (2020-0x-xx) ==> for internal use only
+  - VisaIF          v2.0.0
+  - VisaDemo        v1.0.0 (initial version)
+  - LoggerEventData v?.?.? (first test version)
+  - VisaIFLogger    v?.?.? (first test version)
+      restructured code; dedicated @VisaIF directory with class files; 
+      additional static methods
+        - VisaIF.listAvailableConfigFiles
+        - VisaIF.listContentOfConfigFiles
+        - VisaIF.listAvailableVisaUsbDevices
+      new feature: list of supported devices are defined in config files 
+      (@VisaIF/*.csv) => VisaIF object cannot be created for for an 
+      unlisted device by specifying RsrcName directly anymore (see v1.5.0);
+      new properties (constant, for information only)
+        - VisaIF.SupportedInstrumentClasses
+        - VisaIF.SupportedInterfaceTypes
+        - VisaIF.SupportedRsrcNames
+      new property (public) and new event
+        - EnableCommandLog (for additional logging class)
+        - VisaRW
+      removed properties (public) and get methods
+        - CommandHistory
+        - CommandHistoryLength
+      additional classes required for command logging now ==> enables 
+      chance to log SCPI commands of all devices in a common command 
+      history; class DemoVisaIF removed (demo for VisaIF); new class 
+      VisaDemo introduced for new demo mode
+
+---------------------------------------------------------------------------
+==> released for MT-Praktikum in winter term 2019/20
+v1.5.2   (2019-10-10) feature request solved: disp messages "VisaIF object 
+                      created" (method VisaIF) and "Object descructor 
+                      called .." (method delete) will be not be displayed 
+                      when property ShowMessages = false
+
+---------------------------------------------------------------------------
+v1.5.1   (2019-10-01) extend/correct some comments in doc and code
+                      introduce additional class "DemoVisaIF" with 
+                      same Version-IDs to support first Matlab exercises 
+                      without a measurement device
+                      ==> released for "MT-Praktikum"
+
+---------------------------------------------------------------------------
+v1.5.0   (2019-09-30) add set/get access to properties Timeout, 
+                      InputBufferSize and OutputBufferSize;
+                      add chance to create VisaIF object for an unlisted 
+                      device by specifying RsrcName directly
+
+v1.4.0   (2019-09-26) Rigol Scope DS2072A added
+                      Keysight Fgen 33511B added
+
+v1.3.0   (2019-09-13) Tektronix Scope TDS2001C added
+
+v1.2.0   (2019-09-12) Tektronix Scope TDS1001B added
+
+v1.1.5   (2019-09-04) size of input buffer for Tektronix scope increased 
+                      to support download of screen shot (hard copy of 
+                      screen dislay)
+
+v1.1.4   (2019-09-03) constructor doesn't check interface availablility 
+                      anymore; open method includes identify request now 
+                      instead; size of input & output buffers for Tektronix 
+                      scope corrected (for up- and download of wave data)
+
+v1.1.3   (2019-09-02) increase visa timeout from 8s to 10s
+
+v1.1.2   (2019-08-30) size of input & output buffers for Agilent generator
+                      corrected (for upload of arb wave data); extend 
+                      CommandHistory feature to allow configurable length 
+                      of history reports
+
+v1.1.1   (2019-08-26) all methods starts with a small case letter, 
+                      two properties were renamed: Versio to VisaIFVersion
+                      and Date to VisaIFDate, minor bug fixes (check if 
+                      Visa object is still valid in delete method)
+
+v1.1.0   (2019-07-16) add property CommandHistory, internal changes
+
+v1.0.1   (2019-07-12) initial version, tests started, not fully tested yet
+
+---------------------------------------------------------------------------
