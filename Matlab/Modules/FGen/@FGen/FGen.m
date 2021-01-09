@@ -230,8 +230,8 @@ classdef FGen < VisaIF
     %                           to file at host
     
     properties(Constant = true)
-        FGenVersion    = '1.0.4';      % release version (= class version)
-        FGenDate       = '2020-10-16'; % release date
+        FGenVersion    = '1.0.5';      % release version (= class version)
+        FGenDate       = '2021-01-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

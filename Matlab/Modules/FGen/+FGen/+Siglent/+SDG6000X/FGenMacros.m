@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
        
     properties(Constant = true)
-        MacrosVersion = '0.0.1';      % release version
-        MacrosDate    = '2020-08-05'; % release date
+        MacrosVersion = '0.0.2';      % release version
+        MacrosDate    = '2021-01-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

@@ -1,6 +1,15 @@
 % FGen support package (from newest to older versions)
 
 ---------------------------------------------------------------------------
+Release v1.0.5 (same as FGen class) requires VisaIF v2.4.1 or later
+  - FGen                                              v1.0.5   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.1   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.0.2   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+
+---------------------------------------------------------------------------
 Release v1.0.4 (same as FGen class) requires VisaIF v2.4.1
   - FGen                                              v1.0.4   (2020-10-16)
       released for course in winter term 2020/21,

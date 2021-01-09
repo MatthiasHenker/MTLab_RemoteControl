@@ -1,86 +1,102 @@
-% release matlab class files (p-file and m-file)
+% release matlab class files (p-files (for code) and m-files (for doc))
 %
-% I do not want to release m-file: avoid unwanted changes by colleagues
-% or students
-% ==> create (content-obscured) p-file out of original m-file
-% ==> create an additional m-file for the help/doc: p-files contain no help
+% I do not want to release code as (plain text) m-files to avoid unwanted 
+% changes by colleagues or students
+%
+% Thus, this script creates p- and m-files
+% ==> create (content-obscured) p-files out of original m-files
+% ==> create additional m-files for the help/doc (p-files contain no help)
 % 
-% this script creates a p-file out of the original m-file and
-% and additional m-file with the help text
-% ATTENTION: to avoid overwriting the original m-file the help file will be
-% written to a separate release directory
+% ATTENTION: to avoid overwriting the original m-files all files will be
+%            written to a separate release directory
 %
-% howto release code:
-%   - run this script
-%   - keep content of source dir for yourself
-%   - use content of release directory for public
-%   - be careful not to overwrite your original code
-
-mFileFolder = pwd;
+% Assumptions and Actions:
+%   - code is located in directory ./Modules/xxx/*
+%   - this file is located at      ./Releases/xxx_ReleaseCode.m
+%
+% Howto release code:
+%   - run this script (in this directory!!!)
+%   - use content of created release directory for public
 
 % -------------------------------------------------------------------------
 % some config
 
-% release and source directory (must end with '/')
-ReleaseDir = './archive_vx.x.x_release/';
-SourceDir  = './archive_vx.x.x_src/';
+ModuleName = 'FGen';    % name of class file
+VersionID  = '1.0.5';   % should match name of tag in git (version control)
+
+% copy released files also to Support directory? 
+copyFilesToSupportDir = true;   % (rue or false
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
 % -------------------------------------------------------------------------
-% 1st step: save/copy all files to source directory
+% save path to current directory
+ThisDir    = pwd;
+% path to source and release directories
+SourceDir  = fullfile(ThisDir, '..', 'Modules', ModuleName);
+ReleaseDir = fullfile(ThisDir, [ModuleName '_v' VersionID '_release']);
 
-mkdir(SourceDir);
-copyfile('./test_FGen.m'                  , SourceDir);
-copyfile('./FGen_History.txt'             , SourceDir);
-copyfile('./FGen_ReleaseCode.m'           , SourceDir);
-
-mkdir([SourceDir '@FGen/']);
-copyfile('./@FGen/FGen.m'                 , [SourceDir '@FGen/']);
-copyfile('./@FGen/checkParams.m'          , [SourceDir '@FGen/']);
-copyfile('./@FGen/listAvailablePackages.m', [SourceDir '@FGen/']);
-
-% support packages
-mkdir([SourceDir '+FGen/+Agilent/+Gen33220A/']);
-copyfile('./+FGen/+Agilent/+Gen33220A/FGenMacros.m', ...
-    [SourceDir '+FGen/+Agilent/+Gen33220A/']);
-%
-mkdir([SourceDir '+FGen/+Siglent/+SDG6000X/']);
-copyfile('./+FGen/+Siglent/+SDG6000X/FGenMacros.m', ...
-    [SourceDir '+FGen/+Siglent/+SDG6000X/']);
-%
-mkdir([SourceDir '+FGen/template/']);
-copyfile('./+FGen/template/FGenMacros.m', [SourceDir '+FGen/template/']);
+% names of class and package directories 
+ClassDirName   = ['@' ModuleName];
+PackageDirName = ['+' ModuleName];
 
 % -------------------------------------------------------------------------
-% 2nd step: create p-file and m-file (help) in release directory
+% pcode cannot handle '..' in path string
+cd(SourceDir);
+SourceDir = pwd;
+cd(ThisDir);
 
-mkdir([ReleaseDir '@FGen/']);
-% create additional .m files with help (documentation)
-mhelp = help('./@FGen/FGen.m');
-fid = fopen([ReleaseDir '@FGen/FGen.m'], 'w');
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  ClassDirName);
+workReleaseDir = fullfile(ReleaseDir, ClassDirName);
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'FGen.m'));
+pcode(fullfile(workSourceDir, 'checkParams.m'));
+pcode(fullfile(workSourceDir, 'listAvailablePackages.m'));
+
+% create additional .m file with help (documentation)
+mhelp   = help(fullfile(workSourceDir, 'FGen.m'));
+fid     = fopen(fullfile(workReleaseDir, 'FGen.m'), 'w');
 fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
 fclose(fid);
 
-% create a pcode file out of original m-files
-% m-file for internal use only
-% p-file for public
-cd([ReleaseDir '@FGen/']);
-pcode(fullfile(mFileFolder, '@FGen', 'FGen.m'));
-pcode(fullfile(mFileFolder, '@FGen', 'checkParams.m'));
-pcode(fullfile(mFileFolder, '@FGen', 'listAvailablePackages.m'));
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+FGen/+Agilent/+Gen33220A/']);
-cd([ReleaseDir '+FGen/+Agilent/+Gen33220A/']);
-pcode(fullfile(mFileFolder, '+FGen', '+Agilent', '+Gen33220A', ...
-    'FGenMacros.m'));
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+FGen/+Siglent/+SDG6000X/']);
-cd([ReleaseDir '+FGen/+Siglent/+SDG6000X/']);
-pcode(fullfile(mFileFolder, '+FGen', '+Siglent', '+SDG6000X', ...
-    'FGenMacros.m'));
-
-cd(mFileFolder);
 % -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Agilent', '+Gen33220A');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Agilent', '+Gen33220A');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'FGenMacros.m'));
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Siglent', '+SDG6000X');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Siglent', '+SDG6000X');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'FGenMacros.m'));
+
+% -------------------------------------------------------------------------
+% return to original path
+cd(ThisDir);
+
+% -------------------------------------------------------------------------
+% finally optionally copy released files to Support directory 
+% (dir which is added to Matlab search path using 'pathtool')
+if copyFilesToSupportDir
+    SupportDir  = fullfile(ThisDir, '..', 'Support');
+   
+    copyfile( ...
+        fullfile(ReleaseDir, ClassDirName)  , ...
+        fullfile(SupportDir, ClassDirName));
+    copyfile( ...
+        fullfile(ReleaseDir, PackageDirName), ...
+        fullfile(SupportDir, PackageDirName));
+end
+
+return % end of script
