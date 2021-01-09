@@ -25,7 +25,7 @@ ModuleName = 'FGen';    % name of class file
 VersionID  = '1.0.5';   % should match name of tag in git (version control)
 
 % copy released files also to Support directory? 
-copyFilesToSupportDir = true;   % (rue or false
+copyFilesToSupportDir = true;   % true or false
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
