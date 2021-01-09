@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
     
     properties(Constant = true)
-        MacrosVersion = '1.1.0';      % release version
-        MacrosDate    = '2020-09-22'; % release date
+        MacrosVersion = '1.1.1';      % release version
+        MacrosDate    = '2021-01-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

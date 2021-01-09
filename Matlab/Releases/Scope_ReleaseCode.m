@@ -1,111 +1,105 @@
-% release matlab class files (p-file and m-file)
+% release matlab class files (p-files (for code) and m-files (for doc))
 %
-% I do not want to release m-file: avoid unwanted changes by colleagues
-% or students
-% ==> create (content-obscured) p-file out of original m-file
-% ==> create an additional m-file for the help/doc: p-files contain no help
+% I do not want to release code as (plain text) m-files to avoid unwanted 
+% changes by colleagues or students
+%
+% Thus, this script creates p- and m-files
+% ==> create (content-obscured) p-files out of original m-files
+% ==> create additional m-files for the help/doc (p-files contain no help)
 % 
-% this script creates a p-file out of the original m-file and
-% and additional m-file with the help text
-% ATTENTION: to avoid overwriting the original m-file the help file will be
-% written to a separate release directory
+% ATTENTION: to avoid overwriting the original m-files all files will be
+%            written to a separate release directory
 %
-% howto release code:
-%   - run this script
-%   - keep content of source dir for yourself
-%   - use content of release directory for public
-%   - be careful not to overwrite your original code
-
-mFileFolder = pwd;
+% Assumptions and Actions:
+%   - code is located in directory ./Modules/xxx/*
+%   - this file is located at      ./Releases/xxx_ReleaseCode.m
+%
+% Howto release code:
+%   - run this script (in this directory!!!)
+%   - use content of created release directory for public
 
 % -------------------------------------------------------------------------
 % some config
 
-% release and source directory (must end with '/')
-ReleaseDir = './archive_vx.x.x_release/';
-SourceDir  = './archive_vx.x.x_src/';
+ModuleName = 'Scope';    % name of class file
+VersionID  = '1.0.3';   % should match name of tag in git (version control)
+
+% copy released files also to Support directory? 
+copyFilesToSupportDir = true;   % true or false
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
 % -------------------------------------------------------------------------
-% 1st step: save/copy all files to source directory
+% save path to current directory
+ThisDir    = pwd;
+% path to source and release directories
+SourceDir  = fullfile(ThisDir, '..', 'Modules', ModuleName);
+ReleaseDir = fullfile(ThisDir, [ModuleName '_v' VersionID '_release']);
 
-mkdir(SourceDir);
-copyfile('./test_Scope.m'                  , SourceDir);
-copyfile('./Scope_History.txt'             , SourceDir);
-copyfile('./Scope_ReleaseCode.m'           , SourceDir);
-
-mkdir([SourceDir '@Scope/']);
-copyfile('./@Scope/Scope.m'                , [SourceDir '@Scope/']);
-copyfile('./@Scope/checkParams.m'          , [SourceDir '@Scope/']);
-copyfile('./@Scope/listAvailablePackages.m', [SourceDir '@Scope/']);
-
-% support packages
-mkdir([SourceDir '+Scope/+Keysight/+DSOX1000/']);
-copyfile('./+Scope/+Keysight/+DSOX1000/ScopeMacros.m', ...
-    [SourceDir '+Scope/+Keysight/+DSOX1000/']);
-% ToDo
-mkdir([SourceDir '+Scope/+Rigol/']);
-%
-mkdir([SourceDir '+Scope/+RS/+RTB2000/']);
-copyfile('./+Scope/+RS/+RTB2000/ScopeMacros.m', ...
-    [SourceDir '+Scope/+RS/+RTB2000/']);
-% ToDo
-mkdir([SourceDir '+Scope/+Siglent/']);
-%
-mkdir([SourceDir '+Scope/+Tektronix/+TDS1000_2000/']);
-copyfile('./+Scope/+Tektronix/+TDS1000_2000/ScopeMacros.m', ...
-    [SourceDir '+Scope/+Tektronix/+TDS1000_2000/']);
-%
-mkdir([SourceDir '+Scope/template/']);
-copyfile('./+Scope/template/ScopeMacros.m', ...
-    [SourceDir '+Scope/template/']);
+% names of class and package directories 
+ClassDirName   = ['@' ModuleName];
+PackageDirName = ['+' ModuleName];
 
 % -------------------------------------------------------------------------
-% 2nd step: create p-file and m-file (help) in release directory
+% pcode cannot handle '..' in path string
+cd(SourceDir);
+SourceDir = pwd;
+cd(ThisDir);
 
-mkdir([ReleaseDir '@Scope/']);
-% create additional .m files with help (documentation)
-mhelp = help('./@Scope/Scope.m');
-fid = fopen([ReleaseDir '@Scope/Scope.m'], 'w');
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  ClassDirName);
+workReleaseDir = fullfile(ReleaseDir, ClassDirName);
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'Scope.m'));
+pcode(fullfile(workSourceDir, 'checkParams.m'));
+pcode(fullfile(workSourceDir, 'listAvailablePackages.m'));
+
+% create additional .m file with help (documentation)
+mhelp   = help(fullfile(workSourceDir, 'Scope.m'));
+fid     = fopen(fullfile(workReleaseDir, 'Scope.m'), 'w');
 fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
 fclose(fid);
 
-% create a pcode file out of original m-files
-% m-file for internal use only
-% p-file for public
-cd([ReleaseDir '@Scope/']);
-pcode(fullfile(mFileFolder, '@Scope', 'Scope.m'));
-pcode(fullfile(mFileFolder, '@Scope', 'checkParams.m'));
-pcode(fullfile(mFileFolder, '@Scope', 'listAvailablePackages.m'));
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+Scope/+Keysight/+DSOX1000/']);
-cd([ReleaseDir '+Scope/+Keysight/+DSOX1000/']);
-pcode(fullfile(mFileFolder, '+Scope', '+Keysight', '+DSOX1000', ...
-    'ScopeMacros.m'));
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+Scope/+Rigol/']);    % ToDo
-cd([ReleaseDir '+Scope/+Rigol/']);       % ToDo
-%pcode();
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+Scope/+RS/+RTB2000/']);
-cd([ReleaseDir '+Scope/+RS/+RTB2000/']);
-pcode(fullfile(mFileFolder, '+Scope', '+RS', '+RTB2000', ...
-    'ScopeMacros.m'));
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+Scope/+Siglent/']);  % ToDo
-cd([ReleaseDir '+Scope/+Siglent/']);     % ToDo
-%pcode();
-
-cd(mFileFolder);
-mkdir([ReleaseDir '+Scope/+Tektronix/+TDS1000_2000/']);
-cd([ReleaseDir '+Scope/+Tektronix/+TDS1000_2000/']);
-pcode(fullfile(mFileFolder, '+Scope', '+Tektronix', '+TDS1000_2000', ...
-    'ScopeMacros.m'));
-
-cd(mFileFolder);
 % -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Keysight', '+DSOX1000');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Keysight', '+DSOX1000');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Tektronix', '+TDS1000_2000');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Tektronix', '+TDS1000_2000');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+RS', '+RTB2000');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+RS', '+RTB2000');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
+% return to original path
+cd(ThisDir);
+
+% -------------------------------------------------------------------------
+% finally optionally copy released files to Support directory 
+% (dir which is added to Matlab search path using 'pathtool')
+if copyFilesToSupportDir
+    SupportDir  = fullfile(ThisDir, '..', 'Support');
+    copyfile(ReleaseDir, SupportDir);
+end
+
+return % end of script

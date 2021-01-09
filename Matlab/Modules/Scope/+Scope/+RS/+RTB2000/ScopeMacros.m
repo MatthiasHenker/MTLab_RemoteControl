@@ -5,8 +5,8 @@ classdef ScopeMacros < handle
     % for Scope: Rohde&Schwarz RTB2000 series
             
     properties(Constant = true)
-        MacrosVersion = '0.1.0';      % release version
-        MacrosDate    = '2020-07-28'; % release date
+        MacrosVersion = '0.1.1';      % release version
+        MacrosDate    = '2021-01-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

@@ -1,16 +1,22 @@
 % Scope support package (from newest to older versions)
 
-
-  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.3   (2020-11-27)
+---------------------------------------------------------------------------
+Release v1.0.3 (same as Scope class) requires VisaIF v2.4.1 or newer
+  - Scope                                             v1.0.3   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.1.1   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.1.1   (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.1.3   (2021-01-09)
+      hopefully no changes, moved to git (version control)
       BUG FIX: captureWaveform (in demo mode) causes error
       released for course in winter term 2020/21,
       'autoscale' with less messages,
-      initial version (based on former 
-      class 'ScopeTekTDS1001C' v1.3.2 2019-09-30)
-
-
-
-
 ---------------------------------------------------------------------------
 Release v1.0.2 (same as Scope class) requires VisaIF v2.4.1
   - Scope                                             v1.0.2   (2020-09-24)

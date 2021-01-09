@@ -11,7 +11,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.1.3';      % release version
-        MacrosDate    = '2020-11-29'; % release date
+        MacrosDate    = '2021-01-09'; % release date
         %
         % ? num of supported channels and so on ...
     end
