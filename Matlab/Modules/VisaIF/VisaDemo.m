@@ -1,8 +1,8 @@
 classdef VisaDemo < handle
     
     properties(Constant = true)
-        VisaDemoVersion = '1.0.1';      % current version
-        VisaDemoDate    = '2020-10-16'; % release date
+        VisaDemoVersion = '1.0.2';      % current version
+        VisaDemoDate    = '2021-01-09'; % release date
     end
     
     properties(SetAccess = private, GetAccess = public)

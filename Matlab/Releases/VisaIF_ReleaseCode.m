@@ -1,98 +1,114 @@
-% release matlab class files (p-file and m-file)
+% release matlab class files (p-files (for code) and m-files (for doc))
 %
-% I do not want to release m-files: avoid unwanted changes by colleagues
-% or students
+% I do not want to release code as (plain text) m-files to avoid unwanted 
+% changes by colleagues or students
+%
+% Thus, this script creates p- and m-files
 % ==> create (content-obscured) p-files out of original m-files
-% ==> create additional m-files for the help/doc: p-files contain no help
+% ==> create additional m-files for the help/doc (p-files contain no help)
+% 
+% ATTENTION: to avoid overwriting the original m-files all files will be
+%            written to a separate release directory
 %
-% this script creates p-files out of the original m-files and
-% and additional m-files with the help text
-% ATTENTION: to avoid overwriting the original m-file the help file will be
-% written to a separate release directory
+% Assumptions and Actions:
+%   - code is located in directory ./Modules/xxx/*
+%   - this file is located at      ./Releases/xxx_ReleaseCode.m
 %
-% howto release code:
-%   - run this script (in its folder)
-%   - keep content of source dir for yourself
-%   - use content of release directory for public
-%   - be careful not to overwrite your original code
+% Howto release code:
+%   - run this script (in this directory!!!)
+%   - use content of created release directory for public
 
 % -------------------------------------------------------------------------
 % some config
 
-% release and source directory (must end with '/')
-ReleaseDir = './archive_vx.x.x_release/';
-SourceDir  = './archive_vx.x.x_src/';
+ModuleName = 'VisaIF';  % name of class file
+VersionID  = '2.4.3';   % should match name of tag in git (version control)
+
+% copy released files also to Support directory? 
+copyFilesToSupportDir = true;   % true or false
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
 % -------------------------------------------------------------------------
-% 1st step: save/copy all files to source directory
+% save path to current directory
+ThisDir    = pwd;
+% path to source and release directories
+SourceDir  = fullfile(ThisDir, '..', 'Modules', ModuleName);
+ReleaseDir = fullfile(ThisDir, [ModuleName '_v' VersionID '_release']);
 
-mkdir(SourceDir);
-copyfile('./VisaIFLogEventData.m', SourceDir);
-copyfile('./VisaIFLogger.m',       SourceDir);
-copyfile('./VisaDemo.m',           SourceDir);
-copyfile('./test_VisaIF.m',        SourceDir);
-copyfile('./VisaIF_History.txt',   SourceDir);
-copyfile('./VisaIF_ReleaseCode.m', SourceDir);
-
-mkdir([SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/VisaIF.m',                     [SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/listAvailableConfigFiles.m'   ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/listContentOfConfigFiles.m'   ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/listAvailableVisaUsbDevices.m',[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/filterConfigFiles.m'          ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/coerceConfigTable.m'          ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/listSupportedPackages.m'      ,[SourceDir '@VisaIF/']);
-%
-copyfile('./@VisaIF/VisaIF_S110.csv'              ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/VisaIF_Sxxx.csv'              ,[SourceDir '@VisaIF/']);
-copyfile('./@VisaIF/VisaIF_Z433.csv'              ,[SourceDir '@VisaIF/']);
+% names of class and package directories 
+ClassDirName   = ['@' ModuleName];
 
 % -------------------------------------------------------------------------
-% 2nd step: create p-file and m-file (help) in release directory
-
-mkdir(ReleaseDir);
-mkdir([ReleaseDir '@VisaIF/']);
-
-% create additional .m files with help (documentation)
-mhelp = help('./@VisaIF/VisaIF.m');
-fid = fopen([ReleaseDir '@VisaIF/VisaIF.m'], 'w');
-fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
-fclose(fid);
-%
-mhelp = help('./VisaIFLogEventData.m');
-fid = fopen([ReleaseDir 'VisaIFLogEventData.m'], 'w');
-fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
-fclose(fid);
-%
-mhelp = help('./VisaIFLogger.m');
-fid = fopen([ReleaseDir 'VisaIFLogger.m'], 'w');
-fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
-fclose(fid);
-
-
-% create a pcode file out of original m-files
-% m-file for internal use only
-% p-file for students
-mFileFolder = pwd;
-cd(ReleaseDir);
-pcode(fullfile(mFileFolder, 'VisaIFLogEventData.m'));
-pcode(fullfile(mFileFolder, 'VisaIFLogger.m'));
-pcode(fullfile(mFileFolder, 'VisaDemo.m'));
-
-cd('./@VisaIF');
-pcode(fullfile(mFileFolder, '@VisaIF', 'VisaIF.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'listAvailableConfigFiles.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'listContentOfConfigFiles.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'listAvailableVisaUsbDevices.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'filterConfigFiles.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'coerceConfigTable.m'));
-pcode(fullfile(mFileFolder, '@VisaIF', 'listSupportedPackages.m'));
-
-cd(mFileFolder);
-copyfile('./@VisaIF/VisaIF_S110.csv',       [ReleaseDir '@VisaIF/']);
-copyfile('./@VisaIF/VisaIF_Sxxx.csv',       [ReleaseDir '@VisaIF/']);
-copyfile('./@VisaIF/VisaIF_Z433.csv',       [ReleaseDir '@VisaIF/']);
+% pcode cannot handle '..' in path string
+cd(SourceDir);
+SourceDir = pwd;
+cd(ThisDir);
 
 % -------------------------------------------------------------------------
+workSourceDir  = SourceDir;
+workReleaseDir = ReleaseDir;
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'VisaDemo.m'));
+pcode(fullfile(workSourceDir, 'VisaIFLogEventData.m'));
+pcode(fullfile(workSourceDir, 'VisaIFLogger.m'));
+
+% create additional .m file with help (documentation)
+mhelp   = help(fullfile(workSourceDir, 'VisaIFLogEventData.m'));
+fid     = fopen(fullfile(workReleaseDir, 'VisaIFLogEventData.m'), 'w');
+fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
+fclose(fid);
+
+% create additional .m file with help (documentation)
+mhelp   = help(fullfile(workSourceDir, 'VisaIFLogger.m'));
+fid     = fopen(fullfile(workReleaseDir, 'VisaIFLogger.m'), 'w');
+fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
+fclose(fid);
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  ClassDirName);
+workReleaseDir = fullfile(ReleaseDir, ClassDirName);
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'VisaIF.m'));
+pcode(fullfile(workSourceDir, 'listAvailableConfigFiles.m'));
+pcode(fullfile(workSourceDir, 'listContentOfConfigFiles.m'));
+pcode(fullfile(workSourceDir, 'listAvailableVisaUsbDevices.m'));
+pcode(fullfile(workSourceDir, 'listSupportedPackages.m'));
+pcode(fullfile(workSourceDir, 'coerceConfigTable.m'));
+pcode(fullfile(workSourceDir, 'filterConfigFiles.m'));
+
+% create additional .m file with help (documentation)
+mhelp   = help(fullfile(workSourceDir, 'VisaIF.m'));
+fid     = fopen(fullfile(workReleaseDir, 'VisaIF.m'), 'w');
+fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
+fclose(fid);
+
+copyfile( ...
+    fullfile(workSourceDir,  'VisaIF_S110.csv'), ...
+    fullfile(workReleaseDir, 'VisaIF_S110.csv'));
+copyfile( ...
+    fullfile(workSourceDir,  'VisaIF_Sxxx.csv'), ...
+    fullfile(workReleaseDir, 'VisaIF_Sxxx.csv'));
+copyfile( ...
+    fullfile(workSourceDir,  'VisaIF_Z433.csv'), ...
+    fullfile(workReleaseDir, 'VisaIF_Z433.csv'));
+
+% -------------------------------------------------------------------------
+% return to original path
+cd(ThisDir);
+
+% -------------------------------------------------------------------------
+% finally optionally copy released files to Support directory 
+% (dir which is added to Matlab search path using 'pathtool')
+if copyFilesToSupportDir
+    SupportDir  = fullfile(ThisDir, '..', 'Support');
+    copyfile(ReleaseDir, SupportDir);
+end
+
+return % end of script

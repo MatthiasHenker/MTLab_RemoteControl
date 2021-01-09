@@ -1,6 +1,17 @@
 % VisaIF support package
 
 ---------------------------------------------------------------------------
+Release v2.4.3 (2021-01-09)
+  - VisaIF             v2.4.3  (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - VisaDemo           v1.0.2  (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - VisaIFLogEventData v2.0.1  (2021-01-09)
+      hopefully no changes, moved to git (version control)
+  - VisaIFLogger       v2.0.1  (2021-01-09)
+      hopefully no changes, moved to git (version control)
+
+---------------------------------------------------------------------------
 Release v2.4.2 (2020-10-16) ==> released for winter term 2020/21
   - VisaIF             v2.4.2  (2020-10-16)
       no changes

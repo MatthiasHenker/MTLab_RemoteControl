@@ -40,8 +40,8 @@ classdef(ConstructOnLoad) VisaIFLogEventData < event.EventData
     %----------------------------------------------------------------------
     
     properties(Constant = true)
-        VisaIFLogEventVersion = '2.0.0';      % current version
-        VisaIFLogEventDate    = '2020-05-25'; % release date
+        VisaIFLogEventVersion = '2.0.1';      % current version
+        VisaIFLogEventDate    = '2021-01-09'; % release date
     end
     
     properties (GetAccess = public, SetAccess = private)

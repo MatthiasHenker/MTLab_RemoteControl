@@ -238,8 +238,8 @@ classdef VisaIF < handle
     % ---------------------------------------------------------------------
     
     properties(Constant = true)
-        VisaIFVersion = '2.4.2';      % current version of VisaIF
-        VisaIFDate    = '2020-10-16'; % release date
+        VisaIFVersion = '2.4.3';      % current version of VisaIF
+        VisaIFDate    = '2021-01-09'; % release date
     end
     
     properties(SetAccess = private, GetAccess = public)

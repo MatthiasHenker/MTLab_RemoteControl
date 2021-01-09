@@ -132,8 +132,8 @@ classdef VisaIFLogger < handle
     % ---------------------------------------------------------------------
     
     properties(Constant = true)
-        VisaIFLoggerVersion = '2.0.0';      % current version
-        VisaIFLoggerDate    = '2020-05-25'; % release date
+        VisaIFLoggerVersion = '2.0.1';      % current version
+        VisaIFLoggerDate    = '2021-01-09'; % release date
     end
     
     properties

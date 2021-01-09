@@ -90,13 +90,7 @@ cd(ThisDir);
 % (dir which is added to Matlab search path using 'pathtool')
 if copyFilesToSupportDir
     SupportDir  = fullfile(ThisDir, '..', 'Support');
-   
-    copyfile( ...
-        fullfile(ReleaseDir, ClassDirName)  , ...
-        fullfile(SupportDir, ClassDirName));
-    copyfile( ...
-        fullfile(ReleaseDir, PackageDirName), ...
-        fullfile(SupportDir, PackageDirName));
+    copyfile(ReleaseDir, SupportDir);
 end
 
 return % end of script
