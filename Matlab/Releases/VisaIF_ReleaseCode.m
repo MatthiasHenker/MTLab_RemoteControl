@@ -22,10 +22,11 @@
 % some config
 
 ModuleName = 'VisaIF';  % name of class file
-VersionID  = '2.4.3';   % should match name of tag in git (version control)
+%VersionID  = '2.4.3';   % should match name of tag in git (version control)
+VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
-copyFilesToSupportDir = true;   % true or false
+copyFilesToSupportDir = 0;   % true (1) or false (0)
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
@@ -90,14 +91,11 @@ fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
 fclose(fid);
 
 copyfile( ...
-    fullfile(workSourceDir,  'VisaIF_S110.csv'), ...
-    fullfile(workReleaseDir, 'VisaIF_S110.csv'));
+    fullfile(workSourceDir,  'VisaIF_HTW_Labs.csv'), ...
+    fullfile(workReleaseDir, 'VisaIF_HTW_Labs.csv'));
 copyfile( ...
-    fullfile(workSourceDir,  'VisaIF_Sxxx.csv'), ...
-    fullfile(workReleaseDir, 'VisaIF_Sxxx.csv'));
-copyfile( ...
-    fullfile(workSourceDir,  'VisaIF_Z433.csv'), ...
-    fullfile(workReleaseDir, 'VisaIF_Z433.csv'));
+    fullfile(workSourceDir,  'VisaIF_HTW_Henker.csv'), ...
+    fullfile(workReleaseDir, 'VisaIF_HTW_Henker.csv'));
 
 % -------------------------------------------------------------------------
 % return to original path

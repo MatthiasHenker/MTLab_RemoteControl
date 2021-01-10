@@ -22,10 +22,11 @@
 % some config
 
 ModuleName = 'FGen';    % name of class file
-VersionID  = '1.0.5';   % should match name of tag in git (version control)
+%VersionID  = '1.0.5';   % should match name of tag in git (version control)
+VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
-copyFilesToSupportDir = true;   % true or false
+copyFilesToSupportDir = 0;   % true (1) or false (0)
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
