@@ -52,7 +52,7 @@ Agilent-33220A   ;; Agilent   ;; Gen33220A    ;; FGen       ;; demo      ;; USB0
 #
 #
 # Keysight Signal Generator (newer and more powerful than Agilent 33220A)
-# OutBufSize: longest command is unknown ==> define a large default value
+# OutBufSize: longest command is upload data ==> 64k samples (text, 8 char + comma)
 # InBufSize : longest command is unknown ==> define a large default value
 Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; visa-usb  ;; USB0::0x0957::0x2707::\w+  ;;     2.1e6 ;;   100e3
 # 

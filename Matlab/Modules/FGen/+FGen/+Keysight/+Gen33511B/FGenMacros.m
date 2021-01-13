@@ -2,9 +2,9 @@ classdef FGenMacros < handle
     % generator macros for Keysight 33511B
     %
     % add device specific documentation (when sensible)
-        
+    
     properties(Constant = true)
-        MacrosVersion = '0.1.0';      % release version
+        MacrosVersion = '1.0.0';      % release version
         MacrosDate    = '2021-01-13'; % release date
     end
     
@@ -39,7 +39,7 @@ classdef FGenMacros < handle
             % init output
             status = NaN;
             
-            % add an Keysight 33511B specific command: 
+            % add an Keysight 33511B specific command:
             %
             % clear display
             if obj.VisaIFobj.write('DISPLAY:TEXT:CLEAR')
@@ -54,7 +54,7 @@ classdef FGenMacros < handle
                 status = -1;
             end
             % ...
-                        
+            
             % wait for operation complete
             obj.VisaIFobj.opc;
             % ...
@@ -71,12 +71,12 @@ classdef FGenMacros < handle
             % init output
             status = NaN;
             
-            % add an Keysight 33511B specific command: 
+            % add an Keysight 33511B specific command:
             %
             % no SCPI command available to set to local state again
             % (buttons at generator are still locked after closing)
             % ==> PRESS "Local" button at generator to unlock again
-            % 
+            %
             % clear display
             if obj.VisaIFobj.write('DISPLAY:TEXT:CLEAR')
                 status = -1;
@@ -153,7 +153,7 @@ classdef FGenMacros < handle
                 status = -1;
             end
         end
-                 
+        
         function status = lock(obj)
             % lock all buttons at generator
             disp(['FGen WARNING - Method ''lock'' is not ' ...
@@ -254,7 +254,7 @@ classdef FGenMacros < handle
                                 case {'PULS', 'PULSE'}, waveform = 'PULS';
                                 case {'NOIS', 'NOISE'}, waveform = 'NOIS';
                                 case {'DC'},            waveform = 'DC';
-                                case {'USER', 'ARB'},   waveform = 'USER';
+                                case {'USER', 'ARB'},   waveform = 'ARB';
                                 otherwise
                                     waveform = '';
                                     disp(['FGen: Warning - ' ...
@@ -546,36 +546,44 @@ classdef FGenMacros < handle
                 
                 % --- set samplerate --------------------------------------
                 if ~isempty(samplerate)
-                    % sample rate is not directly supported
-                    % ==> get number of samples (number)
-                    % ==> set frequency to samplerate/numofsamples
-                    
-                    if isempty(frequency)
-                        number = obj.VisaIFobj.query('DATA:ATTRIBUTE:POINTS?');
-                        number = str2double(char(number));
-                        if ~isnan(number)
-                            frequency = samplerate/number;
-                        else
-                            status = -1;
-                            disp(['FGen: Warning - ''configureOutput'' ' ...
-                                'cannot set samplerate parameter ' ...
-                                '--> ignore and continue']);
+                    % set parameter
+                    obj.VisaIFobj.write(['FUNCTION:ARBITRARY:SRATE ' ...
+                        num2str(samplerate, '%g')]);
+                    % read back
+                    response = obj.VisaIFobj.query('FUNCTION:ARBITRARY:SRATE?');
+                    response = str2double(char(response));
+                    % finally verify setting
+                    if abs(samplerate - response) > 1e-3 || isnan(response)
+                        status = -1;
+                        if obj.ShowMessages
+                            disp(['  WARNING - set samplerate ' ...
+                                'reports problems. Check limits.']);
+                            disp(['  requested samplerate: ' ...
+                                num2str(samplerate) ' (Sa/s)']);
+                            disp(['  actual samplerate   : ' ...
+                                num2str(response)   ' (Sa/s)']);
                         end
-                    else
-                        disp(['FGen: Warning - ''configureOutput'' ' ...
-                            'samplerate parameter conflicts with ' ...
-                            'frequency --> ignore and continue']);
                     end
                 end
                 
                 % --- set frequency ---------------------------------------
                 if ~isempty(frequency)
-                    % set parameter
-                    obj.VisaIFobj.write(['FREQUENCY ' ...
-                        num2str(frequency, '%.6f')]);
-                    % read back
-                    response = obj.VisaIFobj.query('FREQUENCY?');
+                    if strcmpi(waveform, 'arb')
+                        % set parameter
+                        obj.VisaIFobj.write(['FUNCTION:ARBITRARY:FREQUENCY ' ...
+                            num2str(frequency, '%.6f')]);
+                        % read back
+                        response = obj.VisaIFobj.query('FUNCTION:ARBITRARY:FREQUENCY?');
+                    else
+                        % set parameter
+                        obj.VisaIFobj.write(['FREQUENCY ' ...
+                            num2str(frequency, '%.6f')]);
+                        % read back
+                        response = obj.VisaIFobj.query('FREQUENCY?');
+                    end
                     response = str2double(char(response));
+                    
+                    
                     % finally verify setting
                     if abs(frequency - response) > 1e-6 || isnan(response)
                         status = -1;
@@ -611,7 +619,7 @@ classdef FGenMacros < handle
                                 'reports problems. Check limits.']);
                             disp(['  requested phase: ' ...
                                 num2str(phase)    ' (deg)']);
-                            disp(['  actual frequency   : ' ...
+                            disp(['  actual phase   : ' ...
                                 num2str(response) ' (deg)']);
                         end
                     end
@@ -659,11 +667,11 @@ classdef FGenMacros < handle
                     end
                     % display actually set value at generator
                     if pulseform
-                    %    obj.VisaIFobj.write(['DISPLAY:TEXT "Pulse: ' ...
-                    %        'DutyC. = ' num2str(response, '%g') ' %"']);
+                        %    obj.VisaIFobj.write(['DISPLAY:TEXT "Pulse: ' ...
+                        %        'DutyC. = ' num2str(response, '%g') ' %"']);
                     else
-                    %    obj.VisaIFobj.write(['DISPLAY:TEXT "Square: ' ...
-                    %        'DutyC. = ' num2str(response, '%g') ' %"']);
+                        %    obj.VisaIFobj.write(['DISPLAY:TEXT "Square: ' ...
+                        %        'DutyC. = ' num2str(response, '%g') ' %"']);
                     end
                 end
                 
@@ -911,8 +919,8 @@ classdef FGenMacros < handle
                 wavedata = round(2^(14-1) * wavedata);
                 
                 % clip wave data
-                wavedata = min( 8191, wavedata);
-                wavedata = max(-8191, wavedata);
+                wavedata = min( 2^(14-1)-1, wavedata);
+                wavedata = max(-2^(14-1)+1, wavedata);
                 
                 % convert to characters (list of comma separated values
                 % starting with a comma)
@@ -920,8 +928,12 @@ classdef FGenMacros < handle
                 % remove spaces
                 wavedata = regexprep(wavedata, '\s+', '');
                 
+                % clear volatile memory before
+                if obj.VisaIFobj.write('DATA:VOLATILE:CLEAR')
+                    status = -1;
+                end
                 % 1st step: upload wave data to volatile memory of generator
-                if obj.VisaIFobj.write(['DATA:DAC VOLATILE ' wavedata])
+                if obj.VisaIFobj.write(['DATA:DAC VOLATILE' wavedata])
                     status = -1;
                 end
                 
@@ -948,9 +960,11 @@ classdef FGenMacros < handle
                                 '--> ignore and continue']);
                             status = -1; % 'failed', but we can continue
                         else
-                            % overwrite wavedata at generator
-                            % 2nd step: copy wave data to non-volatile memory
-                            obj.VisaIFobj.write(['DATA:COPY ' wavename]);
+                            % 33511B doesn't allow overriding of data
+                            disp(['FGen: Warning - ''arbWaveform'' ' ...
+                                'wavename already exists ' ...
+                                '--> delete waveform (no overriding allowed)']);
+                            status = -1; % 'failed', but we can continue
                         end
                     else
                         % check if enough memory space is available
@@ -973,11 +987,11 @@ classdef FGenMacros < handle
                 
                 % finally display actually set value at generator
                 if isnan(status)
-                    obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
-                        wavename '"']);
+                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
+                    %    wavename '"']);
                 else
-                    obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
-                       ' no success"']);
+                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
+                    %   ' no success"']);
                 end
             end
             
@@ -1030,11 +1044,11 @@ classdef FGenMacros < handle
                 % check if wavename is already available
                 if any(strcmpi(namelist, wavename))
                     obj.VisaIFobj.write(['DATA:DELETE ' wavename]);
-                    obj.VisaIFobj.write(['DISPLAY:TEXT "Delete: ' ...
-                        wavename '"']);
+                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Delete: ' ...
+                    %    wavename '"']);
                 elseif obj.ShowMessages
                     disp(['  Warning: wavename does not exist ' ...
-                                '--> ignore and continue']);
+                        '--> ignore and continue']);
                 end
             end
             
@@ -1058,8 +1072,8 @@ classdef FGenMacros < handle
                         
                     end
                     % display actually set value at generator
-                    obj.VisaIFobj.write(['DISPLAY:TEXT "Wave: ' ...
-                        wavename '"']);
+                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Wave: ' ...
+                    %    wavename '"']);
                 else
                     disp(['FGen: Warning - ''arbWaveform'' cannot ' ...
                         'select non-existing wavename ' ...
