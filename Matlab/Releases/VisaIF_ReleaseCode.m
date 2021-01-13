@@ -26,7 +26,7 @@ ModuleName = 'VisaIF';  % name of class file
 VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
-copyFilesToSupportDir = 0;   % true (1) or false (0)
+copyFilesToSupportDir = 1;   % true (1) or false (0)
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
