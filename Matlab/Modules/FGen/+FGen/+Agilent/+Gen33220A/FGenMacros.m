@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
         
     properties(Constant = true)
-        MacrosVersion = '1.0.1';      % release version
-        MacrosDate    = '2021-01-09'; % release date
+        MacrosVersion = '1.0.2';      % release version
+        MacrosDate    = '2021-01-13'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -126,6 +126,11 @@ classdef FGenMacros < handle
         function status = clear(obj)
             % clear status at generator
             status = obj.VisaIFobj.write('*CLS');
+            %
+            % clear display
+            if obj.VisaIFobj.write('DISPLAY:TEXT:CLEAR')
+                status = -1;
+            end
         end
                  
         function status = lock(obj)
@@ -433,7 +438,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set amplitude ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested amplitude: ' ...
                                 num2str(amplitude) ' (' unit ')']);
                             disp(['  actual amplitude   : ' ...
@@ -459,7 +464,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set offset ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested offset: ' ...
                                 num2str(offset)   ' (V)']);
                             disp(['  actual offset   : ' ...
@@ -508,7 +513,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set frequency ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested frequency: ' ...
                                 num2str(frequency) ' (Hz)']);
                             disp(['  actual frequency   : ' ...
@@ -550,7 +555,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set dutycycle ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested dutycycle: ' ...
                                 num2str(dutycycle) ' (%)']);
                             disp(['  actual dutycycle   : ' ...
@@ -580,7 +585,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set symmetry ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested symmetry: ' ...
                                 num2str(symmetry) ' (%)']);
                             disp(['  actual symmetry   : ' ...
@@ -609,7 +614,7 @@ classdef FGenMacros < handle
                         status = -1;
                         if obj.ShowMessages
                             disp(['  WARNING - set transition ' ...
-                                ' reports problems. Check limits.']);
+                                'reports problems. Check limits.']);
                             disp(['  requested transition: ' ...
                                 num2str(transition) ' (%)']);
                             disp(['  actual transition   : ' ...
