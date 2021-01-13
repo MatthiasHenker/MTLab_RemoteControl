@@ -1,22 +1,23 @@
 % test_FGen.m
 
-clear all;
+clear variables;
 close all;
 clc;
 
-%FGenName = 'Agi';        % Agilent generator
-FGenName = 'SDG';        % Siglent generator
+%FGenName = 'Agi';        % Agilent  generator
+%FGenName = 'SDG';        % Siglent  generator
+FGenName = 'Key';        % Keysight generator
 FGenID   = '';           % don't care ==> connect to first found generator
-%FGenID   = 'MY44022964'; % a specific generator
+%FGenID   = 'MY44022964'; % a specific generator (Agilent/Keysight)
 
 
 % demo mode or with real hardware?
 %interface = 'demo';
-%interface = 'visa-usb';
-interface = 'visa-tcpip';
+interface = 'visa-usb';
+%interface = 'visa-tcpip';
 
-%showmsg   = 'all';
-showmsg   = 'few';
+showmsg   = 'all';
+%showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -29,14 +30,15 @@ disp(' ');
 
 % -------------------------------------------------------------------------
 % print out some information
-%FGen.listAvailableConfigFiles;
-%FGen.listContentOfConfigFiles;
-%FGen.listAvailableVisaUsbDevices;
+FGen.listAvailableConfigFiles;
+FGen.listContentOfConfigFiles;
+FGen.listAvailableVisaUsbDevices;
 FGen.listAvailablePackages;
 
 %myFGen = FGen({FGenName, FGenID}, interface);
 myFGen = FGen(FGenName, interface, showmsg);
 %myFGen.EnableCommandLog = true;
+%myFGen.ShowMessages     = 'few';
 
 %myLog = VisaIFLogger();
 %myLog.ShowMessages = 0;
@@ -51,10 +53,12 @@ myFGen.open;
 %myFGen.unlock;
 %myFGen.lock;
 
-% myFGen.configureOutput(     ...
-%     'waveform'    , 'sin' , ...
-%     'phase'       , 90    , ...
-%     'outputImp'   , 50    );
+return
+
+myFGen.configureOutput(     ...
+    'waveform'    , 'sin' , ...
+    'phase'       , 90    , ...
+    'outputImp'   , 50    );
 myFGen.configureOutput(     ...
     'waveform'    , 'sin' , ...
     'outputImp'   , inf    );
@@ -68,18 +72,31 @@ myFGen.configureOutput(       ...
     'channel'    , 1        , ...
     'waveform'   , 'square' , ...
     'amplitude'  , 1        , ...
-    'dutycycle'  , 20       );
+    'dutycycle'  , 20.47     );
+
+myFGen.configureOutput(       ...
+    'channel'    , 1        , ...
+    'waveform'   , 'ramp'   , ...
+    'amplitude'  , 1        , ...
+    'symmetry'   , 99.45    );
+
+myFGen.configureOutput(       ...
+    'channel'    , 1        , ...
+    'waveform'   , 'pulse'  , ...
+    'amplitude'  , 1        , ...
+    'transition' , 600e-9   , ...
+    'dutycycle'  , 49.45    );
 
 myFGen.configureOutput(     ...
     'offset'      , -0.5  );
 
-% myFGen.configureOutput(       ...
-%     'waveform'    , 'noise' , ...
-%     'stdev'       , 1       , ...
-%     'bandwidth'   , 2e6     );
 myFGen.configureOutput(       ...
     'waveform'    , 'noise' , ...
-    'stdev'       , 1       );
+    'stdev'       , 1       , ...
+    'bandwidth'   , 12.3456789e3 );
+%myFGen.configureOutput(       ...
+%    'waveform'    , 'noise' , ...
+%    'stdev'       , 1       );
 
 
 myFGen.enableOutput;
@@ -89,6 +106,10 @@ myFGen.enableOutput;
 myFGen.arbWaveform(          ...
     'mode'    , 'list'     , ...
     'submode' , 'user'     );
+
+myFGen.arbWaveform(          ...
+    'mode'    , 'list'     , ...
+    'submode' , 'all'      );
 
 myFGen.arbWaveform(          ...
     'mode'    , 'upload'   , ...
@@ -127,8 +148,9 @@ myFGen.ShowMessages = 'none';
 
 
 myFGen.close;
-myFGen.delete;
 return
+myFGen.delete;
+
 
 % -------------------------------------------------------------------------
 % regexp: full line that does not contain a certain word

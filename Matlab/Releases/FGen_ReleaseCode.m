@@ -26,7 +26,7 @@ ModuleName = 'FGen';    % name of class file
 VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
-copyFilesToSupportDir = 0;   % true (1) or false (0)
+copyFilesToSupportDir = 1;   % true (1) or false (0)
 
 % -------------------------------------------------------------------------
 % actual code to create a new release
@@ -67,6 +67,15 @@ fclose(fid);
 % -------------------------------------------------------------------------
 workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Agilent', '+Gen33220A');
 workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Agilent', '+Gen33220A');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'FGenMacros.m'));
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Keysight', '+Gen33511B');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Keysight', '+Gen33511B');
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 
