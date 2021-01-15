@@ -5,7 +5,7 @@ classdef FGenMacros < handle
         
     properties(Constant = true)
         MacrosVersion = '1.0.2';      % release version
-        MacrosDate    = '2021-01-13'; % release date
+        MacrosDate    = '2021-01-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -639,7 +639,7 @@ classdef FGenMacros < handle
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
-            %   'channel'     : '1' '1, 2'
+            %   'channel'  : '1', '1, 2'
             %   'mode'     : 'list', 'select', 'delete', 'upload',
             %                'download'
             %   'submode'  : 'user', 'builtin', 'all', 'override'
@@ -826,7 +826,7 @@ classdef FGenMacros < handle
                 wavedata = regexprep(wavedata, '\s+', '');
                 
                 % 1st step: upload wave data to volatile memory of generator
-                if obj.VisaIFobj.write(['DATA:DAC VOLATILE ' wavedata])
+                if obj.VisaIFobj.write(['DATA:DAC VOLATILE' wavedata])
                     status = -1;
                 end
                 
