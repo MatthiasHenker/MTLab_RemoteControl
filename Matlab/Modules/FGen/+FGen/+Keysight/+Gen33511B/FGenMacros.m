@@ -53,6 +53,11 @@ classdef FGenMacros < handle
             if obj.VisaIFobj.write('DISPLAY ON')
                 status = -1;
             end
+            % swap order of bytes ==> for upload of arb data in binary form 
+            %(least-significant byte (LSB) of each data point is first)
+            if obj.VisaIFobj.write('format:border swapped')
+                status = -1;
+            end
             % ...
             
             % wait for operation complete
@@ -742,10 +747,11 @@ classdef FGenMacros < handle
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
-            %   'channel'     : '1' '1, 2'
+            %   'channel'  : '1', '1, 2'
             %   'mode'     : 'list', 'select', 'delete', 'upload',
             %                'download'
-            %   'submode'  : 'user', 'builtin', 'all', 'override'
+            %   'submode'  : 'user', 'volatile', 'builtin', 'all', 
+            %                'override'
             %   'wavename' : 'xyz' (char)
             %   'wavedata' : vector of real (range -1 ... +1)
             %   (for future use???)   'filename' : 'xyz' (char)
@@ -764,7 +770,6 @@ classdef FGenMacros < handle
             %filename    = '';
             
             override    = false;  % default submode @ upload
-            allwaves    = true;   % default submode @ list
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -827,10 +832,11 @@ classdef FGenMacros < handle
                                 case 'list'
                                     switch lower(paramValue)
                                         case 'user'
-                                            submode  = lower(paramValue);
-                                            allwaves = false;
+                                            submode  = 'user';
+                                        case {'volatile', 'vol'}
+                                            submode  = 'volatile';
                                         case 'all'
-                                            submode  = lower(paramValue);
+                                            submode  = 'all';
                                         case 'builtin'
                                             submode  = 'all';
                                             if obj.ShowMessages
@@ -900,6 +906,11 @@ classdef FGenMacros < handle
             if strcmp(mode, 'download')
                 % waveout is used for wavedata (nothing downloaded)
                 waveout = [];
+                %
+                % ideas for implementation
+                %['MMEMORY:UPLOAD? "INT:\' dir '\' wavename '.arb"']
+                %['MMEMORY:UPLOAD? "INT:\' dir '\' wavename '.barb"']
+                %
                 status = -1; % 'failed', but we can continue
                 disp(['FGen: Warning - ''arbWaveform'' download ' ...
                     'parameter is not supported ' ...
@@ -997,10 +1008,19 @@ classdef FGenMacros < handle
             
             if strcmp(mode, 'list')
                 % get list of wavenames already stored at FGen
-                if allwaves
-                    namelist = obj.VisaIFobj.query('DATA:CATALOG?');
-                else
-                    namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
+                switch lower(submode)
+                    case 'user'
+                        namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
+                    case 'volatile'
+                        namelist = obj.VisaIFobj.query('DATA:VOLATILE:CATALOG?');
+                    case 'all'
+                        namelist = obj.VisaIFobj.query('DATA:CATALOG?');
+                    otherwise
+                        namelist = [];
+                        status   = -1; % 'failed', but we can continue
+                        disp(['FGen: Warning - ''arbWaveform'' list ' ...
+                            'internal invalid state ' ...
+                            '--> ignore and continue']);
                 end
                 % convert to characters
                 namelist = char(namelist);
@@ -1068,7 +1088,9 @@ classdef FGenMacros < handle
                     for cnt = 1:length(channels)
                         %channel = channels{cnt};   % 33511B has one channel only
                         
-                        obj.VisaIFobj.write(['FUNC:USER ' wavename]);
+                        % comability mode => replace
+                        obj.VisaIFobj.write(['FUNCTION:USER ' wavename]);
+                        %obj.VisaIFobj.write(['FUNCTION:ARBITRARY ' wavename]);
                         
                     end
                     % display actually set value at generator
