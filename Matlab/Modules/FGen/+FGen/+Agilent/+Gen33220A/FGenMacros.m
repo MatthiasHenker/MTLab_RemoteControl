@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
         
     properties(Constant = true)
-        MacrosVersion = '1.0.2';      % release version
-        MacrosDate    = '2021-01-15'; % release date
+        MacrosVersion = '1.0.3';      % release version
+        MacrosDate    = '2021-01-16'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -759,11 +759,11 @@ classdef FGenMacros < handle
                             else
                                 wavename = paramValue;
                             end
-                            if strcmpi('wavename', 'volatile')
-                                disp(['FGen: Warning - ' ...
-                                    '''arbWaveform'' wavename ' ...
-                                    'parameter is invalid ' ...
+                            if strcmpi(wavename, 'volatile')
+                                disp(['FGen: Warning - ''arbWaveform'' ' ...
+                                    'wavename ''VOLATILE'' is reserved ' ...
                                     '--> ignore and continue']);
+                                status   = -1; % 'failed', but we can continue
                                 wavename = '';
                             end
                         end
@@ -776,11 +776,11 @@ classdef FGenMacros < handle
                             end
                             wavedata = real(wavedata);
                         end
-                        %                     case 'filename'
-                        %                         if ~isempty(paramValue)
-                        %                             % no further tests needed
-                        %                             filename = paramValue;
-                        %                         end
+                    %case 'filename'
+                    %    if ~isempty(paramValue)
+                    %        % no further tests needed
+                    %        filename = paramValue;
+                    %    end
                     otherwise
                         if ~isempty(paramValue)
                             disp(['  WARNING - parameter ''' ...
@@ -830,46 +830,39 @@ classdef FGenMacros < handle
                     status = -1;
                 end
                 
-                if strcmpi(wavename, 'VOLATILE')
-                    disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
-                        '''VOLATILE'' is reserved ' ...
-                        '--> ignore and continue']);
-                    status = -1; % 'failed', but we can continue
-                else
-                    % get list of wavenames already stored at FGen
-                    namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
-                    % convert to characters
-                    namelist = char(namelist);
-                    % remove all "
-                    namelist = strrep(namelist, '"', '');
-                    % split (csv list of wave names)
-                    namelist = split(namelist, ',');
-                    
-                    % check if wavename is already available
-                    if any(strcmpi(namelist, wavename))
-                        if ~override
-                            disp(['FGen: Warning - ''arbWaveform'' ' ...
-                                'wavename already exists ' ...
-                                '--> ignore and continue']);
-                            status = -1; % 'failed', but we can continue
-                        else
-                            % overwrite wavedata at generator
-                            % 2nd step: copy wave data to non-volatile memory
-                            obj.VisaIFobj.write(['DATA:COPY ' wavename]);
-                        end
+                % get list of wavenames already stored at FGen
+                namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
+                % convert to characters
+                namelist = char(namelist);
+                % remove all "
+                namelist = strrep(namelist, '"', '');
+                % split (csv list of wave names)
+                namelist = split(namelist, ',');
+                
+                % check if wavename is already available
+                if any(strcmpi(namelist, wavename))
+                    if ~override
+                        disp(['FGen: Warning - ''arbWaveform'' ' ...
+                            'wavename already exists ' ...
+                            '--> ignore and continue']);
+                        status = -1; % 'failed', but we can continue
                     else
-                        % check if enough memory space is available
-                        response = obj.VisaIFobj.query('DATA:NVOLATILE:FREE?');
-                        number   = str2double(char(response));
-                        if number < 1
-                            disp(['FGen: Warning - ''arbWaveform'' not ' ...
-                                'enough memory available ' ...
-                                '--> ignore and continue']);
-                            status = -1; % 'failed', but we can continue
-                        else
-                            % 2nd step: copy wave data to non-volatile memory
-                            obj.VisaIFobj.write(['DATA:COPY ' wavename]);
-                        end
+                        % overwrite wavedata at generator
+                        % 2nd step: copy wave data to non-volatile memory
+                        obj.VisaIFobj.write(['DATA:COPY ' wavename]);
+                    end
+                else
+                    % check if enough memory space is available
+                    response = obj.VisaIFobj.query('DATA:NVOLATILE:FREE?');
+                    number   = str2double(char(response));
+                    if number < 1
+                        disp(['FGen: Warning - ''arbWaveform'' not ' ...
+                            'enough memory available ' ...
+                            '--> ignore and continue']);
+                        status = -1; % 'failed', but we can continue
+                    else
+                        % 2nd step: copy wave data to non-volatile memory
+                        obj.VisaIFobj.write(['DATA:COPY ' wavename]);
                     end
                 end
                 
