@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2021-01-13'; % release date
+        MacrosDate    = '2021-01-19'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -53,7 +53,7 @@ classdef FGenMacros < handle
             if obj.VisaIFobj.write('DISPLAY ON')
                 status = -1;
             end
-            % swap order of bytes ==> for upload of arb data in binary form 
+            % swap order of bytes ==> for upload of arb data in binary form
             %(least-significant byte (LSB) of each data point is first)
             if obj.VisaIFobj.write('format:border swapped')
                 status = -1;
@@ -128,6 +128,11 @@ classdef FGenMacros < handle
             end
             % turn display on (no effect when already on
             if obj.VisaIFobj.write('DISPLAY ON')
+                status = -1;
+            end
+            % swap order of bytes ==> for upload of arb data in binary form
+            %(least-significant byte (LSB) of each data point is first)
+            if obj.VisaIFobj.write('format:border swapped')
                 status = -1;
             end
             % XXX
@@ -750,9 +755,9 @@ classdef FGenMacros < handle
             %   'channel'  : '1', '1, 2'
             %   'mode'     : 'list', 'select', 'delete', 'upload',
             %                'download'
-            %   'submode'  : 'user', 'volatile', 'builtin', 'all', 
+            %   'submode'  : 'user', 'volatile', 'builtin', 'all',
             %                'override'
-            %   'wavename' : 'xyz' (char)
+            %   'wavename' : 'xyz' (char) (max. length is 12 characters)
             %   'wavedata' : vector of real (range -1 ... +1)
             %   (for future use???)   'filename' : 'xyz' (char)
             
@@ -762,14 +767,12 @@ classdef FGenMacros < handle
             waveout = '';
             
             % initialize all supported parameters
-            channels    = {};
+            %channels    = {};
             mode        = '';
             submode     = '';
             wavename    = '';
             wavedata    = [];
             %filename    = '';
-            
-            override    = false;  % default submode @ upload
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -785,21 +788,21 @@ classdef FGenMacros < handle
                             switch channels{cnt}
                                 case ''
                                     channels{cnt} = 'ch1';
-                                    if obj.ShowMessages
-                                        disp(['  - channel      : 1 ' ...
-                                            '   (default)']);
-                                    end
+                                    %if obj.ShowMessages
+                                    %    disp(['  - channel      : 1 ' ...
+                                    %        '   (default)']);
+                                    %end
                                 case '1'
                                     channels{cnt} = 'ch1';
                                 otherwise
                                     channels{cnt} = '';
-                                    disp(['FGen: Warning - ''configureOutput'' ' ...
-                                        'invalid channel --> ignore ' ...
-                                        'and continue']);
+                                    %disp(['FGen: Warning - ''configureOutput'' ' ...
+                                    %    'invalid channel --> ignore ' ...
+                                    %    'and continue']);
                             end
                         end
                         % remove invalid (empty) entries
-                        channels = channels(~cellfun(@isempty, channels));
+                        %channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
                         if ~isempty(paramValue)
                             switch lower(paramValue)
@@ -817,44 +820,42 @@ classdef FGenMacros < handle
                     case 'submode'
                         if ~isempty(paramValue)
                             switch mode
-                                case {'upload'}  % 'download'
+                                case 'upload'
                                     switch lower(paramValue)
-                                        case {'override'}
-                                            submode  = lower(paramValue);
-                                            override = true;
-                                        otherwise
-                                            submode = '';
-                                            disp(['FGen: Warning - ' ...
-                                                '''arbWaveform'' submode ' ...
-                                                'parameter is unknown ' ...
-                                                '--> ignore and continue']);
-                                    end
-                                case 'list'
-                                    switch lower(paramValue)
-                                        case 'user'
-                                            submode  = 'user';
                                         case {'volatile', 'vol'}
                                             submode  = 'volatile';
-                                        case 'all'
-                                            submode  = 'all';
-                                        case 'builtin'
-                                            submode  = 'all';
-                                            if obj.ShowMessages
-                                                disp(['  - submode      : ' ...
-                                                    'ALL  (coerced)']);
-                                            end
+                                        case 'override'
+                                            submode  = 'override';
+                                        case 'user'
+                                            submode = ''; % default
                                         otherwise
                                             submode = '';
                                             disp(['FGen: Warning - ' ...
                                                 '''arbWaveform'' submode ' ...
-                                                'parameter is unknown ' ...
+                                                'parameter value will be ' ...
+                                                'ignored']);
+                                    end
+                                case {'list', 'select', 'delete'} % download
+                                    switch lower(paramValue)
+                                        case {'volatile', 'vol'}
+                                            submode = 'volatile';
+                                        case 'user'
+                                            submode = 'user';
+                                        case 'builtin'
+                                            submode = 'builtin';
+                                        case 'all'
+                                            submode = 'all';
+                                        otherwise
+                                            submode = '';
+                                            disp(['FGen: Warning - ' ...
+                                                '''arbWaveform'' submode ' ...
+                                                'parameter value is unknown ' ...
                                                 '--> ignore and continue']);
                                     end
                                 otherwise
                                     disp(['FGen: Warning - ' ...
                                         '''arbWaveform'' submode ' ...
-                                        'parameter is senseless ' ...
-                                        '--> ignore and continue']);
+                                        'parameter value will be ignored']);
                             end
                         end
                     case 'wavename'
@@ -868,11 +869,11 @@ classdef FGenMacros < handle
                             else
                                 wavename = paramValue;
                             end
-                            if strcmpi('wavename', 'volatile')
-                                disp(['FGen: Warning - ' ...
-                                    '''arbWaveform'' wavename ' ...
-                                    'parameter is invalid ' ...
+                            if strcmpi(wavename, 'volatile')
+                                disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
+                                    '"VOLATILE" is reserved ' ...
                                     '--> ignore and continue']);
+                                status   = -1; % 'failed', but we can continue
                                 wavename = '';
                             end
                         end
@@ -884,12 +885,19 @@ classdef FGenMacros < handle
                                 wavedata = paramValue;
                             end
                             wavedata = real(wavedata);
+                            if length(wavedata) < 8
+                                wavedata =  [];
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' wavedata ' ...
+                                    'is shorter than 8 samples ' ...
+                                    '--> ignore and continue']);
+                            end
                         end
-                        %                     case 'filename'
-                        %                         if ~isempty(paramValue)
-                        %                             % no further tests needed
-                        %                             filename = paramValue;
-                        %                         end
+                        %case 'filename'
+                        %    if ~isempty(paramValue)
+                        %        % no further tests needed
+                        %        filename = paramValue;
+                        %    end
                     otherwise
                         if ~isempty(paramValue)
                             disp(['  WARNING - parameter ''' ...
@@ -913,145 +921,222 @@ classdef FGenMacros < handle
                 %
                 status = -1; % 'failed', but we can continue
                 disp(['FGen: Warning - ''arbWaveform'' download ' ...
-                    'parameter is not supported ' ...
-                    '--> ignore and continue']);
+                    'parameter is not implemented yet ' ...
+                    '--> ignore and continue (submit a feature request)']);
             end
             
             % upload wavedata data to FGen
             if strcmp(mode, 'upload') && ~isempty(wavedata)
-                if length(wavedata) > 2^16
-                    wavedata = wavedata(1:2^16);
-                    disp(['FGen: Warning - ''arbWaveform'' maximum ' ...
-                        'length of wavedata is 65536 ' ...
-                        '--> truncate and continue']);
-                end
-                
-                % convert to integers (14-bit)
-                wavedata = round(2^(14-1) * wavedata);
-                
-                % clip wave data
-                wavedata = min( 2^(14-1)-1, wavedata);
-                wavedata = max(-2^(14-1)+1, wavedata);
-                
-                % convert to characters (list of comma separated values
-                % starting with a comma)
-                wavedata = num2str(wavedata, ',%d');
-                % remove spaces
-                wavedata = regexprep(wavedata, '\s+', '');
-                
-                % clear volatile memory before
-                if obj.VisaIFobj.write('DATA:VOLATILE:CLEAR')
-                    status = -1;
-                end
-                % 1st step: upload wave data to volatile memory of generator
-                if obj.VisaIFobj.write(['DATA:DAC VOLATILE' wavedata])
-                    status = -1;
-                end
-                
-                if strcmpi(wavename, 'VOLATILE')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed'; % default
+                elseif strcmpi(wavename, 'EXP_RISE')
                     disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
-                        '''VOLATILE'' is reserved ' ...
+                        '"EXP_RISE" is reserved ' ...
                         '--> ignore and continue']);
-                    status = -1; % 'failed', but we can continue
+                    status   = -1; % 'failed', but we can continue
+                    return;
                 else
-                    % get list of wavenames already stored at FGen
-                    namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
-                    % convert to characters
-                    namelist = char(namelist);
-                    % remove all "
-                    namelist = strrep(namelist, '"', '');
-                    % split (csv list of wave names)
-                    namelist = split(namelist, ',');
-                    
-                    % check if wavename is already available
-                    if any(strcmpi(namelist, wavename))
-                        if ~override
-                            disp(['FGen: Warning - ''arbWaveform'' ' ...
-                                'wavename already exists ' ...
-                                '--> ignore and continue']);
-                            status = -1; % 'failed', but we can continue
-                        else
-                            % 33511B doesn't allow overriding of data
-                            disp(['FGen: Warning - ''arbWaveform'' ' ...
-                                'wavename already exists ' ...
-                                '--> delete waveform (no overriding allowed)']);
-                            status = -1; % 'failed', but we can continue
-                        end
-                    else
-                        % check if enough memory space is available
-                        response = obj.VisaIFobj.query('DATA:NVOLATILE:FREE?');
-                        number   = str2double(char(response));
-                        if number < 1
-                            disp(['FGen: Warning - ''arbWaveform'' not ' ...
-                                'enough memory available ' ...
-                                '--> ignore and continue']);
-                            status = -1; % 'failed', but we can continue
-                        else
-                            % 2nd step: copy wave data to non-volatile memory
-                            obj.VisaIFobj.write(['DATA:COPY ' wavename]);
-                        end
+                    wavename = lower(wavename);
+                end
+                
+                % check length of wavedata
+                NumSamples = length(wavedata);
+                MaxSamples = 1e6;
+                if NumSamples > MaxSamples
+                    wavedata   = wavedata(1:MaxSamples);
+                    NumSamples = MaxSamples;
+                    disp(['FGen: Warning - ''arbWaveform'' maximum ' ...
+                        'length of wavedata is ' num2str(MaxSamples, '%g')  ...
+                        '--> truncate data vector and continue']);
+                end
+                
+                % convert to integers (16-bit) and clip wave data
+                wavedata = round(2^(16-1) * wavedata);
+                wavedata = min( 32767, wavedata);
+                wavedata = max(-32767, wavedata);
+                
+                % convert to binary values
+                % requires setting 'FORMAT:BORDER SWAPPED'
+                % (see 'runAfterOpen' and 'reset' macro)
+                RawWaveData = typecast(int16(wavedata), 'uint8');
+                
+                % check if enough volatile memory is available
+                response = obj.VisaIFobj.query('DATA:VOLATILE:FREE?');
+                MemFree  = str2double(char(response));
+                
+                % check if wavename is already in use
+                [~, namelist] = obj.arbWaveform( ...
+                    'mode'   , 'list', ...
+                    'submode', 'volatile');
+                matches = ~cellfun(@isempty, ...
+                    regexpi(split(namelist, ','), ...
+                    ['^' wavename '$'], 'match'));
+                
+                % clear volatile memory when not enough memory or
+                % wave name already in use
+                if (MemFree <= NumSamples) || any(matches)
+                    if obj.VisaIFobj.write('DATA:VOLATILE:CLEAR')
+                        status = -1;
                     end
                 end
                 
-                % wait for operation complete (can take a while)
-                obj.VisaIFobj.opc;
+                % copy data from host to FGen volatile memory
+                obj.VisaIFobj.write([ ...
+                    uint8(['DATA:ARB:DAC ' wavename ...
+                    ',#8' num2str(length(RawWaveData), '%08d')]) ...
+                    RawWaveData]);
+                % select waveform
+                obj.VisaIFobj.write(['FUNCTION:ARB ' wavename]);
                 
-                % finally display actually set value at generator
-                if isnan(status)
-                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
-                    %    wavename '"']);
+                if strcmpi(submode, 'volatile')
+                    % everything is done when submode = volatile
+                    SaveFile = false;
+                elseif strcmpi(submode, 'override')
+                    % otherwise save wave data to hard disk (default)
+                    SaveFile = true;
                 else
-                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
-                    %   ' no success"']);
+                    % check if wave file already exist
+                    [~, namelist] = obj.arbWaveform( ...
+                        'mode'   , 'list', ...
+                        'submode', 'user');
+                    matches = ~cellfun(@isempty, regexpi( ...
+                        split(namelist, ','), ...
+                        ['^' wavename '\.(b)?arb$'], 'match'));
+                    if any(matches)
+                        SaveFile = false;
+                        disp(['FGen: Warning - ''arbWaveform'' wave file ' ...
+                            'already exist --> skip save and continue']);
+                        status = -1; % 'failed', but we can continue
+                    else
+                        SaveFile = true;
+                    end
+                end
+                
+                if SaveFile
+                    obj.VisaIFobj.write( ...
+                        ['MMEMORY:STORE:DATA "INT:\' wavename '.barb"']);
+                    % wait for operation complete
+                    obj.VisaIFobj.opc;
                 end
             end
             
             if strcmp(mode, 'list')
-                % get list of wavenames already stored at FGen
-                switch lower(submode)
-                    case 'user'
-                        namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
-                    case 'volatile'
-                        namelist = obj.VisaIFobj.query('DATA:VOLATILE:CATALOG?');
-                    case 'all'
-                        namelist = obj.VisaIFobj.query('DATA:CATALOG?');
-                    otherwise
-                        namelist = [];
-                        status   = -1; % 'failed', but we can continue
-                        disp(['FGen: Warning - ''arbWaveform'' list ' ...
-                            'internal invalid state ' ...
-                            '--> ignore and continue']);
+                % set default when no submode is defined
+                if isempty(submode)
+                    submode = 'all';  % default
                 end
-                % convert to characters
-                namelist = char(namelist);
-                % remove all "
-                namelist = strrep(namelist, '"', '');
+                
+                % get list of wavenames already stored at FGen
+                if strcmpi(submode, 'all')
+                    submodeList = {'user', 'builtin'};
+                else
+                    submodeList = {lower(submode)};
+                end
+                
+                % init list for results
+                resultlist = cell(0, 3);
+                memFree    = NaN;
+                memUnit    = '';
+                for selectedsubmode = submodeList
+                    switch selectedsubmode{1}
+                        case 'volatile'
+                            % explicit command to get a list of wave names
+                            response = obj.VisaIFobj.query( ...
+                                'DATA:VOLATILE:CATALOG?');
+                            % convert to characters and remove all "
+                            response = strrep(char(response), '"', '');
+                            % split (csv list of wave names)
+                            response = split(response, ',');
+                            % sort list alphabetically
+                            response = sort(response);
+                            % reformat list
+                            tmplist  = cell(length(response), 3);
+                            tmplist(:, 1) = response;     % wave names
+                            tmplist(:, 2) = {'volatile'}; % memory type
+                            resultlist    = [resultlist; tmplist];
+                            
+                            % get size of free volatile memory (in samples)
+                            response = obj.VisaIFobj.query( ...
+                                'DATA:VOLATILE:FREE?');
+                            memFree  = str2double(char(response));
+                            memUnit  = 'samples';
+                            
+                        case {'user', 'builtin'}
+                            if strcmpi(selectedsubmode{1}, 'builtin')
+                                fgenPath = '"INT:\BuiltIn"';
+                            else
+                                fgenPath = '"INT:\"';
+                            end
+                            response = obj.VisaIFobj.query( ...
+                                ['MMEM:CATALOG:DATA:ARBITRARY? ' fgenPath]);
+                            % convert to characters and remove all "
+                            response = strrep(char(response), '"', '');
+                            % split (csv list of wave names)
+                            response = split(char(response), ',');
+                            % check number of elements and reformat list
+                            numFiles = (length(response)-2) /3;
+                            if (numFiles < 0) || ceil(numFiles) ~= floor(numFiles)
+                                status = -1;
+                                % something went wrong ==> no results
+                            else
+                                memFree = response{2};
+                                memUnit = 'bytes';
+                                if numFiles > 0
+                                    tmplist = reshape(response(3:end), ...
+                                        3, numFiles)';
+                                else
+                                    tmplist = cell(0, 3);
+                                end
+                                % 1st col: wave names
+                                % 2nd col: memory type
+                                % 3rd col: wave size (in bytes incl. header)
+                                tmplist(:, 2) = selectedsubmode;
+                                resultlist    = [resultlist; tmplist];
+                            end
+                            
+                        otherwise
+                            %status   = -1; % 'failed', but we can continue
+                            disp(['FGen: Warning - ''arbWaveform'' list: ' ...
+                                'unknown submode --> ignore and continue']);
+                    end
+                end
                 
                 % copy result to output variable
+                namelist = strjoin(resultlist(:, 1), ',');
                 waveout  = namelist;
                 
+                % was this method called internally
+                myStack = dbstack(1, '-completenames');
+                internalCall = startsWith(myStack(1).name, 'FGenMacros');
+                
                 % display results
-                if obj.ShowMessages
-                    disp(['  available waveforms (submode = ' submode ...
-                        ') at generator are:']);
-                    % split (csv list of wave names)
-                    namelist = split(namelist, ',');
-                    % sort list alphabetically
-                    namelist = sort(namelist);
-                    
-                    if isempty(namelist{1})
+                if obj.ShowMessages && ~internalCall
+                    disp('  available waveforms at generator:');
+                    if size(resultlist, 1) == 0
                         disp( '  <none>');
                     else
-                        for cnt = 1 : length(namelist)
-                            disp(['  (' num2str(cnt,'%02i') ') ''' ...
-                                namelist{cnt} '''']);
+                        for cnt = 1 : size(resultlist, 1)
+                            if ~isempty(resultlist{cnt, 3})
+                                resultlist{cnt, 3} = ...
+                                    [resultlist{cnt, 3} ' bytes'];
+                            end
+                            disp(['  (' num2str(cnt,'%02i') ' ' ...
+                                resultlist{cnt, 2} ') "' ...
+                                resultlist{cnt, 1} '" (' ...
+                                resultlist{cnt, 3} ')']);
                         end
                     end
-                    disp( '  ATTENTION: max 4 user waveforms can be stored.');
+                    disp('  available memory:');
+                    disp(['  ' num2str(memFree, '%d') ' ' memUnit]);
                 end
             end
             
             if strcmp(mode, 'delete')
+                
+                % volatile or user
+                
+                
                 % get list of wavenames already stored at FGen
                 namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
                 % convert to characters
@@ -1070,33 +1155,132 @@ classdef FGenMacros < handle
                     disp(['  Warning: wavename does not exist ' ...
                         '--> ignore and continue']);
                 end
+                
+                
+                
             end
             
             if strcmp(mode, 'select')
-                % get list of wavenames already stored at FGen
-                namelist = obj.VisaIFobj.query('DATA:CATALOG?');
-                % convert to characters
-                namelist = char(namelist);
-                % remove all "
-                namelist = strrep(namelist, '"', '');
-                % split (csv list of wave names)
-                namelist = split(namelist, ',');
-                
-                % select waveform only when wavename is available
-                if any(strcmpi(namelist, wavename))
-                    % loop over channels
-                    for cnt = 1:length(channels)
-                        %channel = channels{cnt};   % 33511B has one channel only
-                        
-                        % comability mode => replace
-                        obj.VisaIFobj.write(['FUNCTION:USER ' wavename]);
-                        %obj.VisaIFobj.write(['FUNCTION:ARBITRARY ' wavename]);
-                        
-                    end
-                    % display actually set value at generator
-                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Wave: ' ...
-                    %    wavename '"']);
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed';  % default
                 else
+                    wavename = lower(wavename);
+                end
+                
+                % set default when no submode is defined
+                if isempty(submode)
+                    submode = 'all';  % default
+                end
+                
+                % define search order and where to search
+                if strcmpi(submode, 'all')
+                    submodeList = {'user', 'builtin', 'volatile'};
+                else
+                    submodeList = {lower(submode)};
+                end
+                
+                % search and select first found wavename
+                success = false;
+                for selectedsubmode = submodeList
+                    switch selectedsubmode{1}
+                        case 'volatile'
+                            % get list of wavenames stored at FGen
+                            [~, namelist] = obj.arbWaveform( ...
+                                'mode'   , 'list', ...
+                                'submode', 'volatile');
+                            % requested wavename was found?
+                            namelist = split(namelist, ',');
+                            matches  = ~cellfun(@isempty, ...
+                                regexpi(namelist, ...
+                                ['^(INT:\\)?(\w+\\)?' wavename ...
+                                '(\.(b)?arb)?$'], 'match'));
+                            if any(matches)
+                                % save full file name with file extension
+                                fullwavename = namelist{find(matches, 1)};
+                                
+                                % select wavename
+                                % wavedata is already in volatile memory
+                                if ~strcmpi(wavename, 'exp_rise')
+                                    obj.VisaIFobj.write( ...
+                                        ['FUNCTION:ARBITRARY "' ...
+                                        fullwavename '"']);
+                                else
+                                    obj.VisaIFobj.write( ...
+                                        ['FUNCTION:ARBITRARY ' ...
+                                        '"INT:\BUILTIN\EXP_RISE.ARB"']);
+                                end
+                                % done => no further searches needed
+                                success = true;
+                                break;
+                            end
+                        case {'user', 'builtin'}
+                            % get list of wavenames stored at FGen
+                            [~, namelist] = obj.arbWaveform( ...
+                                'mode'   , 'list', ...
+                                'submode', selectedsubmode{1});
+                            % requested wavename was found?
+                            namelist = split(namelist, ',');
+                            matches  = ~cellfun(@isempty, ...
+                                regexpi(namelist, ...
+                                ['^' wavename '\.(b)?arb$'], 'match'));
+                            if any(matches)
+                                % save full file name with file extension
+                                wavenameWithExt = namelist{find(matches, 1)};
+                                
+                                % check if enough volatile memory is available
+                                %response = obj.VisaIFobj.query( ...
+                                %    'DATA:VOLATILE:FREE?');
+                                %MemFree  = str2double(char(response));
+                                
+                                % check if wavename already exit at
+                                % volatile memory => to avoid error at load
+                                %[~, namelist] = obj.arbWaveform( ...
+                                %    'mode'   , 'list', ...
+                                %    'submode', 'volatile');
+                                % requested wavename was found?
+                                %matches = ~cellfun(@isempty, ...
+                                %    regexpi(split(namelist, ','), ...
+                                %    ['^' wavename '$'], 'match'));
+                                
+                                % it is tricky to get num of samples of
+                                % wave file at FGen (hard disk)
+                                if true % any(matches) || MemFree < WaveSize
+                                    % clear volatile memory before
+                                    obj.VisaIFobj.write( ...
+                                        'DATA:VOLATILE:CLEAR');
+                                end
+                                
+                                % load wavedata from hard disk to volatile
+                                % memory
+                                if strcmpi(selectedsubmode{1}, 'builtin')
+                                    fullwavename = ['"INT:\BuiltIn\' ...
+                                        wavenameWithExt '"'];
+                                else
+                                    fullwavename = ['"INT:\' ...
+                                        wavenameWithExt '"'];
+                                end
+                                % clear volatile memory load default again
+                                if ~strcmpi(wavename, 'exp_rise')
+                                    obj.VisaIFobj.write( ...
+                                        ['MMEMORY:LOAD:DATA ' fullwavename]);
+                                    % wait for operation complete
+                                    obj.VisaIFobj.opc;
+                                end
+                                
+                                % select wavename in volatile memory
+                                obj.VisaIFobj.write( ...
+                                    ['FUNCTION:ARBITRARY ' fullwavename]);
+                                % done => no further searches needed
+                                success = true;
+                                break;
+                            end
+                        otherwise
+                            % nothing to do
+                    end
+                end
+                
+                if ~success
                     disp(['FGen: Warning - ''arbWaveform'' cannot ' ...
                         'select non-existing wavename ' ...
                         '--> ignore and continue']);
