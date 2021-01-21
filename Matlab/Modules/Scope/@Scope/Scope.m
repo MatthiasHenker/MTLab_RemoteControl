@@ -358,8 +358,8 @@ classdef Scope < VisaIF
     
     
     properties(Constant = true)
-        ScopeVersion    = '1.0.2';      % release version (= class version)
-        ScopeDate       = '2020-09-24'; % release date
+        ScopeVersion    = '1.0.3';      % release version (= class version)
+        ScopeDate       = '2021-01-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
