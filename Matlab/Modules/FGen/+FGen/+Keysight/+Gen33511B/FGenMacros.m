@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2021-01-19'; % release date
+        MacrosVersion = '1.0.1';      % release version
+        MacrosDate    = '2021-01-21'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -230,7 +230,7 @@ classdef FGenMacros < handle
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
                 switch paramName
-                    case 'channel'
+                    case 'channel'  % not implemented yet
                         % split and copy to cell array of char
                         channels = split(paramValue, ',');
                         % remove spaces
@@ -240,19 +240,25 @@ classdef FGenMacros < handle
                             switch channels{cnt}
                                 case ''
                                     channels{cnt} = 'ch1';
-                                    if obj.ShowMessages
-                                        disp(['  - channel      : 1 ' ...
-                                            '(default)']);
-                                    end
+                                    %if obj.ShowMessages
+                                    %    disp(['  - channel      : 1 ' ...
+                                    %        '(default)']);
+                                    %end
                                 case '1'
                                     channels{cnt} = 'ch1';
                                 otherwise
                                     channels{cnt} = '';
+                                    %disp(['FGen: Warning - ''configureOutput'' ' ...
+                                    %    'invalid channel --> ignore ' ...
+                                    %    'and continue']);
                                     disp(['FGen: Warning - ''configureOutput'' ' ...
-                                        'invalid channel --> ignore ' ...
-                                        'and continue']);
+                                        '''channel'' parameter is not implemented yet ' ...
+                                        '--> ignore and continue']);
                             end
                         end
+                        disp(['FGen: Warning - ''configureOutput'' ' ...
+                            '''channel'' parameter is not implemented yet ' ...
+                            '--> ignore and continue']);
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     case 'waveform'
@@ -767,7 +773,7 @@ classdef FGenMacros < handle
             waveout = '';
             
             % initialize all supported parameters
-            %channels    = {};
+            channels    = {};
             mode        = '';
             submode     = '';
             wavename    = '';
@@ -778,7 +784,7 @@ classdef FGenMacros < handle
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
                 switch paramName
-                    case 'channel'
+                    case 'channel'  % not implemented yet
                         % split and copy to cell array of char
                         channels = split(paramValue, ',');
                         % remove spaces
@@ -796,13 +802,16 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'ch1';
                                 otherwise
                                     channels{cnt} = '';
-                                    %disp(['FGen: Warning - ''configureOutput'' ' ...
+                                    %disp(['FGen: Warning - ''arbWaveform'' ' ...
                                     %    'invalid channel --> ignore ' ...
                                     %    'and continue']);
+                                    disp(['FGen: Warning - ''arbWaveform'' ' ...
+                                        '''channel'' parameter is not implemented yet ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
-                        %channels = channels(~cellfun(@isempty, channels));
+                        channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
                         if ~isempty(paramValue)
                             switch lower(paramValue)
@@ -813,7 +822,7 @@ classdef FGenMacros < handle
                                     mode = '';
                                     disp(['FGen: Warning - ' ...
                                         '''arbWaveform'' ' ...
-                                        'mode parameter is unknown ' ...
+                                        'mode parameter value is unknown ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -827,7 +836,13 @@ classdef FGenMacros < handle
                                         case 'override'
                                             submode  = 'override';
                                         case 'user'
-                                            submode = ''; % default
+                                            submode = 'user'; % default
+                                        case {'builtin', 'all'}
+                                            submode  = 'user';
+                                            if obj.ShowMessages
+                                                disp(['  - submode      : user ' ...
+                                                    '   (coerced)']);
+                                            end
                                         otherwise
                                             submode = '';
                                             disp(['FGen: Warning - ' ...
@@ -835,7 +850,7 @@ classdef FGenMacros < handle
                                                 'parameter value will be ' ...
                                                 'ignored']);
                                     end
-                                case {'list', 'select', 'delete'} % download
+                                case {'list', 'select'} % download
                                     switch lower(paramValue)
                                         case {'volatile', 'vol'}
                                             submode = 'volatile';
@@ -849,8 +864,27 @@ classdef FGenMacros < handle
                                             submode = '';
                                             disp(['FGen: Warning - ' ...
                                                 '''arbWaveform'' submode ' ...
-                                                'parameter value is unknown ' ...
-                                                '--> ignore and continue']);
+                                                'parameter value will be ' ...
+                                                'ignored']);
+                                    end
+                                case 'delete'
+                                    switch lower(paramValue)
+                                        case {'volatile', 'vol'}
+                                            submode = 'volatile';
+                                        case 'user'
+                                            submode = 'user';
+                                        case {'builtin', 'all'}
+                                            submode  = 'user';
+                                            if obj.ShowMessages
+                                                disp(['  - submode      : user ' ...
+                                                    '   (coerced)']);
+                                            end
+                                        otherwise
+                                            submode = '';
+                                            disp(['FGen: Warning - ' ...
+                                                '''arbWaveform'' submode ' ...
+                                                'parameter value will be ' ...
+                                                'ignored']);
                                     end
                                 otherwise
                                     disp(['FGen: Warning - ' ...
@@ -1092,6 +1126,8 @@ classdef FGenMacros < handle
                                 % 2nd col: memory type
                                 % 3rd col: wave size (in bytes incl. header)
                                 tmplist(:, 2) = selectedsubmode;
+                                % sort list alphabetically
+                                tmplist = sortrows(tmplist);
                                 resultlist    = [resultlist; tmplist];
                             end
                             
@@ -1133,31 +1169,41 @@ classdef FGenMacros < handle
             end
             
             if strcmp(mode, 'delete')
-                
-                % volatile or user
-                
-                
-                % get list of wavenames already stored at FGen
-                namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
-                % convert to characters
-                namelist = char(namelist);
-                % remove all "
-                namelist = strrep(namelist, '"', '');
-                % split (csv list of wave names)
-                namelist = split(namelist, ',');
-                
-                % check if wavename is already available
-                if any(strcmpi(namelist, wavename))
-                    obj.VisaIFobj.write(['DATA:DELETE ' wavename]);
-                    %obj.VisaIFobj.write(['DISPLAY:TEXT "Delete: ' ...
-                    %    wavename '"']);
-                elseif obj.ShowMessages
-                    disp(['  Warning: wavename does not exist ' ...
-                        '--> ignore and continue']);
+                % set default when no submode is defined
+                if isempty(submode)
+                    submode = 'user';  % default
                 end
                 
-                
-                
+                % submode is either 'volatile' or 'user'
+                if strcmpi(submode, 'volatile')
+                    % clear volatile memory (no option to delete single files)
+                    obj.VisaIFobj.write('DATA:VOLATILE:CLEAR');
+                    
+                else
+                    % submode = 'user'
+                    
+                    % get list of wavenames already stored at FGen
+                    [~, namelist] = obj.arbWaveform( ...
+                        'mode'   , 'list', ...
+                        'submode', 'user');
+                    % requested wavename was found?
+                    namelist = split(namelist, ',');
+                    matches  = ~cellfun(@isempty, regexpi(namelist, ...
+                        ['^' wavename '(\.(b)?arb)?$'], 'match'));
+                    if any(matches)
+                        % save full file name with file extension
+                        wavenameWithExt = namelist{find(matches, 1)};
+                        
+                        % delete wave file
+                        obj.VisaIFobj.write(['MMEMORY:DELETE "INT:\' ...
+                            wavenameWithExt '"']);
+                        
+                    else
+                        disp(['FGen: Warning - ''arbWaveform'' cannot ' ...
+                            'delete non-existing wavename ' ...
+                            '--> ignore and continue']);
+                    end
+                end
             end
             
             if strcmp(mode, 'select')
