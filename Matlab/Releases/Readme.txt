@@ -10,7 +10,7 @@
 
 # ----------------------------------------------------------------------------
 # current versions
-# 2021-01-09
+# 2021-01-21
 
 VisaIF              &  (VisaIFLogger, VisaIFLogEventData, VisaDemo)
   - Version  : 2.4.3   (2.0.1       , 2.0.1             , 1.0.2)
@@ -19,10 +19,12 @@ VisaIF              &  (VisaIFLogger, VisaIFLogEventData, VisaDemo)
 Scope               &  (several +Scope\...\ScopeMacros.p support packages)
   - Version  : 1.0.3
   - Date     : 2021-01-09
+  - packages : 
 
 FGen                &  (several +FGen\...\FGenMacros.p support packages)
   - Version  : 1.0.5
   - Date     : 2021-01-09
+  - packages : 
 
 
 
