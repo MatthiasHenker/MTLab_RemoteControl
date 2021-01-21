@@ -1,5 +1,7 @@
-# 2021-01-09
-# Prof. Matthias Henker
+# ----------------------------------------------------------------------------
+# 2021-01-21
+# Prof. Matthias Henker (HTW Dresden, Germany)
+# ----------------------------------------------------------------------------
 
 The files in this directory provide methods managed 
 in classes to control measurement devices in the lab.
@@ -15,4 +17,25 @@ ACTIONS:
   - add your folder 'Support_Files' (without subfolders!)
   - press save or close button and exit pathtool
   ==> Matlab will find these files now
- 
+
+# ----------------------------------------------------------------------------
+VisaIF       : VisaIF             class    v2.4.3   (2021-01-09)
+  - addons   : VisaDemo           class    v1.0.2   (2021-01-09)
+               VisaIFLogger       class    v2.0.1   (2021-01-09)
+               VisaIFLogEventData class    v2.0.1   (2021-01-09)
+  - configs  : VisaIF_HTW_Labs.csv                  (2021-01-13)
+               VisaIF_HTW_Henker.csv                (2021-01-13)
+
+# ----------------------------------------------------------------------------
+Scope        : Scope              class    v1.0.3   (2021-01-09)
+  - packages : Tektronix.TDS1000_2000      v1.1.3   (2021-01-09)
+               Keysight.DSOX1000           v1.1.1   (2021-01-09)
+               RS.RTB2000                  v0.1.1   (2021-01-09)
+
+# ----------------------------------------------------------------------------
+FGen         : FGen               class    v1.0.5   (2021-01-09)
+  - packages : Agilent.Gen33220A           v1.0.3   (2021-01-16)
+               Keysight.Gen33511B          v1.0.1   (2021-01-21)
+               Siglent.SDG6000X            v0.0.2   (2021-01-09)
+  
+# ----------------------------------------------------------------------------
