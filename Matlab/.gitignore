@@ -2,3 +2,4 @@ Support/*
 !Support/Readme_IMPORTANT.txt
 Releases/*_release
 Testbenches/VisaIFLog_*.csv
+Testbenches/*.bmp
