@@ -5,8 +5,8 @@ close all;
 clc;
 
 %ScopeName = 'TDS';      % Tektronix Scope
-ScopeName = 'DSO';      % Keysight scope
-%ScopeName = 'RTB';      % R&S Scope
+%ScopeName = 'DSO';      % Keysight scope
+ScopeName = 'RTB';      % R&S Scope
 ScopeID   = '';         % don't care ==> connect to first found scope
 %ScopeID   = 'C011107';  % a specific scope
 %ScopeID   = 'C011127';  % (when more than one scope is connected)
@@ -16,8 +16,8 @@ ScopeID   = '';         % don't care ==> connect to first found scope
 %interface = 'demo';
 interface = 'visa-usb';
 
-%showmsg   = 'all';
-showmsg   = 'few';
+showmsg   = 'all';
+%showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -32,8 +32,8 @@ disp(' ');
 % print out some information
 %Scope.listAvailableConfigFiles;
 %Scope.listContentOfConfigFiles;
-%Scope.listAvailableVisaUsbDevices;
-%Scope.listAvailablePackages;
+Scope.listAvailableVisaUsbDevices;
+Scope.listAvailablePackages;
 
 %myScope = Scope({ScopeName, ScopeID}, interface);
 myScope = Scope(ScopeName, interface, showmsg);
@@ -49,6 +49,9 @@ myScope = Scope(ScopeName, interface, showmsg);
 myScope;
 
 myScope.open;
+
+return
+
 myScope.clear;
 
 

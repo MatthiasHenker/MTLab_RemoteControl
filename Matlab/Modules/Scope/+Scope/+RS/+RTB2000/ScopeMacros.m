@@ -5,8 +5,8 @@ classdef ScopeMacros < handle
     % for Scope: Rohde&Schwarz RTB2000 series
             
     properties(Constant = true)
-        MacrosVersion = '0.1.1';      % release version
-        MacrosDate    = '2021-01-09'; % release date
+        MacrosVersion = '0.1.2';      % release version
+        MacrosDate    = '2021-01-23'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -44,16 +44,30 @@ classdef ScopeMacros < handle
             % init output
             status = NaN;
             
-            disp('ToDo ...');
             % add some device specific commands:
+            %
+            % clear status (event registers and error queue)
+            if obj.VisaIFobj.write('*CLS')
+                status = -1;
+            end
+            
+            % close possibly open message box
+            if obj.VisaIFobj.write('DISPLAY:DIALOG:CLOSE')
+                status = -1;
+            end
+            
+            % swap order of bytes ==> for download of waveform data in 
+            % binary form (least-significant byte (LSB) of each data 
+            % point is first)
+            if obj.VisaIFobj.write('FORMAT:BORDER LSBfirst')
+                status = -1;
+            end
+            
             % XXX
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
             %end
-            % set XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            
             % ...
             
             % wait for operation complete
@@ -72,12 +86,15 @@ classdef ScopeMacros < handle
             % init output
             status = NaN;
             
-            disp('ToDo ...');
             % add some device specific commands:
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            %
+            % close possibly open message box
+            if obj.VisaIFobj.write('DISPLAY:DIALOG:CLOSE')
+                status = -1;
+            end
+            
+            % wait for operation complete
+            obj.VisaIFobj.opc;
             
             % set final status
             if isnan(status)
@@ -91,17 +108,33 @@ classdef ScopeMacros < handle
             % init output
             status = NaN;
             
-            disp('ToDo ...');
-            % add some device commands:
-            %
+            % use standard reset command Factory Default)
+            if obj.VisaIFobj.write('*RST')
+                status = -1;
+            end
+            
+            % clear status (event registers and error queue)
+            if obj.VisaIFobj.write('*CLS')
+                status = -1;
+            end
+            
+            % close possibly open message box
+            if obj.VisaIFobj.write('DISPLAY:DIALOG:CLOSE')
+                status = -1;
+            end
+            
+            % swap order of bytes ==> for download of waveform data in
+            % binary form (least-significant byte (LSB) of each data
+            % point is first)
+            if obj.VisaIFobj.write('FORMAT:BORDER LSBfirst')
+                status = -1;
+            end
+            
             % XXX
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
             %end
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            
             % wait for operation complete
             obj.VisaIFobj.opc;
             
@@ -125,17 +158,33 @@ classdef ScopeMacros < handle
         function status = lock(obj)
             % lock all buttons at scope
             
-            disp('ToDo ...');
-            status = 0;
+            %status = obj.VisaIFobj.write('SYSTEM:REMOTE'); % not available
+            [~, status] = obj.VisaIFobj.query('*OPC?'); % same result
+            
+            if obj.ShowMessages
+                disp(['Scope Message - Method ''lock'' is not ' ...
+                    'supported for ']);
+                disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                    obj.VisaIFobj.Product ...
+                    ' -->  Scope will be automatically locked ' ...
+                    'by remote access']);
+            end
         end
         
         function status = unlock(obj)
             % unlock all buttons at scope
             
-            disp('ToDo ...');
+            %status = obj.VisaIFobj.write('SYSTEM:LOCAL'); % not available
             status = 0;
+            
+            disp(['Scope WARNING - Method ''unlock'' is not ' ...
+                'supported for ']);
+            disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                obj.VisaIFobj.Product ...
+                ' -->  Press button ''Local'' at Scope device (touchscreen)']);
         end
         
+        % x
         function status = acqRun(obj)
             % start data acquisitions at scope
             
@@ -143,6 +192,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = acqStop(obj)
             % stop data acquisitions at scope
             
@@ -150,6 +200,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = autoset(obj)
             % causes the oscilloscope to adjust its vertical, horizontal,
             % and trigger controls to display a stable waveform
@@ -160,6 +211,7 @@ classdef ScopeMacros < handle
         
         % -----------------------------------------------------------------
         
+        % x
         function status = configureInput(obj, varargin)
             % configure input channels
             
@@ -167,6 +219,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = configureAcquisition(obj, varargin)
             % configure acquisition parameters
             
@@ -174,6 +227,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = configureTrigger(obj, varargin)
             % configure trigger parameters
             
@@ -181,6 +235,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = configureZoom(obj, varargin)
             % configure zoom window
             
@@ -188,6 +243,7 @@ classdef ScopeMacros < handle
             status = 0;
         end
         
+        % x
         function status = autoscale(obj, varargin)
             % adjust its vertical and/or horizontal scaling
             
@@ -317,6 +373,7 @@ classdef ScopeMacros < handle
             end
         end
         
+        % x
         function meas = runMeasurement(obj, varargin)
             % request measurement value
             
@@ -337,6 +394,7 @@ classdef ScopeMacros < handle
             meas.status    = 0;
         end
         
+        % x
         function waveData = captureWaveForm(obj, varargin)
             % download waveform data
             
@@ -354,6 +412,7 @@ classdef ScopeMacros < handle
         % actual scope methods: get methods (dependent)
         % -----------------------------------------------------------------
         
+        % x
         function acqState = get.AcquisitionState(obj)
             % get acquisition state (run or stop)
             
@@ -361,6 +420,7 @@ classdef ScopeMacros < handle
             acqState = '<undefined>';
         end
         
+        % x
         function trigState = get.TriggerState(obj)
             % get trigger state (ready, auto, triggered)
             
@@ -371,8 +431,45 @@ classdef ScopeMacros < handle
         function errMsg = get.ErrorMessages(obj)
             % read error list from the scope’s error buffer
             
-            disp('ToDo ...');
-            errMsg = '<undefined>';
+            % config
+            maxErrCnt = 20;  % size of error stack
+            errCell   = cell(1, maxErrCnt);
+            cnt       = 0;
+            done      = false;
+            
+            % read error from buffer until done
+            while ~done && cnt < maxErrCnt
+                cnt = cnt + 1;
+                % read error and convert to characters
+                errMsg = obj.VisaIFobj.query('SYSTEM:ERROR?');
+                errMsg = char(errMsg);
+                % no errors anymore?
+                if startsWith(errMsg, '0,')
+                    done = true;
+                else
+                    errCell{cnt} = errMsg;
+                end
+            end
+            
+            % remove empty cell elements
+            errCell = errCell(~cellfun(@isempty, errCell));
+            
+            % optionally display results
+            if obj.ShowMessages
+                if ~isempty(errCell)
+                    disp('Scope error list:');
+                    for cnt = 1:length(errCell)
+                        disp(['  (' num2str(cnt,'%02i') ') ' ...
+                            errCell{cnt} ]);
+                    end
+                else
+                    disp('Scope error list is empty');
+                end
+            end
+            
+            % copy result to output
+            errMsg = strjoin(errCell, '; ');
+            
         end
         
     end
