@@ -2,11 +2,12 @@ classdef ScopeMacros < handle
     % ToDo documentation
     %
     %
-    % for Scope: Rohde&Schwarz RTB2000 series
+    % for Scope: Rohde&Schwarz RTB2000 series 
+    % (for R&S firmware: 02.300 ==> see myScope.identify)
             
     properties(Constant = true)
-        MacrosVersion = '0.1.2';      % release version
-        MacrosDate    = '2021-01-23'; % release date
+        MacrosVersion = '0.1.3';      % release version
+        MacrosDate    = '2021-01-24'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -184,29 +185,49 @@ classdef ScopeMacros < handle
                 ' -->  Press button ''Local'' at Scope device (touchscreen)']);
         end
         
-        % x
         function status = acqRun(obj)
             % start data acquisitions at scope
             
-            disp('ToDo ...');
-            status = 0;
+            status = obj.VisaIFobj.write('ACQUIRE:STATE RUN');
+            %status = obj.VisaIFobj.write('RUN'); % RUNcontinous
         end
         
-        % x
         function status = acqStop(obj)
             % stop data acquisitions at scope
             
-            disp('ToDo ...');
-            status = 0;
+            % stop when not triggered => several waveforms visible at screen
+            status = obj.VisaIFobj.write('ACQUIRE:STATE STOP');
+            %status = obj.VisaIFobj.write('STOP'); % break (the hard way)
+            
+            % alternative solution: expects setting 'ACQUIRE:NSINGLE:COUNT 1'
+            % (default setting and possible to set in reset & runafteropen)
+            %obj.VisaIFobj.write('ACQUIRE:NSINGLE:COUNT 1')
+            %obj.VisaIFobj.write('RUNSingle')
         end
         
-        % x
         function status = autoset(obj)
-            % causes the oscilloscope to adjust its vertical, horizontal,
-            % and trigger controls to display a stable waveform
+            % performs an autoset process for analog channels: analyzes the
+            % enabled analog channel signals, and adjusts the horizontal,
+            % vertical, and trigger settings to display stable waveforms
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
+            
+            % actual autoset command
+            if obj.VisaIFobj.write('AUTOSCALE')
+                status = -1;
+            end
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+            
+            % has a valid signal been detected?
+            % ==> no option for validation
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         % -----------------------------------------------------------------
@@ -412,20 +433,55 @@ classdef ScopeMacros < handle
         % actual scope methods: get methods (dependent)
         % -----------------------------------------------------------------
         
-        % x
         function acqState = get.AcquisitionState(obj)
             % get acquisition state (run or stop)
-            
-            disp('ToDo ...');
-            acqState = '<undefined>';
+            [acqState, status] = obj.VisaIFobj.query('ACQUIRE:STATE?');
+            %
+            if status ~= 0
+                % failure
+                acqState = 'visa error. couldn''t read acquisition state';
+            else
+                % remap trigger state
+                acqState = lower(char(acqState));
+                switch acqState
+                    case {'stop', 'comp', 'bre'}, % stop, complete, break 
+                        acqState = 'stopped';
+                    case 'run',     
+                        acqState = 'running';
+                    otherwise, acqState = '';
+                end
+            end
         end
         
         % x
         function trigState = get.TriggerState(obj)
-            % get trigger state (ready, auto, triggered)
+            % get trigger state (ready, auto, triggered, stop)
             
-            disp('ToDo ...');
-            trigState = '<undefined>';
+            
+            
+            
+%             % request state
+%             [trigState, status] = obj.VisaIFobj.query('trigger:state?');
+%             
+%             if status ~= 0
+%                 % failure
+%                 trigState = 'visa error. couldn''t read trigger state';
+%             else
+%                 % remap trigger satte
+%                 trigState = lower(char(trigState));
+%                 switch trigState
+%                     case 'armed',   trigState = 'armed';
+%                     case 'scan',    trigState = 'scan';  % low scan speed
+%                     case 'ready',   trigState = 'ready';
+%                     case 'auto',    trigState = 'auto';
+%                     case 'trigger', trigState = 'triggered';
+%                     case 'save',    trigState = 'stop';
+%                     otherwise,      trigState = '';
+%                 end
+%             end
+            
+            
+            
         end
         
         function errMsg = get.ErrorMessages(obj)

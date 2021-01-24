@@ -49,10 +49,21 @@ myScope = Scope(ScopeName, interface, showmsg);
 myScope;
 
 myScope.open;
+myScope.clear;
+
+myScope.write('wgenerator:function sin');
+myScope.write('wgenerator:voltage 0.1');
+myScope.write('wgenerator:frequency 100e3');
+myScope.write('wgenerator:output:load highz');
+myScope.write('wgenerator:output:enable on');
+
+
+myScope.ErrorMessages;
 
 return
-
-myScope.clear;
+myScope.write('channel1:scale 0.5');
+% ADC is clipped? RTB manual (10vxx, page 573)
+myScope.query('STATus:QUEStionable:ADCState:CONDition?');
 
 
 myScope.AutoscaleHorizontalSignalPeriods = 5;
