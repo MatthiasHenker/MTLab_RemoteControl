@@ -12,7 +12,7 @@ classdef Scope < VisaIF
     % accessible and a suiting support package is installed.
     %
     % All public properties and methods from super class 'VisaIF' can also
-    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.1).
+    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
     %
     % Use 'Scope.doc' for this help page. 
     %
@@ -152,7 +152,7 @@ classdef Scope < VisaIF
     %   - autoset        : Causes the oscilloscope to adjust its vertical, 
     %                      horizontal, and trigger controls to display a 
     %                      stable waveform 
-    %     * same as pushing the front-panel AUTOSET button
+    %     * uses the scope-internal (builtin) AUTOSET function (button)
     %     * because quite a lot of vertical, horizontal, and trigger
     %       parameters will be modified, it is sensible to use this method
     %       for initial setup only, use autoscale method to adjust
@@ -217,7 +217,7 @@ classdef Scope < VisaIF
     %          'channel'  : specifies source for measurement
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       ATTENTION: will always be internally sorted in
-    %                       ascending order
+    %                       ascending order ==> affects sign in phase meas.
     %          'parameter': specifies parameter for measurement, e.g.
     %                         'frequency' - frequency
     %                         'period'    - period
@@ -259,18 +259,28 @@ classdef Scope < VisaIF
     %     * MacrosVersion : version of support package class (char)
     %     * MacrosDate    : release date of support package class (char)
     %     * AcquisitionState : current acquisition state (run or stop)
+    %                       'running' when acquisition is running either 
+    %                               waiting for trigger or acquiring data
+    %                               repeatingly
+    %                       'stopped', ['stopped (unfinished)', 
+    %                               'stopped (finished and completed)', 
+    %                               'stopped (finished but interrupted)'] 
+    %                               when acquisition is stopped either 
+    %                               finished (triggered acquisition) or 
+    %                               unfinished (no trigger and trigger mode 
+    %                               is either 'single' or 'normal')
     %     * TriggerState  : current trigger state, e.g. 
     %                       'ready' when scope is waiting for trigger 
-    %                               (acquisition is running); acq mode is
-    %                               either 'single' or 'normal'
+    %                               (acquisition is running); trigger mode
+    %                               is either 'single' or 'normal'
     %                       'auto'  when scope is waiting for trigger,
     %                               but waveform data were acquired even
     %                               in absence of a trigger; acquisition
-    %                               is running; acq mode is 'auto'
+    %                               is running; trigger mode is 'auto'
     %                       'triggered' when scope has been triggered and
     %                               acquisition is still running (waiting
-    %                               for new trigger); acq mode is 'auto'
-    %                               or 'normal'
+    %                               for new trigger); trigger mode is
+    %                               'auto' or 'normal'
     %                       'stop'  when acquisition is stopped (either acq
     %                               mode is 'single' and trigger causes a 
     %                               single acquisition or acq was stopped 
@@ -328,12 +338,12 @@ classdef Scope < VisaIF
     %   'ScopeDate'
     %
     % tested with
-    %   - Matlab (version 9.8 = 2020a update 4) and
-    %   - Instrument Control Toolbox (version 4.2)
+    %   - Matlab (version 9.9 = 2020b update 3) and
+    %   - Instrument Control Toolbox (version 4.3)
     %   - NI-Visa 19.5 (download from NI, separate installation)
     %
     % known issues and planned extensions / fixes
-    %   - no bugs reported so far (version 1.0.0) ==> winter term 2020/21
+    %   - no bugs reported so far (version 1.0.3) ==> winter term 2020/21
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)
@@ -358,8 +368,8 @@ classdef Scope < VisaIF
     
     
     properties(Constant = true)
-        ScopeVersion    = '1.0.3';      % release version (= class version)
-        ScopeDate       = '2021-01-09'; % release date
+        ScopeVersion    = '1.0.4';      % release version (= class version)
+        ScopeDate       = '2021-01-25'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
