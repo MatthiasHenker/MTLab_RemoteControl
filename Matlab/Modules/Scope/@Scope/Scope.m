@@ -182,13 +182,13 @@ classdef Scope < VisaIF
     %                       'both' - vertical and horizontal scaling
     %                                parameters will be adjusted
     %
-    %   - acqRun          : start data acquisitions at scope like pressing
-    %                       run/stop button at scope
+    %   - acqRun         : start data acquisitions at scope like pressing
+    %                      run/stop button at scope
     %     * usage:
     %           status = myScope.acqRun   or   myScope.acqRun
     %       
-    %   - acqStop         : stop data acquisitions at scope like pressing
-    %                       run/stop button at scope
+    %   - acqStop        : stop data acquisitions at scope like pressing
+    %                      run/stop button at scope
     %     * usage:
     %           status = myScope.acqStop   or   myScope.acqStop
     %       
@@ -258,33 +258,70 @@ classdef Scope < VisaIF
     %     * ScopeDate     : release date of this class file (char)
     %     * MacrosVersion : version of support package class (char)
     %     * MacrosDate    : release date of support package class (char)
-    %     * AcquisitionState : current acquisition state (run or stop)
-    %                       'running' when acquisition is running either 
-    %                               waiting for trigger or acquiring data
-    %                               repeatingly
-    %                       'stopped', ['stopped (unfinished)', 
-    %                               'stopped (finished and completed)', 
-    %                               'stopped (finished but interrupted)'] 
-    %                               when acquisition is stopped either 
-    %                               finished (triggered acquisition) or 
-    %                               unfinished (no trigger and trigger mode 
-    %                               is either 'single' or 'normal')
-    %     * TriggerState  : current trigger state, e.g. 
-    %                       'ready' when scope is waiting for trigger 
-    %                               (acquisition is running); trigger mode
-    %                               is either 'single' or 'normal'
-    %                       'auto'  when scope is waiting for trigger,
-    %                               but waveform data were acquired even
-    %                               in absence of a trigger; acquisition
-    %                               is running; trigger mode is 'auto'
-    %                       'triggered' when scope has been triggered and
-    %                               acquisition is still running (waiting
-    %                               for new trigger); trigger mode is
-    %                               'auto' or 'normal'
-    %                       'stop'  when acquisition is stopped (either acq
-    %                               mode is 'single' and trigger causes a 
-    %                               single acquisition or acq was stopped 
-    %                               manually) or all channels are off
+    %     * AcquisitionState: current acquisition state (response starts
+    %                       with one of these texts, but can optionally
+    %                       be followed up by more details)
+    %                 'running' when acquisition is running either waiting
+    %                       for trigger (trigger mode = 'single' or
+    %                       'normal') or acquiring data repeatingly caused
+    %                       by trigger (trigger mode = 'auto' or 'normal')
+    %                 'stopped', or optionally 'stopped (unfinished)',
+    %                       'stopped (finished and completed)',
+    %                       'stopped (finished but interrupted)'
+    %                       when acquisition is stopped either finished
+    %                       (triggered acquisition) or unfinished (no
+    %                       trigger and trigger mode is either 'single' or
+    %                       'normal')
+    %                 'XXX error. detailed text' error message
+    %     * TriggerState  : current trigger state (response starts
+    %                       with one of these texts, but can optionally
+    %                       be followed up by more details)
+    %                 'waitfortrigger' when scope is waiting for trigger
+    %                       (acquisition is running) and no trigger event
+    %                       occured since last request or clear
+    %                       ==> reliable response
+    %                 'triggered' when scope has been triggered
+    %                       ==> can report a past trigger event
+    %                       ==> re-read TriggerState to check for periodic
+    %                           trigger events
+    %                       ==> always triggered when trigger mode = 'auto'
+    %                 ''    when no trigger event had occured (since last
+    %                       request) and is not waiting for new trigger
+    %                       (because acquisition is stopped or all channels
+    %                       are off)
+    %                 'XXX error. detailed text' error message
+    %       IMPORTANT NOTES: The setting of trigger-mode (configureTrigger)
+    %       and the possible states of acquisition and trigger depends on
+    %       each other. (abbreviations: AcquisitionState = AcqS,
+    %       TriggerState = TrigS)
+    %       TriggerMode
+    %       'auto'   : AcqS equals last acqRun/acqStop command,
+    %                  TrigS is always 'triggered' when AcqS = 'running'
+    %                  ==> scope triggers repeatedly after a time
+    %                      interval even if the trigger conditions are not
+    %                      fulfilled, a real trigger takes precedence
+    %                  TrigS is always '' when AcqS = 'stopped'
+    %       'normal' : similar to 'auto', but scope acquires a waveform
+    %                  only if a real trigger occurs,
+    %                  AcqS equals last acqRun/acqStop command,
+    %                  TrigS is either 'triggered' or 'waitfortrigger' when
+    %                  AcqS = 'running'
+    %                  TrigS is always '' when AcqS = 'stopped'
+    %       'single' : similar to 'normal', but only a single acquisition
+    %                  is executed ==> use acqRun to start a new
+    %                  acquisition, AcqS is only = 'running' as long as
+    %                  TrigS = 'waitfortrigger', AcqS = 'stopped' when a
+    %                  real trigger has occured ==> TrigS = '' then
+    %                  ==> use AcquisitionState to check if acquisition is
+    %                  done ==> run myScope.opc ('*OPC?') to ensure that
+    %                  all acuired data is saved before download them
+    %       FURTHER NOTES: use myScope.write('*TRG') to force a trigger
+    %                  this can be helpful for trigger modes = 'normal' or
+    %                  'single' (nearly all scopes support '*TRG')
+    %       ATTENTION: TriggerState reports 'triggered' when at least one
+    %                  trigger event occured since the last TriggerState
+    %                  request ==> be careful and re-read TriggerState to
+    %                  check for periodic trigger events
     %     * ErrorMessages : error list from the scope’s error buffer
     %
     %   - with read/write access
@@ -368,8 +405,8 @@ classdef Scope < VisaIF
     
     
     properties(Constant = true)
-        ScopeVersion    = '1.0.4';      % release version (= class version)
-        ScopeDate       = '2021-01-25'; % release date
+        ScopeVersion    = '1.2.0';      % release version (= class version)
+        ScopeDate       = '2021-01-26'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -882,13 +919,37 @@ classdef Scope < VisaIF
         % -----------------------------------------------------------------
         
         function acqState = get.AcquisitionState(obj)
-            % get acquisition state (running, stopped, ...)
+            % get acquisition state
+            %   'running' or 
+            %   'stopped[_(add_text)]' or
+            %   'XXX error.[add_text]'
             acqState = obj.MacrosObj.AcquisitionState;
+            
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  acqusition state = ' acqState]);
+            end
         end
         
         function trigState = get.TriggerState(obj)
-            % get trigger state (ready, auto, triggered, ...)
+            % get trigger state
+            %   'waitfortrigger[_(add_text)]' or
+            %   'triggered[_(add_text)]') or
+            %   '' (neither triggered nor waitfortrigger, e.g. acqStop) or
+            %   'XXX error.[add_text]'
             trigState = obj.MacrosObj.TriggerState;
+            
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                if isempty(trigState)
+                    trigStateDisp = '<empty>  (e.g. acquisition has stopped)';
+                else
+                    trigStateDisp = trigState;
+                end
+                disp([obj.DeviceName ':']);
+                disp(['  trigger state = ' trigStateDisp]);
+            end
         end
         
         function errMsg = get.ErrorMessages(obj)

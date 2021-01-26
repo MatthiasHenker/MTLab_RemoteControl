@@ -10,8 +10,8 @@ classdef ScopeMacros < handle
     % Tektronix TDS1000, TDS 2000 series macros
     
     properties(Constant = true)
-        MacrosVersion = '1.1.3';      % release version
-        MacrosDate    = '2021-01-09'; % release date
+        MacrosVersion = '1.2.0';      % release version
+        MacrosDate    = '2021-01-26'; % release date
         %
         % ? num of supported channels and so on ...
     end
@@ -1608,7 +1608,7 @@ classdef ScopeMacros < handle
         % -----------------------------------------------------------------
         
         function acqState = get.AcquisitionState(obj)
-            % get acquisition state (run or stop)
+            % get acquisition state
             
             % request state
             [acqState, status] = obj.VisaIFobj.query('acquire:state?');
@@ -1628,7 +1628,7 @@ classdef ScopeMacros < handle
         end
         
         function trigState = get.TriggerState(obj)
-            % get trigger state (ready, auto, triggered)
+            % get trigger state
             
             % request state
             [trigState, status] = obj.VisaIFobj.query('trigger:state?');
@@ -1640,13 +1640,13 @@ classdef ScopeMacros < handle
                 trigState = char(trigState);
                 % remap trigger satte
                 switch lower(trigState)
-                    case 'armed',   trigState = 'armed';
-                    case 'scan',    trigState = 'scan';  % low scan speed
-                    case 'ready',   trigState = 'ready';
-                    case 'auto',    trigState = 'auto';
+                    case 'armed',   trigState = 'waitfortrigger (armed)';
+                    case 'ready',   trigState = 'waitfortrigger';
+                    case 'auto',    trigState = 'triggered (auto)';
                     case 'trigger', trigState = 'triggered';
-                    case 'save',    trigState = 'stop';
-                    otherwise,      trigState = '';
+                    case 'scan',    trigState = 'triggered (scan)';
+                    case 'save',    trigState = '';   % stopped
+                    otherwise,      trigState = 'device error. unknown state';
                 end
             end
         end

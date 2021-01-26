@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for R&S firmware: 02.300 ==> see myScope.identify)
             
     properties(Constant = true)
-        MacrosVersion = '0.1.3';      % release version
-        MacrosDate    = '2021-01-24'; % release date
+        MacrosVersion = '0.2.0';      % release version (min 1.2.0)
+        MacrosDate    = '2021-01-26'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -64,10 +64,23 @@ classdef ScopeMacros < handle
                 status = -1;
             end
             
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            % status:operation bit 3 (wait for trigger) is going low when
+            % a trigger event occurs and is going high again afterwards 
+            % ==> capture trigger event in status:operation:event register
+            %
+            % cleared at power-on, unchanged by reset (*RST)
+            if obj.VisaIFobj.write('STATUS:OPERATION:NTRANSITION 8')
+                status = -1;
+            end
+            if obj.VisaIFobj.write('STATUS:OPERATION:PTRANSITION 0')
+                status = -1;
+            end
+            
+            % Sets the number of waveforms acquired with RUNSingle
+            % reset (*RST) resets value to 1
+            if obj.VisaIFobj.write('ACQUIRE:NSINGLE:COUNT 1')
+                status = -1;
+            end
             
             % ...
             
@@ -434,7 +447,7 @@ classdef ScopeMacros < handle
         % -----------------------------------------------------------------
         
         function acqState = get.AcquisitionState(obj)
-            % get acquisition state (run or stop)
+            % get acquisition state
             [acqState, status] = obj.VisaIFobj.query('ACQUIRE:STATE?');
             %
             if status ~= 0
@@ -444,8 +457,12 @@ classdef ScopeMacros < handle
                 % remap trigger state
                 acqState = lower(char(acqState));
                 switch acqState
-                    case {'stop', 'comp', 'bre'}, % stop, complete, break 
-                        acqState = 'stopped';
+                    case 'stop', 
+                        acqState = 'stopped (unfinished)';
+                    case 'comp',   % complete    
+                        acqState = 'stopped (finished and completed)';
+                    case 'bre',    % break
+                        acqState = 'stopped (finished but interrupted)';
                     case 'run',     
                         acqState = 'running';
                     otherwise, acqState = '';
@@ -455,33 +472,49 @@ classdef ScopeMacros < handle
         
         % x
         function trigState = get.TriggerState(obj)
-            % get trigger state (ready, auto, triggered, stop)
+            % get trigger state ('waitfortrigger', 'triggered', '')
             
+            % expected settings: ==> set in runAfterOpen method
+            % 'STATus:OPERation:NTRansition 8'
+            % 'STATus:OPERation:PTRansition 0'
             
+            % event registers cleared after reading
+            % trigger event register
+            [respTriggered, stat1]   = ...
+                obj.VisaIFobj.query('STATUS:OPERATION:EVENT?');
+            % responding condition register (remain unchanged)
+            [respWaitTrigger, stat2] = ...
+                obj.VisaIFobj.query('STATUS:OPERATION:CONDITION?');
             
+            statQuery = abs(stat1) + abs(stat2);
             
-%             % request state
-%             [trigState, status] = obj.VisaIFobj.query('trigger:state?');
-%             
-%             if status ~= 0
-%                 % failure
-%                 trigState = 'visa error. couldn''t read trigger state';
-%             else
-%                 % remap trigger satte
-%                 trigState = lower(char(trigState));
-%                 switch trigState
-%                     case 'armed',   trigState = 'armed';
-%                     case 'scan',    trigState = 'scan';  % low scan speed
-%                     case 'ready',   trigState = 'ready';
-%                     case 'auto',    trigState = 'auto';
-%                     case 'trigger', trigState = 'triggered';
-%                     case 'save',    trigState = 'stop';
-%                     otherwise,      trigState = '';
-%                 end
-%             end
-            
-            
-            
+            if statQuery ~= 0
+                trigState = 'visa error. couldn''t read trigger state';
+            else
+                Triggered   = str2double(char(respTriggered));
+                if ~isnan(Triggered) && ~isinf(Triggered)
+                     Triggered = dec2binvec(Triggered, 8);
+                     Triggered = Triggered(1+3); % bit 3
+                else
+                     Triggered = false;
+                end
+                
+                WaitTrigger = str2double(char(respWaitTrigger));
+                if ~isnan(WaitTrigger) && ~isinf(WaitTrigger)
+                     WaitTrigger = dec2binvec(WaitTrigger, 8);
+                     WaitTrigger = WaitTrigger(1+3); % bit 3
+                else
+                     WaitTrigger = false;
+                end
+                
+                if Triggered
+                    trigState = 'triggered';
+                elseif WaitTrigger
+                    trigState = 'waitfortrigger';
+                else
+                    trigState = '';
+                end
+            end
         end
         
         function errMsg = get.ErrorMessages(obj)

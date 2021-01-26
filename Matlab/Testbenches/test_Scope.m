@@ -49,8 +49,8 @@ myScope = Scope(ScopeName, interface, showmsg);
 myScope;
 
 myScope.open;
-myScope.clear;
 
+% R&S RTB2004: dedicated low-level commands
 myScope.write('wgenerator:function sin');
 myScope.write('wgenerator:voltage 0.1');
 myScope.write('wgenerator:frequency 100e3');
@@ -59,11 +59,31 @@ myScope.write('wgenerator:output:enable on');
 
 
 myScope.ErrorMessages;
+myScope.clear;
 
 return
+
+% R&S RTB2004: dedicated low-level commands
 myScope.write('channel1:scale 0.5');
 % ADC is clipped? RTB manual (10vxx, page 573)
 myScope.query('STATus:QUEStionable:ADCState:CONDition?');
+% tests for waitfortrigger feature (TriggerState-method)
+myScope.query('STATus:OPERation:CONDition?');
+myScope.query('STATus:OPERation:NTRansition?');
+myScope.write('STATus:OPERation:NTRansition 8');  % 8
+myScope.query('STATus:OPERation:PTRansition?');
+myScope.write('STATus:OPERation:PTRansition 0');
+myScope.query('STATus:OPERation:EVENt?');
+myScope.query('STATus:OPERation:ENABle?');  % default is 8 (WTrigger)
+%
+myScope.query('*STB?');
+myScope.query('*SRE?');
+myScope.query('*ESR?');
+myScope.query('*ESE?');
+myScope.write('*ESE 0');
+
+
+
 
 
 myScope.AutoscaleHorizontalSignalPeriods = 5;

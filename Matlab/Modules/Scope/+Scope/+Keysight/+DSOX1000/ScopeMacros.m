@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
     
     properties(Constant = true)
-        MacrosVersion = '1.1.1';      % release version
-        MacrosDate    = '2021-01-09'; % release date
+        MacrosVersion = '1.2.0';      % release version
+        MacrosDate    = '2021-01-26'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -825,6 +825,11 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             if ~isempty(mode)
+                
+                % single is missing
+                % set trigger:sweep first run or single second
+                
+                
                 if strcmpi(mode, 'normal') || strcmpi(mode, 'auto')
                     % leave single mode to change the trigger mode
                     if strcmpi(mode, 'auto')
@@ -1862,7 +1867,7 @@ classdef ScopeMacros < handle
         % -----------------------------------------------------------------
         
         function acqState = get.AcquisitionState(obj)
-            % get acquisition state (run or stop)
+            % get acquisition state
             
             [response, status] = obj.VisaIFobj.query(':OPERegister:CONDition?');
             if status ~= 0
@@ -1884,25 +1889,28 @@ classdef ScopeMacros < handle
         end
         
         function trigState = get.TriggerState(obj)
-            % get trigger state (ready, auto, triggered)
-            % registers cleared after reading
-            [respAuto,      stat1] = obj.VisaIFobj.query(':TRIGger:SWEep?');
-            [respTriggered, stat2] = obj.VisaIFobj.query(':TER?');
-            [respReady,     stat3] = obj.VisaIFobj.query(':AER?');
+            % get trigger state
             
-            statQuery = stat1 + stat2 + stat3;
+            % event registers cleared after reading
+            % trigger event register
+            [respTriggered, stat1] = obj.VisaIFobj.query(':TER?');
+            % arm event register
+            % ==> better to read out operation status condition register?
+            % check this part of code (see doc Keysight InfiniiVision
+            % 1000 X-Series Oscilloscopes, programmers guide 2019, page 150)
+            [respArmed,     stat2] = obj.VisaIFobj.query(':AER?');
+            
+            statQuery = abs(stat1) + abs(stat2);
+            
             if statQuery ~= 0
                 trigState = 'visa error. couldn''t read trigger state';
             else
-                AutoMode = strcmpi(char(respAuto), 'AUTO');
                 Triggered = str2double(char(respTriggered));
-                Ready = str2double(char(respReady));
-                if AutoMode
-                    trigState = 'auto';
-                elseif Triggered
+                Armed     = str2double(char(respArmed));
+                if Triggered
                     trigState = 'triggered';
-                elseif Ready
-                    trigState = 'ready';
+                elseif Armed
+                    trigState = 'waitfortrigger';
                 else
                     trigState = '';
                 end
