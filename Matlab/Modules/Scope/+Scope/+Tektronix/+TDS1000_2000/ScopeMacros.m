@@ -1489,18 +1489,21 @@ classdef ScopeMacros < handle
                                     channels{cnt} = 'ch1';
                                 case '2'
                                     channels{cnt} = 'ch2';
+                                case ''
+                                    % do nothing
                                 otherwise
                                     channels{cnt} = '';
-                                    disp(['Scope: WARNING - ' ...
+                                    disp(['Scope: Warning - ' ...
                                         '''captureWaveForm'' invalid ' ...
-                                        'channel --> ignore and continue']);
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     otherwise
-                        disp(['  WARNING - parameter ''' ...
-                            paramName ''' is unknown --> ignore']);
+                        disp(['Scope: Warning - ''captureWaveForm'' ' ...
+                            'parameter ''' paramName ''' will be ignored']);
                 end
             end
             if isempty(channels)
