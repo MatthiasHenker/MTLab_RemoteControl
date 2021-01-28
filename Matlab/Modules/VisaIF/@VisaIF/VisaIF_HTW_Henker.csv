@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------------------------------------
-// 2021-01-13
+// 2021-01-27
 // config file listing all available Visa measurement devices in room/lab Z433
 // required columns
 //   Device     : char array as unique identifier
@@ -29,11 +29,11 @@ Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-tcpip;; TCPIP0::1
 Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-usb  ;; USB0::0xF4EC::0x1300::\w+ ;;       512 ;;      2e6 ;; 0
 # 
 # R&S Scope                        (SID = 112328)
-# OutBufSize: longest command is unknown ==> define a large default value
+# OutBufSize: longest command is download data as UINT32 (80 MB + 10 Bytes)
 # InBufSize : longest command is unknown ==> define a large default value
 #             probably download of waveform data or screenshot (BMP-file?)
-RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.8     ;;       1e6 ;;     20e6 ;; 0
-RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-usb  ;; USB0::0x0AAD::0x01D6::\w+ ;;       1e6 ;;     20e6 ;; 0
+RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.8     ;;       1e6 ;; 80000100 ;; 0
+RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-usb  ;; USB0::0x0AAD::0x01D6::\w+ ;;       1e6 ;; 80000100 ;; 0
 #
 # Siglent Scope                    (SID = SDS2XKCC2R0177)
 # OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
