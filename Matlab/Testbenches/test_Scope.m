@@ -133,8 +133,9 @@ myScope.configureZoom('zoomFactor', 16, 'zoomPos', 0);
 
 myScope.makeScreenShot('fileName', './tmp3.bmp');
 
-data = myScope.captureWaveForm('channel', [1 2]);
+data = myScope.captureWaveForm('channel', [1 2 4 3]);
 
+plot(data.time, data.volt);
 if true
     figure(1);
     plot(data.time, data.volt(1, :), '-r');
