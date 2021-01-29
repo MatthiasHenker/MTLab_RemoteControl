@@ -3,3 +3,5 @@ Support/*
 Releases/*_release
 Testbenches/VisaIFLog_*.csv
 Testbenches/*.bmp
+Testbenches/*.png
+Testbenches/*.tiff
