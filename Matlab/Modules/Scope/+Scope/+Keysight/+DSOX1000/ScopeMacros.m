@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-01-26'; % release date
+        MacrosDate    = '2021-01-30'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -234,11 +234,14 @@ classdef ScopeMacros < handle
                                     channels{cnt} = ':CHANnel1';
                                 case '2'
                                     channels{cnt} = ':CHANnel2';
+                                case ''
+                                    % do nothing
                                 otherwise
                                     channels{cnt} = '';
-                                    disp(['Scope: Warning - ''configureInput'' ' ...
-                                        'invalid channel --> ignore ' ...
-                                        'and continue']);
+                                    disp(['Scope: Warning - ' ...
+                                        '''configureInput'' invalid ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -258,10 +261,12 @@ classdef ScopeMacros < handle
                             end
                         end
                     case 'impedance'
-                        if obj.ShowMessages && ~isempty(paramValue)
+                        if str2double(paramValue) ~= 1e6 && ~isempty(paramValue)
                             disp(['Scope: Warning - ''impedance'' ' ...
-                                'parameter cannot be set --> ' ...
-                                ' impedance = 1e6']);
+                                'parameter cannot be configured']);
+                            if obj.ShowMessages
+                                disp('  - impedance    : 1e6 (coerced)');
+                            end
                         end
                     case 'vDiv'
                         if ~isempty(paramValue)

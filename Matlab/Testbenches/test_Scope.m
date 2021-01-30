@@ -63,7 +63,21 @@ myScope.clear;
 
 return
 
+% -------------------------------------------------------------------------
 % R&S RTB2004: dedicated low-level commands
+
+myScope.write('format:border LSBF');  % Set little endian byte order
+myScope.query('format:border?');
+myScope.write('format:data uint,16]');
+myScope.query('format:data?');
+myScope.query('CHANnel3:DATA:HEADer?');
+myScope.write('CHAN3:TYPE HRES');  % Set high resolution mode (16 bit data)
+myScope.write('TIM:SCAL 10E-7');   % Set time base
+myScope.write('FORM REAL');        % Set REAL data format
+myScope.write('CHAN3:DATA:POIN MAX'); % Set sample range to memory da
+myScope.query('chan3:data:points?');
+myScope.query('chan3:data?');
+ 
 myScope.write('channel1:scale 0.5');
 % ADC is clipped? RTB manual (10vxx, page 573)
 myScope.query('STATus:QUEStionable:ADCState:CONDition?');
@@ -82,7 +96,27 @@ myScope.query('*ESR?');
 myScope.query('*ESE?');
 myScope.write('*ESE 0');
 
+myScope.query('ACQuire:SEGMented:STATe?');
+myScope.write('ACQuire:SEGMented:STATe 1');
+myScope.query('ACQuire:AVAilable?');
+myScope.query('CHANnel1:HISTory:REPLay?');
+myScope.write('CHANnel1:HISTory:REPLay 1');
 
+tic
+myScope.write('MEASurement3:ENABle 1');
+myScope.write('MEASurement3:MAIN Lpeakvalue');
+myScope.write('MEASurement3:SOURce CH1');
+myScope.query('MEASurement3:RESult:ACTual?');
+%myScope.write('MEASurement3:ENABle 0');
+toc
+
+tic
+myScope.write('MEASurement2:ENABle 1');
+myScope.write('MEASurement2:MAIN DELay');
+myScope.write('MEASurement2:SOURce CH1, CH3');
+myScope.query('MEASurement2:RESult:ACTual?');
+%myScope.write('MEASurement:ENABle 0');
+toc
 
 
 
@@ -91,21 +125,22 @@ myScope.AutoscaleVerticalScalingFactor   = 0.9;
 myScope.autoscale('mode', 'both');
 
 myScope.configureInput( ...
-    'channel'  , 1    , ...
-    'vDiv'     , NaN    , ...
-    'vOffset'  , 0    );
+    'channel'  , 1        , ...
+    'inputdiv' , 1       , ...
+    'vDiv'     , 0.012      , ...
+    'vOffset'  , 0.0      );
 
 return
 
 myScope.configureInput( ...
-    'channel'  , [1 2]    , ...
+    'channel'  , [1, 2, 3, 4]    , ...
     'trace'    , 'on'     , ...
-    'impedance', 'inf'    , ...
-    'vDiv'     , 1        , ...
+    'impedance', '1e6'    , ...
+    'vDiv'     , 0.1        , ...
     'vOffset'  , '0'      , ...
     'coupling' , 'DC'     , ...
     'inputdiv' ,  1       , ...
-    'bwlimit'  ,  true    , ...
+    'bwlimit'  ,  false   , ...
     'invert'   ,  false   , ...
     'skew'     ,  0       , ...
     'unit'     , 'V'      );
@@ -131,17 +166,17 @@ meas
 
 myScope.configureZoom('zoomFactor', 16, 'zoomPos', 0);
 
-myScope.makeScreenShot('fileName', './tmp3.bmp');
+myScope.makeScreenShot('fileName', './tmp5.png');
 
-data = myScope.captureWaveForm('channel', [1 2 4 3]);
+data = myScope.captureWaveForm('channel', [1, 2, 3, 4]);
 
-plot(data.time, data.volt);
 if true
     figure(1);
-    plot(data.time, data.volt(1, :), '-r');
-    hold on;
-    plot(data.time, data.volt(2, :), '-b');
-    hold off;
+    plot(data.time, data.volt); % plot all available waveforms
+    %plot(data.time, data.volt(1, :), '-r');
+    %hold on;
+    %plot(data.time, data.volt(2, :), '-b');
+    %hold off;
 end
 
 %return
@@ -231,26 +266,6 @@ myScope.query('MEASU:IMM:VAL?');
 myScope.write('MEASU:IMM:TYP FREQ');
 myScope.query('MEASU:IMM:TYP?');
 myScope.query('MEASU:IMM:VAL?');
-
-% -------------------------------------------------------------------------
-% RTB2000 test
-
-% ASCii | REAL | UINTeger
-myScope.write('format:data uint,16]');
-myScope.query('format:data?');
-
-myScope.query('CHANnel3:DATA:HEADer?');
-
-
-myScope.write('CHAN:TYPE HRES'); % Set high resolution mode (16 bit data)
-myScope.write('TIM:SCAL 10E-7'); % Set time base
-myScope.write('FORM REAL');      % Set REAL data format
-myScope.write('format:border LSBF'); % Set little endian byte order
-myScope.query('format:border?');
-myScope.write('CHAN3:DATA:POIN MAX'); % Set sample range to memory da
-myScope.query('chan3:data:points?');
-
-myScope.query('chan3:data?');
 
 % -------------------------------------------------------------------------
 % regexp: full line that does not contain a certain word

@@ -2,12 +2,12 @@ classdef ScopeMacros < handle
     % ToDo documentation
     %
     %
-    % for Scope: Rohde&Schwarz RTB2000 series 
+    % for Scope: Rohde&Schwarz RTB2000 series
     % (for R&S firmware: 02.300 ==> see myScope.identify)
-            
+    
     properties(Constant = true)
         MacrosVersion = '0.2.0';      % release version (min 1.2.0)
-        MacrosDate    = '2021-01-28'; % release date
+        MacrosDate    = '2021-01-30'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -57,15 +57,15 @@ classdef ScopeMacros < handle
                 status = -1;
             end
             
-            % swap order of bytes ==> for download of waveform data in 
-            % binary form (least-significant byte (LSB) of each data 
+            % swap order of bytes ==> for download of waveform data in
+            % binary form (least-significant byte (LSB) of each data
             % point is first)
             if obj.VisaIFobj.write('FORMAT:BORDER LSBfirst')
                 status = -1;
             end
             
             % status:operation bit 3 (wait for trigger) is going low when
-            % a trigger event occurs and is going high again afterwards 
+            % a trigger event occurs and is going high again afterwards
             % ==> capture trigger event in status:operation:event register
             %
             % cleared at power-on, unchanged by reset (*RST)
@@ -168,7 +168,7 @@ classdef ScopeMacros < handle
             % clear status at scope
             status = obj.VisaIFobj.write('*CLS');
         end
-                 
+        
         function status = lock(obj)
             % lock all buttons at scope
             
@@ -245,12 +245,368 @@ classdef ScopeMacros < handle
         
         % -----------------------------------------------------------------
         
-        % x
         function status = configureInput(obj, varargin)
-            % configure input channels
+            % configureInput  : configure input of specified channels
+            % examples (for valid options see code below)
+            %   'channel'     : '1' '1, 2'
+            %   'trace'       : 'on', '1' or 'off', '1'
+            %   'impedance'   : '50', '1e6'
+            %   'vDiv'        : real > 0
+            %   'vOffset'     : real
+            %   'coupling'    : 'DC', 'AC', 'GND'
+            %   'inputDiv'    : 1, 10, 20, 50, 100, 200, 500, 1000
+            %   'bwLimit'     : on/off
+            %   'invert'      : on/off
+            %   'skew'        : real
+            %   'unit'        : 'V' or 'A'
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
+            
+            % initialize all supported parameters
+            channels       = {};
+            trace          = '';
+            vDiv           = '';
+            vOffset        = '';
+            coupling       = '';
+            inputDiv       = '';
+            bwLimit        = '';
+            invert         = '';
+            skew           = '';
+            unit           = '';
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'channel'
+                        % split and copy to cell array of char
+                        channels = split(paramValue, ',');
+                        % remove spaces
+                        channels = regexprep(channels, '\s+', '');
+                        % loop
+                        for cnt = 1 : length(channels)
+                            switch channels{cnt}
+                                case {'', '1', '2', '3', '4'}
+                                    % do nothing
+                                otherwise
+                                    channels{cnt} = '';
+                                    disp(['Scope: Warning - ' ...
+                                        '''configureInput'' invalid ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                        % remove invalid (empty) entries
+                        channels = channels(~cellfun(@isempty, channels));
+                    case 'trace'
+                        if ~isempty(paramValue)
+                            switch lower(paramValue)
+                                case {'off', '0'}
+                                    trace = '0';
+                                case {'on',  '1'}
+                                    trace = '1';
+                                otherwise
+                                    trace = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'trace parameter value is unknown ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                    case 'impedance'
+                        if str2double(paramValue) ~= 1e6 && ~isempty(paramValue)
+                            disp(['Scope: Warning - ''impedance'' ' ...
+                                'parameter cannot be configured']);
+                            if obj.ShowMessages
+                                disp('  - impedance    : 1e6 (coerced)');
+                            end
+                        end
+                    case 'vDiv'
+                        if ~isempty(paramValue)
+                            vDiv = abs(str2double(paramValue));
+                            if isnan(vDiv) || isinf(vDiv)
+                                vDiv = [];
+                            end
+                        end
+                    case 'vOffset'
+                        if ~isempty(paramValue)
+                            vOffset = str2double(paramValue);
+                            if isnan(vOffset) || isinf(vOffset)
+                                vOffset = [];
+                            end
+                        end
+                    case 'coupling'
+                        if ~isempty(paramValue)
+                            switch lower(paramValue)
+                                case 'ac'
+                                    coupling = 'ACL';
+                                case 'dc'
+                                    coupling = 'DCL';
+                                case 'gnd'
+                                    coupling = 'GND';
+                                otherwise
+                                    coupling = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'coupling parameter value is unknown ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                    case 'inputDiv'
+                        if ~isempty(paramValue)
+                            switch lower(paramValue)
+                                case {'1', '10', '20', '50', '100', '200', '500', '1000'}
+                                    inputDiv = paramValue;
+                                otherwise
+                                    inputDiv = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'inputDiv parameter value is unknown ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                    case 'bwLimit'
+                        if ~isempty(paramValue)
+                            switch lower(paramValue)
+                                case {'off', '0'}
+                                    bwLimit = 'FULL';
+                                case {'on',  '1'}
+                                    bwLimit = 'B20';
+                                otherwise
+                                    bwLimit = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'bwLimit parameter value is unknown ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                    case 'invert'
+                        if ~isempty(paramValue)
+                            switch lower(paramValue)
+                                case {'off', '0'}
+                                    invert = 'NORM';
+                                case {'on',  '1'}
+                                    invert = 'INV';
+                                otherwise
+                                    invert = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'invert parameter is unknown --> ignore ' ...
+                                        'and continue']);
+                            end
+                        end
+                    case 'skew'
+                        if ~isempty(paramValue)
+                            skew = str2double(paramValue);
+                            if isnan(skew) || isinf(skew)
+                                skew = [];
+                            elseif skew > 500e-9
+                                skew = 500e-9;   % max.  500 ns
+                                if obj.ShowMessages
+                                    disp('  - skew         : 500e-9 (coerced)');
+                                end
+                            elseif skew < -500e-9
+                                skew = -500e-9;  % min. -500 ns
+                                if obj.ShowMessages
+                                    disp('  - skew         : -500e-9 (coerced)');
+                                end
+                            end
+                        end
+                    case 'unit'
+                        if ~isempty(paramValue)
+                            switch upper(paramValue)
+                                case 'V'
+                                    unit = 'V';
+                                case 'A'
+                                    unit = 'A';
+                                otherwise
+                                    unit = '';
+                                    disp(['Scope: Warning - ''configureInput'' ' ...
+                                        'unit parameter value is unknown ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['Scope: Warning - ''configureInput'' ' ...
+                                'parameter ''' paramName ''' is ' ...
+                                'unknown --> ignore and continue']);
+                        end
+                end
+            end
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            % loop over channels
+            for cnt = 1:length(channels)
+                channel = channels{cnt};
+                
+                % 'coupling'         : 'DC', 'AC', 'GND'
+                if ~isempty(coupling)
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ':COUPling ' coupling]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['CHANnel' channel ':COUPling?']);
+                    if ~strcmpi(coupling, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'coupling parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'inputDiv', 'probe': 1, 10, 20, 50, 100, 200, 500, 1000
+                if ~isempty(inputDiv)
+                    % set parameter
+                    obj.VisaIFobj.write(['PROBe' channel ...
+                        ':SETup:ATTenuation:MANual ' inputDiv]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['PROBe' channel ...
+                        ':SETup:ATTenuation:MANual?']);
+                    if str2double(inputDiv) ~= str2double(char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'inputDiv parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'unit'             : 'V' or 'A'
+                if ~isempty(unit)
+                    % set parameter
+                    obj.VisaIFobj.write(['PROBe' channel ...
+                        ':SETup:ATTenuation:UNIT ' unit]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['PROBe' channel ...
+                        ':SETup:ATTenuation:UNIT?']);
+                    if ~strcmpi(unit, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'unit parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'bwLimit'          : 'off', 'on'
+                if ~isempty(bwLimit)
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':BANDwidth ' bwLimit]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':bandwidth?']);
+                    if ~strcmpi(bwLimit, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'bwLimit parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'invert'           : 'off', 'on'
+                if ~isempty(invert)
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':POLarity ' invert]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':POLarity?']);
+                    if ~strcmpi(invert, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'invert parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'skew'           : (-500e-9 ... 500e-9 = +/- 500ns)
+                if ~isempty(skew)
+                    % format (round) numeric value
+                    skewString = num2str(skew, '%1.2e');
+                    skew       = str2double(skewString);
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':SKEW ' skewString]);
+                    % read and verify
+                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':SKEW?']);
+                    skewActual = str2double(char(response));
+                    if skew ~= skewActual
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'skew parameter could not be set correctly. ' ...
+                            'Check limits.']);
+                    end
+                end
+                
+                % 'trace'          : 'off', 'on'
+                if ~isempty(trace)
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':STATe ' trace]);
+                    % read and verify
+                    response = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':STATe?']);
+                    if ~strcmpi(trace, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'trace parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+                
+                % 'vDiv'           : positive double in V/div
+                if ~isempty(vDiv)
+                    % format (round) numeric value
+                    vDivString = num2str(vDiv, '%1.2e');
+                    vDiv       = str2double(vDivString);
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':SCALe ' vDivString]);
+                    % read and verify
+                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':SCALe?']);
+                    vDivActual = str2double(char(response));
+                    if vDiv ~= vDivActual
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'vDiv parameter could not be set correctly. ' ...
+                            'Check limits.']);
+                    end
+                    % update
+                    vDiv = vDivActual;
+                elseif ~isempty(vOffset)
+                    % read vDiv anyway: required for vOffset scaling
+                    response = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':SCALe?']);
+                    vDiv     = str2double(char(response));
+                end
+                
+                % 'vOffset'        : positive double in V
+                if ~isempty(vOffset)
+                    % use position instead of offset ==> offset = 0
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':OFFSet 0']);
+                    % convert vOffset from Volt to div and negate
+                    vOffsetDiv = - vOffset/vDiv;
+                    % offset position (in div) -5 .. +5 in 0.01 steps
+                    vOffsetDiv = round(vOffsetDiv*100)/100;
+                    vOffsetDiv = max(vOffsetDiv, -5);
+                    vOffsetDiv = min(vOffsetDiv,  5);
+                    % format (round) numeric value
+                    vOffString = num2str(vOffsetDiv, '%1.2e');
+                    vOffsetDiv = str2double(vOffString);
+                    
+                    % set parameter
+                    obj.VisaIFobj.write(['CHANnel' channel ...
+                        ':POSition ' vOffString]);
+                    % read and verify
+                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
+                        ':POSition?']);
+                    vOffActual = str2double(char(response));
+                    if vOffsetDiv ~= vOffActual
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'vOffset parameter could not be set correctly. ' ...
+                            'Check limits.']);
+                    end
+                end
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         % x
@@ -427,6 +783,8 @@ classdef ScopeMacros < handle
         function meas = runMeasurement(obj, varargin)
             % request measurement value
             
+            
+            
             % init output
             meas.status    = NaN;
             meas.value     = NaN;
@@ -442,6 +800,10 @@ classdef ScopeMacros < handle
             
             disp('ToDo ...');
             meas.status    = 0;
+            
+            
+            
+            
         end
         
         function waveData = captureWaveForm(obj, varargin)
@@ -494,7 +856,7 @@ classdef ScopeMacros < handle
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     otherwise
-                       disp(['Scope: Warning - ''captureWaveForm'' ' ...
+                        disp(['Scope: Warning - ''captureWaveForm'' ' ...
                             'parameter ''' paramName ''' will be ignored']);
                 end
             end
@@ -617,7 +979,7 @@ classdef ScopeMacros < handle
                 % read channel data
                 data = obj.VisaIFobj.query([channel ':DATA?']);
                 
-                % check and extract header: e.g. #41000binarydata with 4 = 
+                % check and extract header: e.g. #41000binarydata with 4 =
                 % next 4 chars indicating number of bytes for actual data
                 if length(data) < 4
                     % logical error or data error
@@ -656,14 +1018,21 @@ classdef ScopeMacros < handle
                     return; % exit
                 elseif xnovpsi == 2 && floor(length(data)/2) == ...
                         ceil(length(data)/2)
-                    data = reshape(data, 2, []);
+                    %data = reshape(data, 2, []);
+                    % chance to extend code for acq mode = envelope
+                    % replace ':DATA' by ':DATA:ENVELOPE' in commands
+                    % via cmdString with two options
+                    % and store both rows of data
+                    
+                    % logical error or data error
+                    waveData.status = -20;
+                    return; % exit
                 end
                 
                 % Sample value: Yn = yOrigin + (yIncrement * byteValuen)
                 waveData.volt(cnt, :) = yorigin + yinc * data(1, :);
                 
-                % chance to extend code for acq mode = envelope
-                % add ':ENVELOPE' in commands and store second row of data
+                
             end
             
             % set final status
@@ -723,18 +1092,18 @@ classdef ScopeMacros < handle
             else
                 Triggered   = str2double(char(respTriggered));
                 if ~isnan(Triggered) && ~isinf(Triggered)
-                     Triggered = dec2binvec(Triggered, 8);
-                     Triggered = Triggered(1+3); % bit 3
+                    Triggered = dec2binvec(Triggered, 8);
+                    Triggered = Triggered(1+3); % bit 3
                 else
-                     Triggered = false;
+                    Triggered = false;
                 end
                 
                 WaitTrigger = str2double(char(respWaitTrigger));
                 if ~isnan(WaitTrigger) && ~isinf(WaitTrigger)
-                     WaitTrigger = dec2binvec(WaitTrigger, 8);
-                     WaitTrigger = WaitTrigger(1+3); % bit 3
+                    WaitTrigger = dec2binvec(WaitTrigger, 8);
+                    WaitTrigger = WaitTrigger(1+3); % bit 3
                 else
-                     WaitTrigger = false;
+                    WaitTrigger = false;
                 end
                 
                 if Triggered
