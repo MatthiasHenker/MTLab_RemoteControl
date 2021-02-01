@@ -810,13 +810,16 @@ classdef ScopeMacros < handle
                     case 'level'
                         if ~isempty(paramValue)
                             level = str2double(paramValue);
-                        end
-                        if isinf(level)
-                            level = NaN;
+                            if isinf(level)
+                                level = NaN;
+                            end
                         end
                     case 'delay'
                         if ~isempty(paramValue)
                             delay = str2double(paramValue);
+                            if isnan(delay) || isinf(delay)
+                                delay = [];
+                            end
                         end
                     otherwise
                         if ~isempty(paramValue)

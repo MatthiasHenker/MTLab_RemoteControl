@@ -872,12 +872,316 @@ classdef ScopeMacros < handle
             end
         end
         
-        % x
         function status = configureTrigger(obj, varargin)
-            % configure trigger parameters
+            % configureTrigger : configure trigger parameters
+            %   'mode'        : 'single', 'normal', 'auto'
+            %   'type'        : 'risingedge', 'fallingedge' ...
+            %   'source'      : 'ch1', 'ch2' , 'ext', 'ext5' ...
+            %   'coupling'    : 'AC', 'DC', 'LFReject', 'HFRreject', 'NoiseReject'
+            %   'level'       : real
+            %   'delay'       : real
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
+            
+            % initialize all supported parameters
+            mode      = '';
+            type      = '';
+            source    = '';
+            coupling  = '';
+            level     = [];
+            delay     = [];
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'mode'
+                        mode = paramValue;
+                        switch lower(mode)
+                            case ''
+                                mode = '';
+                            case 'single'
+                                mode = 'single';
+                            case 'normal'
+                                mode = 'normal';
+                            case 'auto'
+                                mode = 'auto';
+                            otherwise
+                                mode = '';
+                                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                                    'mode parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'type'
+                        type = paramValue;
+                        switch lower(type)
+                            case ''
+                                type = '';
+                            case 'risingedge'
+                                type = 'pos';
+                            case 'fallingedge'
+                                type = 'neg';
+                            otherwise
+                                type = '';
+                                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                                    'type parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'source'
+                        source = lower(paramValue);
+                        switch source
+                            case {'', 'ch1', 'ch2', 'ch3', 'ch4', 'ext'}
+                                % all fine
+                            case 'ext5'
+                                source = 'ext';
+                                if obj.ShowMessages
+                                    disp('  - source       : ext (coerced)');
+                                end
+                            case 'ac-line'
+                                source = 'line';
+                            otherwise
+                                source = '';
+                                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                                    'source parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'coupling'
+                        coupling = lower(paramValue);
+                        switch coupling
+                            case {'', 'ac', 'dc'}
+                                % all fine
+                            case {'lfreject', 'lfrej'}
+                                coupling = 'lfr'; % AC with 15 kHz high pass 
+                            case {'noisereject', 'noiserej'}
+                                coupling = 'addLP100MHzFilter';
+                            case {'hfreject', 'hfrej'}
+                                coupling = 'addLP5kHzFilter';
+                            otherwise
+                                coupling = '';
+                                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                                    'coupling parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'level'
+                        if ~isempty(paramValue)
+                            level = str2double(paramValue);
+                            if isinf(level)
+                                level = NaN;
+                            end
+                        end
+                    case 'delay'
+                        if ~isempty(paramValue)
+                            delay = str2double(paramValue);
+                            if isnan(delay) || isinf(delay)
+                                delay = [];
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['  WARNING - parameter ''' ...
+                                paramName ''' is unknown --> ignore']);
+                        end
+                end
+            end
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            % mode     : 'single', 'normal', 'auto'
+            if ~isempty(mode)
+                if strcmpi(mode, 'auto')
+                    % set parameter
+                    obj.VisaIFobj.write('TRIGger:A:MODE AUTO');
+                    % read and verify
+                    response = obj.VisaIFobj.query('TRIGger:A:MODE?');
+                    if ~strcmpi('auto', char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'mode parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                    % continous acquisitions
+                    obj.VisaIFobj.write('RUN');
+                else
+                    % set parameter
+                    obj.VisaIFobj.write('TRIGger:A:MODE NORMal');
+                    % read and verify
+                    response = obj.VisaIFobj.query('TRIGger:A:MODE?');
+                    if ~strcmpi('norm', char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'mode parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                    if strcmpi(mode, 'single')
+                        % single acquisition (see ACQuire:NSINgle:COUNt)
+                        obj.VisaIFobj.write('SINGle');
+                    else
+                        % continous acquisitions
+                        obj.VisaIFobj.write('RUN');
+                    end
+                end
+            end
+            
+            % source   : 'ch1..4', 'ext', 'line'
+            if ~isempty(source)
+                if strcmpi(source, 'line')
+                    % set parameter
+                    obj.VisaIFobj.write(['TRIGger:A:TYPE ' source]);
+                    % read and verify
+                    response = obj.VisaIFobj.query('TRIGger:A:TYPE?');
+                    if ~strcmpi(source, char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'source parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                else % 'ch1..4' or 'ext'
+                    obj.VisaIFobj.write('TRIGger:A:TYPE EDGE');
+                    % set parameter
+                    obj.VisaIFobj.write(['TRIGger:A:SOURce ' source]);
+                    % read and verify
+                    response = obj.VisaIFobj.query('TRIGger:A:SOURce?');
+                    if ~strcmpi(source, char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'source parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
+            else
+                % read back trigger source ==> required for level
+                response = obj.VisaIFobj.query('TRIGger:A:SOURce?');
+                source   = lower(char(response));
+                
+            end
+            switch source
+                case 'ch1', source = '1';
+                case 'ch2', source = '2';
+                case 'ch3', source = '3';
+                case 'ch4', source = '4';
+                case 'ext', source = '5';
+                otherwise , source = '';
+            end
+            
+            % type      : rising or falling edge
+            if ~isempty(type)
+                if ~isempty(source)
+                    obj.VisaIFobj.write('TRIGger:A:TYPE EDGE');
+                    % set parameter
+                    obj.VisaIFobj.write(['TRIGger:A:EDGE:SLOPe ' type]);
+                    % read and verify
+                    response = obj.VisaIFobj.query('TRIGger:A:EDGE:SLOPe?');
+                    if ~strcmpi(type, char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'type parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                else
+                    disp(['Scope: Warning - ''configureTrigger'' ' ...
+                        'ignore type parameter. Specify trigger source.']);
+                end
+            end
+            
+            % coupling
+            if ~isempty(coupling)
+                if ~isempty(source)
+                    obj.VisaIFobj.write('TRIGger:A:TYPE EDGE');
+                    switch coupling
+                        case {'dc', 'ac', 'lfr'}
+                            % set parameter
+                            obj.VisaIFobj.write(['TRIGger:A:EDGE:COUPling ' ...
+                                coupling]);
+                            % read and verify
+                            response = obj.VisaIFobj.query( ...
+                                'TRIGger:A:EDGE:COUPling?');
+                            if ~strcmpi(coupling, char(response))
+                                disp(['Scope: Error - ''configureTrigger'' ' ...
+                                    'coupling parameter could not be set ' ...
+                                    'correctly.']);
+                                status = -1;
+                            end
+                        otherwise
+                            % when LFReject then change to AC
+                            response = obj.VisaIFobj.query( ...
+                                'TRIGger:A:EDGE:COUPling?');
+                            if strcmpi('LFR', char(response))
+                                obj.VisaIFobj.write( ...
+                                    'TRIGger:A:EDGE:COUPling AC');
+                            end
+                    end
+                    
+                    switch coupling
+                        case 'addLP100MHzFilter'
+                            obj.VisaIFobj.write( ...
+                                'TRIGger:A:EDGE:FILTer:NREJect 1');
+                        case 'addLP5kHzFilter'
+                            obj.VisaIFobj.write( ...
+                                'TRIGger:A:EDGE:FILTer:HFReject 1');
+                        otherwise
+                            obj.VisaIFobj.write( ...
+                                'TRIGger:A:EDGE:FILTer:NREJect 0');
+                            obj.VisaIFobj.write( ...
+                                'TRIGger:A:EDGE:FILTer:HFReject 0');
+                    end
+                else
+                    disp(['Scope: Warning - ''configureTrigger'' ' ...
+                        'ignore coupling parameter. Specify trigger source.']);
+                end
+            end
+            
+            % level    : double, in V; NaN for set level to 50%
+            if isnan(level)
+                % set trigger level to 50% of input signal
+                obj.VisaIFobj.opc;
+                pause(1);
+                obj.VisaIFobj.write('TRIGger:A:FINDlevel');
+                obj.VisaIFobj.opc;
+            elseif ~isempty(level)
+                if ~isempty(source)
+                    % format (round) numeric value
+                    levelString = num2str(level, '%1.1e');
+                    level       = str2double(levelString);
+                    % set parameter
+                    obj.VisaIFobj.write(['TRIGger:A:LEVel' source ...
+                        ':VALue ' levelString]);
+                    % read and verify
+                    response    = obj.VisaIFobj.query(['TRIGger:A:LEVel' ...
+                        source ':VALue?']);
+                    levelActual = str2double(char(response));
+                    if abs(level - levelActual) > 1 % !!! 
+                        % sensible threshold depends on vDiv of trigger source
+                        disp(['Scope: Warning - ''configureTrigger'' ' ...
+                            'level parameter could not be set correctly. ' ...
+                            'Check limits.']);
+                    end
+                else
+                    disp(['Scope: Warning - ''configureTrigger'' ' ...
+                        'ignore level parameter. Specify trigger source.']);
+                end
+            end
+            
+            % delay    : double, in s
+            if ~isempty(delay)
+                % format (round) numeric value
+                delayString = num2str(delay, '%1.2e');
+                delay       = str2double(delayString);
+                % set parameter
+                obj.VisaIFobj.write(['TIMebase:POSition ' delayString]);
+                % read and verify
+                response    = obj.VisaIFobj.query('TIMebase:POSition?');
+                delayActual = str2double(char(response));
+                if abs(delay - delayActual) > 1e-3 % !!!
+                    % sensible threshold depends on tDiv
+                    disp(['Scope: Warning - ''configureTrigger'' ' ...
+                        'delay parameter could not be set correctly. ' ...
+                        'Check limits.']);
+                end
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         % x
