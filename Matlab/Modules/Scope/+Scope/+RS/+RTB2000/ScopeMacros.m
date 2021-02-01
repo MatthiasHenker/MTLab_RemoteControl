@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.2.0';      % release version (min 1.2.0)
-        MacrosDate    = '2021-01-30'; % release date
+        MacrosDate    = '2021-02-01'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -82,6 +82,11 @@ classdef ScopeMacros < handle
                 status = -1;
             end
             
+            % selects range of samples that will be returned to maximum
+            if obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')
+                status = -1;
+            end
+            
             % ...
             
             % wait for operation complete
@@ -141,6 +146,11 @@ classdef ScopeMacros < handle
             % binary form (least-significant byte (LSB) of each data
             % point is first)
             if obj.VisaIFobj.write('FORMAT:BORDER LSBfirst')
+                status = -1;
+            end
+            
+            % selects range of samples that will be returned to maximum
+            if obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')
                 status = -1;
             end
             
@@ -609,28 +619,257 @@ classdef ScopeMacros < handle
             end
         end
         
-        % x
         function status = configureAcquisition(obj, varargin)
-            % configure acquisition parameters
+            % configureAcquisition : configure acquisition parameters
+            %   'tDiv'        : real > 0
+            %   'sampleRate'  : real > 0
+            %   'maxLength'   : integer > 0
+            %   'mode'        : 'sample', 'peakdetect', average ...
+            %   'numAverage'  : integer > 0
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
             
+            % initialize all supported parameters
+            tDiv        = [];
+            sampleRate  = [];
+            maxLength   = [];
+            mode        = '';
+            numAverage  = [];
             
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'tDiv'
+                        if ~isempty(paramValue)
+                            tDiv = abs(str2double(paramValue));
+                            if  isnan(tDiv) || isinf(tDiv)
+                                disp(['Scope: Error - ''configureAcquisition'' ' ...
+                                    'tDiv parameter is invalid --> ' ...
+                                    'abort function']);
+                                status = -1;
+                                return
+                            end
+                        end
+                    case 'sampleRate'
+                        if ~isempty(paramValue)
+                            sampleRate = abs(str2double(paramValue));
+                            if isnan(sampleRate) || isinf(sampleRate)
+                                disp(['Scope: Error - ''configureAcquisition'' ' ...
+                                    'sampleRate parameter is invalid --> ' ...
+                                    'abort function']);
+                                status = -1;
+                                return
+                            end
+                        end
+                    case 'maxLength'
+                        if ~isempty(paramValue)
+                            maxLength = round(abs(str2double(paramValue)));
+                            coerced   = false;
+                            if isnan(maxLength) || isinf(maxLength)
+                                disp(['Scope: Warning - ''configureAcquisition'' ' ...
+                                    'maxLength parameter value is invalid ' ...
+                                    '--> coerce and continue']);
+                                maxLength = 100e3;
+                                coerced   = true;
+                            end
+                            switch maxLength
+                                case {1e4, 2e4, 5e4, 1e5, 2e5, 5e5, ...
+                                        1e6, 2e6, 5e6, 1e7, 2e7}
+                                    % do nothing
+                                otherwise
+                                    coerced   = true;
+                                    if     maxLength < 1e4
+                                        maxLength = 1e4;
+                                    elseif maxLength < 2e4
+                                        maxLength = 2e4;
+                                    elseif maxLength < 5e4
+                                        maxLength = 5e4;
+                                    elseif maxLength < 1e5
+                                        maxLength = 1e5;
+                                    elseif maxLength < 2e5
+                                        maxLength = 2e5;
+                                    elseif maxLength < 5e5
+                                        maxLength = 5e5;
+                                    elseif maxLength < 1e6
+                                        maxLength = 1e6;
+                                    elseif maxLength < 2e6
+                                        maxLength = 2e6;
+                                    elseif maxLength < 5e6
+                                        maxLength = 5e6;
+                                    elseif maxLength < 1e7
+                                        maxLength = 1e7;
+                                    else
+                                        maxLength = 2e7;
+                                    end
+                            end
+                            if obj.ShowMessages && coerced
+                                disp(['  - maxLength    : ' ...
+                                    num2str(maxLength, '%d') ' (coerced)']);
+                            end
+                        end
+                    case 'mode'
+                        mode = paramValue;
+                        switch lower(mode)
+                            case ''
+                                mode = '';
+                            case 'sample'
+                                mode = 'sample';
+                            case 'peakdetect'
+                                mode = 'peakdetect';
+                            case 'average'
+                                mode = 'average';
+                            otherwise
+                                mode = '';
+                                disp(['Scope: Warning - ''configureAcquisition'' ' ...
+                                    'mode parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'numAverage'
+                        if ~isempty(paramValue)
+                            numAverage = round(abs(str2double(paramValue)));
+                            coerced    = false;
+                            if isnan(numAverage) || isinf(numAverage)
+                                disp(['Scope: Warning - ''configureAcquisition'' ' ...
+                                    'numAverage parameter value is invalid ' ...
+                                    '--> coerce and continue']);
+                                numAverage = 4;
+                                coerced    = true;
+                            elseif numAverage < 2
+                                numAverage = 2;
+                                coerced    = true;
+                            elseif numAverage > 1e5
+                                numAverage = 1e5;
+                                coerced    = true;
+                            end
+                            if obj.ShowMessages && coerced
+                                disp(['  - numAverage   : ' ...
+                                    num2str(numAverage, '%d') ' (coerced)']);
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['  WARNING - parameter ''' ...
+                                paramName ''' is unknown --> ignore']);
+                        end
+                end
+            end
             
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
             
-            % set sample range to memory data
-            % the command affects all channels
-            % ==> must be set only once and channel suffix can be dropped
-            % ==> the command affects all channels
-            % ==> actual number of samples will be reported in header (3)
-            %obj.VisaIFobj.write('CHANNEL:DATA:POINTS DEFAULT')
-            %obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')  % only when
-            %obj.VisaIFobj.write('CHANNEL:DATA:POINTS DMAXIMUM') % stopped
+            % sampleRate
+            if ~isempty(sampleRate)
+                disp(['Scope: WARNING - sampleRate parameter will be ' ...
+                    'ignored. Please specify tDiv only.']);
+            end
             
+            % tDiv        : numeric value in s
+            %               [1e-9 ... 5e2]
+            if ~isempty(tDiv)
+                % format (round) numeric value
+                tDivString = num2str(tDiv, '%1.2e');
+                tDiv       = str2double(tDivString);
+                % set parameter
+                obj.VisaIFobj.write(['TIMebase:SCALe ' tDivString]);
+                % read and verify
+                response = obj.VisaIFobj.query('TIMebase:SCALe?');
+                tDivActual = str2double(char(response));
+                if (tDiv/tDivActual) < 0.95 || (tDiv/tDivActual) > 1.05
+                    disp(['Scope: WARNING - ''configureAcquisition'' ' ...
+                        'tDiv parameter could not be set correctly. ' ...
+                        'Check limits. ']);
+                end
+            end
             
+            % maxLength : [10e3 .. 20e6] in MSa
+            if ~isempty(maxLength)
+                % set parameter
+                obj.VisaIFobj.write(['ACQuire:POINts:VALue ' ...
+                    num2str(maxLength, '%g')]);
+                % read and verify
+                response = obj.VisaIFobj.query('ACQuire:POINts:VALue?');
+                actualVal = str2double(char(response));
+                if maxLength == actualVal
+                    % fine
+                elseif maxLength == 20e6 && actualVal == 10e6
+                    if obj.ShowMessages
+                        disp('  - maxLength    : 10000000 (coerced)');
+                    end
+                else
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'mode parameter could not be set correctly.']);
+                    status = -1;
+                end
+            end
             
+            % mode     : 'sample', 'peakdetect', 'average'
+            if ~isempty(mode)
+                % disable high resolution mode first
+                obj.VisaIFobj.write('ACQuire:HRESolution OFF');
+                
+                switch mode
+                    case 'sample'
+                        typeParam = 'REFResh';
+                        typeResp  = 'REFR';
+                        peakParam = 'OFF';
+                        peakResp  = 'OFF';
+                    case 'peakdetect'
+                        typeParam = 'REFResh';
+                        typeResp  = 'REFR';
+                        peakParam = 'AUTO';
+                        peakResp  = 'AUTO';
+                    case 'average'
+                        typeParam = 'AVERage';
+                        typeResp  = 'AVER';
+                        peakParam = 'OFF';
+                        peakResp  = 'OFF';
+                    otherwise
+                end
+                
+                % set parameter (1)
+                obj.VisaIFobj.write(['ACQuire:TYPE ' typeParam]);
+                % read and verify
+                response = obj.VisaIFobj.query('ACQuire:TYPE?');
+                if ~strcmpi(typeResp, char(response))
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'mode parameter could not be set correctly.']);
+                    status = -1;
+                end
+                
+                % set parameter (2)
+                obj.VisaIFobj.write(['ACQuire:PEAKdetect ' peakParam]);
+                % read and verify
+                response = obj.VisaIFobj.query('ACQuire:PEAKdetect?');
+                if ~strcmpi(peakResp, char(response))
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'mode parameter could not be set correctly.']);
+                    status = -1;
+                end
+            end
             
+            % numAverage  : 2 .. 100e3
+            if ~isempty(numAverage)
+                % set parameter
+                obj.VisaIFobj.write(['ACQuire:AVERage:COUNt ' ...
+                    num2str(numAverage, '%g')]);
+                % read and verify
+                response  = obj.VisaIFobj.query('ACQuire:AVERage:COUNt?');
+                actualVal = str2double(char(response));
+                if numAverage ~= actualVal
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'numAverage parameter could not be set correctly.']);
+                    status = -1;
+                end
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         % x
