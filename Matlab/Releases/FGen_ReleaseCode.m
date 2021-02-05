@@ -53,16 +53,16 @@ workReleaseDir = fullfile(ReleaseDir, ClassDirName);
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 
-% create p-files out of original m-files
-pcode(fullfile(workSourceDir, 'FGen.m'));
-pcode(fullfile(workSourceDir, 'checkParams.m'));
-pcode(fullfile(workSourceDir, 'listAvailablePackages.m'));
-
 % create additional .m file with help (documentation)
 mhelp   = help(fullfile(workSourceDir, 'FGen.m'));
 fid     = fopen(fullfile(workReleaseDir, 'FGen.m'), 'w');
 fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
 fclose(fid);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'FGen.m'));
+pcode(fullfile(workSourceDir, 'checkParams.m'));
+pcode(fullfile(workSourceDir, 'listAvailablePackages.m'));
 
 % -------------------------------------------------------------------------
 workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Agilent', '+Gen33220A');

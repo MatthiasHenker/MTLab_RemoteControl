@@ -52,11 +52,6 @@ workReleaseDir = ReleaseDir;
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 
-% create p-files out of original m-files
-pcode(fullfile(workSourceDir, 'VisaDemo.m'));
-pcode(fullfile(workSourceDir, 'VisaIFLogEventData.m'));
-pcode(fullfile(workSourceDir, 'VisaIFLogger.m'));
-
 % create additional .m file with help (documentation)
 mhelp   = help(fullfile(workSourceDir, 'VisaIFLogEventData.m'));
 fid     = fopen(fullfile(workReleaseDir, 'VisaIFLogEventData.m'), 'w');
@@ -69,20 +64,16 @@ fid     = fopen(fullfile(workReleaseDir, 'VisaIFLogger.m'), 'w');
 fwrite(fid,['%' strrep(mhelp, newline, sprintf('\n%%'))]);
 fclose(fid);
 
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'VisaDemo.m'));
+pcode(fullfile(workSourceDir, 'VisaIFLogEventData.m'));
+pcode(fullfile(workSourceDir, 'VisaIFLogger.m'));
+
 % -------------------------------------------------------------------------
 workSourceDir  = fullfile(SourceDir,  ClassDirName);
 workReleaseDir = fullfile(ReleaseDir, ClassDirName);
 mkdir(workReleaseDir);
 cd(workReleaseDir);
-
-% create p-files out of original m-files
-pcode(fullfile(workSourceDir, 'VisaIF.m'));
-pcode(fullfile(workSourceDir, 'listAvailableConfigFiles.m'));
-pcode(fullfile(workSourceDir, 'listContentOfConfigFiles.m'));
-pcode(fullfile(workSourceDir, 'listAvailableVisaUsbDevices.m'));
-pcode(fullfile(workSourceDir, 'listSupportedPackages.m'));
-pcode(fullfile(workSourceDir, 'coerceConfigTable.m'));
-pcode(fullfile(workSourceDir, 'filterConfigFiles.m'));
 
 % create additional .m file with help (documentation)
 mhelp   = help(fullfile(workSourceDir, 'VisaIF.m'));
@@ -96,6 +87,15 @@ copyfile( ...
 copyfile( ...
     fullfile(workSourceDir,  'VisaIF_HTW_Henker.csv'), ...
     fullfile(workReleaseDir, 'VisaIF_HTW_Henker.csv'));
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'VisaIF.m'));
+pcode(fullfile(workSourceDir, 'listAvailableConfigFiles.m'));
+pcode(fullfile(workSourceDir, 'listContentOfConfigFiles.m'));
+pcode(fullfile(workSourceDir, 'listAvailableVisaUsbDevices.m'));
+pcode(fullfile(workSourceDir, 'listSupportedPackages.m'));
+pcode(fullfile(workSourceDir, 'coerceConfigTable.m'));
+pcode(fullfile(workSourceDir, 'filterConfigFiles.m'));
 
 % -------------------------------------------------------------------------
 % return to original path
