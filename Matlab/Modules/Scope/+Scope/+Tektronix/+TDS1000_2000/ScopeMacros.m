@@ -372,6 +372,11 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
+            if isempty(channels)
+                disp(['Scope: Warning - ''configureInput'' no channels ' ...
+                    'are specified. --> skip and continue']);
+            end
+            
             % loop over channels
             for cnt = 1:length(channels)
                 channel = channels{cnt};
