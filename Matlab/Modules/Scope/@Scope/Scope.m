@@ -90,8 +90,9 @@ classdef Scope < VisaIF
     %                       horizontal (time) scale per division; input 
     %                       value will be rounded internally,
     %                       scope will show [-N ..+N]*tDiv at display
-    %           'samplerate' : alternative to tDiv, sample rate of
-    %                       signals, 2*N*tDiv = numOfSamples / samplerate,
+    %           'samplerate' : alternative to tDiv (some scopes only), 
+    %                       sample rate of signals, with N - number of div
+    %                       at screen: 2*N*tDiv = numOfSamples / samplerate,
     %                       affects tDiv and numOfSamples
     %           'maxLength' : positive numeric value, specifies the maximum
     %                       number of samples for waveforms
@@ -330,7 +331,7 @@ classdef Scope < VisaIF
     %       display, sensible range is 2 .. 50        
     %     * AutoscaleVerticalScalingFactor : config parameter for
     %       autoscale method, specifies amplitude range in display,
-    %       1.00 means full display@scope range (-N ..+n) vDiv,
+    %       1.00 means full display@scope range (-N ..+N) vDiv,
     %       sensible range is 0.3 .. 0.95,
     %       >1 is possible (most scopes allow up to 1.25), but ADC
     %       overloading can occure and trigger stage will possibly fail 
@@ -406,7 +407,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.0';      % release version (= class version)
-        ScopeDate       = '2021-01-26'; % release date
+        ScopeDate       = '2021-02-05'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

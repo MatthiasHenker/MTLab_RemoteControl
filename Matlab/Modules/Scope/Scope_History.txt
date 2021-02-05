@@ -1,5 +1,44 @@
 % Scope support package (from newest to older versions)
 
+in preparation
+---------------------------------------------------------------------------
+Release v1.2.0 (same as Scope class) requires VisaIF v2.4.3 or newer
+  - Scope                                             v1.2.0   (2021-02-05)
+      documentation updated (changes in TriggerState 
+      
+      and   PLANNED   autoScale)
+
+
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.0   (2021-02-05)
+      update some display messages in configureInput
+      and captureWaveform, change and unify TriggerState
+      response (all packages and Scope class v1.2.0)
+
+      planned bug fixes / checks: RunSingle, autoScale
+
+  - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
+      coming soon (hopefully)
+  - Scope.RS.RTB2000.ScopeMacros                      v0.2.0   (2021-02-05)
+      initial package, missing methods are 
+        * configureZoom
+        * autoScale
+        * runMeasurement
+      has to be tested
+  - Scope.Siglent.SDS2000X.ScopeMacros                n/a
+      coming soon (hopefully)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.0   (2021-02-05)
+      update some display messages in configureInput
+      and captureWaveform, change and unify TriggerState
+      response (all packages and Scope class v1.2.0)
+
+
+
+
+
+
+
+
+
 ---------------------------------------------------------------------------
 Release v1.0.3 (same as Scope class) requires VisaIF v2.4.1 or newer
   - Scope                                             v1.0.3   (2021-01-09)

@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-01-30'; % release date
+        MacrosDate    = '2021-02-05'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
