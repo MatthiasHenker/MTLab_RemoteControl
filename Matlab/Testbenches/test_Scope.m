@@ -187,6 +187,8 @@ meas
 %return
 
 myScope.configureZoom('zoomFactor', 16, 'zoomPos', 0);
+myScope.configureZoom('zoomFactor', 0, 'zoomPos', 0);
+myScope.configureZoom('zoomFactor', 1.1, 'zoomPos', 14e-6);
 
 myScope.makeScreenShot('fileName', './tmp5.png');
 

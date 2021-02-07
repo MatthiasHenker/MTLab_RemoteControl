@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.2.0';      % release version (min 1.2.0)
-        MacrosDate    = '2021-02-05'; % release date
+        MacrosDate    = '2021-02-07'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1189,12 +1189,125 @@ classdef ScopeMacros < handle
             end
         end
         
-        % x
         function status = configureZoom(obj, varargin)
-            % configure zoom window
+            % configureZoom   : configure zoom window
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
+            
+            % initialize all supported parameters
+            zoomFactor      = [];
+            zoomPosition    = [];
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'zoomFactor'
+                        if ~isempty(paramValue)
+                            zoomFactor = abs(real(str2double(paramValue)));
+                            if zoomFactor < 1 || isnan(zoomFactor)
+                                zoomFactor = 1; % deactivates zoom
+                                if obj.ShowMessages
+                                    disp('  - zoomFactor   : 1 (coerced)');
+                                end
+                            end
+                        end
+                    case 'zoomPosition'
+                        if ~isempty(paramValue)
+                            zoomPosition = real(str2double(paramValue));
+                            if isnan(zoomPosition)
+                                zoomPosition = 0; % center
+                                if obj.ShowMessages
+                                    disp('  - zoomPosition : 0 (coerced)');
+                                end
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['  WARNING - parameter ''' ...
+                                paramName ''' is unknown --> ignore']);
+                        end
+                end
+            end
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            if ~isempty(zoomFactor)
+                % zoomFactor will be rounded by Scope to nearest value
+                
+                if zoomFactor == 1
+                    % disable zoom window
+                    obj.VisaIFobj.write('TIMebase:ZOOM:STATe 0');
+                    % verify
+                    response = obj.VisaIFobj.query('TIMebase:ZOOM:STATe?');
+                    if ~strcmpi('0', char(response))
+                        disp(['Scope: ERROR - ''configureZoom'' ' ...
+                            'disabling zoom window failed.']);
+                        status = -1;
+                    end
+                else
+                    % enable zoom window
+                    obj.VisaIFobj.write('TIMebase:ZOOM:STATe 1');
+                    % readback and verify
+                    response = obj.VisaIFobj.query('TIMebase:ZOOM:STATe?');
+                    if ~strcmpi('1', char(response))
+                        disp(['Scope: ERROR - ''configureZoom'' ' ...
+                            'enabling zoom window failed.']);
+                        status = -1;
+                        return; % exit
+                    end
+                    
+                    % 1st step: read timebase of main window (tDiv)
+                    response = obj.VisaIFobj.query('TIMebase:SCALe?');
+                    timebase = str2double(char(response));
+                    if isnan(timebase)
+                        disp(['Scope: ERROR - ''configureZoom'' ' ...
+                            'cannot set zoomFactor.']);
+                        status = -1;
+                        return; % exit
+                    end
+                    
+                    % 2nd step: set timebase of zoom window (> timebase)
+                    zoomTimebase = timebase / zoomFactor;
+                    obj.VisaIFobj.write(['TIMebase:ZOOM:SCALe ' ...
+                        num2str(zoomTimebase, '%1.1e')]);
+                    % readback and verify
+                    response = obj.VisaIFobj.query('TIMebase:ZOOM:SCALe?');
+                    response = str2double(char(response));
+                    if isnan(response)
+                        disp(['Scope: ERROR - ''configureZoom'' ' ...
+                            'cannot set zoomFactor.']);
+                        status = -1;
+                        return; % exit
+                    elseif response > timebase
+                        disp(['Scope: Warning - ''configureZoom'' ' ...
+                            'set zoomFactor failed. Check settings.']);
+                        status = -1;
+                    end
+                end
+            end
+            
+            if ~isempty(zoomPosition)
+                obj.VisaIFobj.write(['TIMebase:ZOOM:TIME ' ...
+                    num2str(zoomPosition, '%1.1e')]);
+                % readback and verify
+                response = obj.VisaIFobj.query('TIMebase:ZOOM:TIME?');
+                response = str2double(char(response));
+                if isnan(response)
+                    disp(['Scope: ERROR - ''configureZoom'' ' ...
+                        'cannot set zoomPosition.']);
+                    status = -1;
+                end
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         % x
