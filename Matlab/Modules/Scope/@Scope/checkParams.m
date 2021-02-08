@@ -42,38 +42,38 @@ end
 
 % -------------------------------------------------------------------------
 % initialize all parameter values (empty)
-channel      = '';   % configureInput, runMeasurement, captureWaveForm
-trace        = '';   % configureInput
-impedance    = '';   % configureInput
-vDiv         = '';   % configureInput
-vOffset      = '';   % configureInput
-coupling     = '';   % configureInput, configureTrigger
-inputDiv     = '';   % configureInput
-bwLimit      = '';   % configureInput
-invert       = '';   % configureInput
-skew         = '';   % configureInput
-unit         = '';   % configureInput
-tDiv         = '';   % configureAcquisition
-sampleRate   = '';   % configureAcquisition
-maxLength    = '';   % configureAcquisition
-mode         = '';   % configureAcquisition, configureTrigger, autoscale
-numAverage   = '';   % configureAcquisition
-type         = '';   % configureTrigger
-source       = '';   % configureTrigger
-level        = '';   % configureTrigger
-delay        = '';   % configureTrigger
-parameter    = '';   % runMeasurement
-fileName     = '';   % makeScreenShot
-darkMode     = '';   % makeScreenShot
-zoomFactor   = '';   % configureZoom
-zoomPosition = '';   % configureZoom
+channel      = ''; % configureInput, runMeasurement, captureWaveForm, autoscale
+trace        = ''; % configureInput
+impedance    = ''; % configureInput
+vDiv         = ''; % configureInput
+vOffset      = ''; % configureInput
+coupling     = ''; % configureInput, configureTrigger
+inputDiv     = ''; % configureInput
+bwLimit      = ''; % configureInput
+invert       = ''; % configureInput
+skew         = ''; % configureInput
+unit         = ''; % configureInput
+tDiv         = ''; % configureAcquisition
+sampleRate   = ''; % configureAcquisition
+maxLength    = ''; % configureAcquisition
+mode         = ''; % configureAcquisition, configureTrigger, autoscale
+numAverage   = ''; % configureAcquisition
+type         = ''; % configureTrigger
+source       = ''; % configureTrigger
+level        = ''; % configureTrigger
+delay        = ''; % configureTrigger
+parameter    = ''; % runMeasurement
+fileName     = ''; % makeScreenShot
+darkMode     = ''; % makeScreenShot
+zoomFactor   = ''; % configureZoom
+zoomPosition = ''; % configureZoom
 
 % -------------------------------------------------------------------------
 % assign parameter values
 for nArgsIn = 2:2:length(inVars)
     paramName  = inVars{nArgsIn-1};
     paramValue = inVars{nArgsIn};
-    % convert even cell arrays or strings to char: {'m' 'ode'} is okay
+    % convert even cell arrays or strings to char: {'m' 'ode'} is also okay
     if iscellstr(paramName) || isstring(paramName)
         paramName = char(strjoin(paramName, ''));
     end
@@ -265,6 +265,7 @@ switch command
             'zoomPosition', zoomPosition };
     case 'autoscale'
         outVars = { ...
+            'channel'     , channel      , ...
             'mode'        , mode         };
     case 'makeScreenShot'
         outVars = { ...

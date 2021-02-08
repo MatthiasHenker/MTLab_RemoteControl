@@ -6,7 +6,7 @@ classdef Scope < VisaIF
     % 'Scope' - to get a full list of accessible scopes which means that
     %           their IP-addresses (for visa-tcpip) or USB IDs (for 
     %           visa-usb) are listed in config files 
-    % 'Scope.listAvailablePackages' - to get a list of installed scope
+    % 'Scope.listAvailablePackages' - to get a list of installed Scope
     %           packages.
     % Your scope can be controlled by the Scope class, when it is
     % accessible and a suiting support package is installed.
@@ -34,8 +34,8 @@ classdef Scope < VisaIF
     %     * check for warnings and errors
     %
     % additional methods (static) of class 'Scope':
-    %   - listAvailablePackages : print out a list of installed scope
-    %                      support packages (Macros)
+    %   - listAvailablePackages : print out a list of installed Scope
+    %                      support packages (macros)
     %     * usage:
     %           Scope.listAvailablePackages
     %
@@ -45,7 +45,7 @@ classdef Scope < VisaIF
     %     * usage:
     %           status = myScope.clear  or  myScope.clear
     %
-    %   - lock & unlock  : lock/unlock all buttons at scope 
+    %   - lock & unlock  : lock/unlock all buttons at scope (some scopes)
     %     * usage:
     %           status = myScope.lock or myScope.unlock
     %
@@ -117,8 +117,8 @@ classdef Scope < VisaIF
     %                                 event will be generated automatically
     %                                 when no trigger is detected within a 
     %                                 specific time period
-    %           'type'    : selects trigger option; e.g.
-    %                       'risingedge', 'fallingedge', ...
+    %           'type'    : selects trigger option;
+    %                       'risingedge' or 'fallingedge'
     %           'source'  : selects trigger source,
     %                       'ch1', 'ch2'  for channel 1 or 2
     %                       'ext', 'ext5' for external trigger 
@@ -166,11 +166,13 @@ classdef Scope < VisaIF
     %
     %   - autoscale      : macro to adjust voltage (vertical) and/or time 
     %                      (horizontal) scaling parameters
-    %     * similar to autoset, but no trigger option are modified
+    %     * similar to autoset, but no trigger options are modified
     %     * preferred method in automated test scripts
     %     * autoscale is not as powerful as autoset ==> it is intended for
     %       adjustment and not for initial setup
-    %     * autoscale can be configured by properties 
+    %     * vertical settings will be adjusted for enabled channels only
+    %     * horizontal settings are adjusted according to trigger channel
+    %     * BUT autoscale can be CONFIGURED by properties 
     %       AutoscaleHorizontalSignalPeriods and AutoscaleVerticalScalingFactor
     %     * usage:
     %           status = myScope.autoscale(varargin)
@@ -182,6 +184,9 @@ classdef Scope < VisaIF
     %                                on active channels
     %                       'both' - vertical and horizontal scaling
     %                                parameters will be adjusted
+    %           'channel' : specifies channel(s) to be adjusted, 
+    %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
+    %                       optional parameter, default is all channels,
     %
     %   - acqRun         : start data acquisitions at scope like pressing
     %                      run/stop button at scope
@@ -210,16 +215,22 @@ classdef Scope < VisaIF
     %       with output
     %          result.status    : status =  0 for okay       (double)
     %                                    = -1 for error
+    %                                    =  1 for warning (unsafe value)
     %          result.value     : reported measurement value (double)
     %          result.unit      : corresponding unit         (char)
     %          result.channel   : specified channel/source   (char)
     %          result.parameter : specified parameter        (char)
+    %          some scopes will report additional output elements
     %       with varargin: pairs of parameters NAME, VALUE
     %          'channel'  : specifies source for measurement
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       ATTENTION: will always be internally sorted in
-    %                       ascending order ==> affects sign in phase meas.
-    %          'parameter': specifies parameter for measurement, e.g.
+    %                       ascending order ==> affects sign in phase and
+    %                       delay measurements
+    %                       nearly all parameters support a single channel,
+    %                       except for e.g. phase and delay measurements
+    %          'parameter': specifies parameter for measurement, 
+    %                       list of suppoted measurements depend on scope
     %                         'frequency' - frequency
     %                         'period'    - period
     %                         'mean'      - mean value
@@ -233,7 +244,11 @@ classdef Scope < VisaIF
     %                         'poswidth'  - pos. width at 50% level
     %                         'negwidth'  - neg. width at 50% level
     %                         'dutycycle' - duty cycle
-    %                         'phase'     - phase between channels
+    %                         'phase'     - phase between two channels
+    %                         'delay'     - delay between two channels
+    %                       mandatory parameter, method will print out a 
+    %                       list of all supported measurements for the
+    %                       connected scope when this parameter is empty
     %
     %   - captureWaveForm : download waveform data
     %     * it is sensible to stop acquisition before
@@ -333,7 +348,7 @@ classdef Scope < VisaIF
     %       autoscale method, specifies amplitude range in display,
     %       1.00 means full display@scope range (-N ..+N) vDiv,
     %       sensible range is 0.3 .. 0.95,
-    %       >1 is possible (most scopes allow up to 1.25), but ADC
+    %       values larger than 1 are possible for some scopes, but ADC
     %       overloading can occure and trigger stage will possibly fail 
     %
     % ---------------------------------------------------------------------
@@ -376,12 +391,12 @@ classdef Scope < VisaIF
     %   'ScopeDate'
     %
     % tested with
-    %   - Matlab (version 9.9 = 2020b update 3) and
+    %   - Matlab (version 9.9 = 2020b update 4) and
     %   - Instrument Control Toolbox (version 4.3)
     %   - NI-Visa 19.5 (download from NI, separate installation)
     %
     % known issues and planned extensions / fixes
-    %   - no bugs reported so far (version 1.0.3) ==> winter term 2020/21
+    %   - no bugs reported so far (version 1.2.0) ==> summer term 2021
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)
@@ -407,7 +422,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.0';      % release version (= class version)
-        ScopeDate       = '2021-02-05'; % release date
+        ScopeDate       = '2021-02-08'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -826,6 +841,7 @@ classdef Scope < VisaIF
         function status = autoscale(obj, varargin)
             % autoscale       : adjust vertical and/or horizontal scaling
             %   'mode'        : 'hor', 'vert', 'both'
+            %   'channel'     : 1 .. 4, [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
