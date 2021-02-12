@@ -11,7 +11,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-02-05'; % release date
+        MacrosDate    = '2021-02-12'; % release date
         %
         % ? num of supported channels and so on ...
     end
@@ -954,7 +954,9 @@ classdef ScopeMacros < handle
                         switch lower(paramValue)
                             case ''
                                 mode = 'both'; % set to default
-                                disp('  - mode         : BOTH');
+                                if obj.ShowMessages
+                                    disp('  - mode         : BOTH (coerced)');
+                                end
                             case {'hor', 'horizontal'}
                                 mode = 'horizontal';
                             case {'vert', 'vertical'}

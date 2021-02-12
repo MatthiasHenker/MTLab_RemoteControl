@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.2.0';      % release version (min 1.2.0)
-        MacrosDate    = '2021-02-07'; % release date
+        MacrosDate    = '2021-02-12'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -82,6 +82,11 @@ classdef ScopeMacros < handle
                 status = -1;
             end
             
+            % enable fast segmentation
+            if obj.VisaIFobj.write('ACQuire:SEGMented:STATe ON')
+                status = -1;
+            end
+            
             % selects range of samples that will be returned to maximum
             if obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')
                 status = -1;
@@ -146,6 +151,11 @@ classdef ScopeMacros < handle
             % binary form (least-significant byte (LSB) of each data
             % point is first)
             if obj.VisaIFobj.write('FORMAT:BORDER LSBfirst')
+                status = -1;
+            end
+            
+            % enable fast segmentation
+            if obj.VisaIFobj.write('ACQuire:SEGMented:STATe ON')
                 status = -1;
             end
             
@@ -589,27 +599,20 @@ classdef ScopeMacros < handle
                 
                 % 'vOffset'        : positive double in V
                 if ~isempty(vOffset)
-                    % use position instead of offset ==> offset = 0
+                    % set position parameter to zero 
                     obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':OFFSet 0']);
-                    % convert vOffset from Volt to div and negate
-                    vOffsetDiv = - vOffset/vDiv;
-                    % offset position (in div) -5 .. +5 in 0.01 steps
-                    vOffsetDiv = round(vOffsetDiv*100)/100;
-                    vOffsetDiv = max(vOffsetDiv, -5);
-                    vOffsetDiv = min(vOffsetDiv,  5);
+                        ':POSition 0']);
                     % format (round) numeric value
-                    vOffString = num2str(vOffsetDiv, '%1.2e');
-                    vOffsetDiv = str2double(vOffString);
-                    
+                    vOffString = num2str(vOffset, '%1.2e');
+                    vOffset    = str2double(vOffString);
                     % set parameter
                     obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':POSition ' vOffString]);
+                        ':OFFSet ' vOffString]);
                     % read and verify
                     response   = obj.VisaIFobj.query(['CHANnel' channel ...
-                        ':POSition?']);
+                        ':OFFSet?']);
                     vOffActual = str2double(char(response));
-                    if vOffsetDiv ~= vOffActual
+                    if abs(vOffset - vOffActual) > vDiv*0.5
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'vOffset parameter could not be set correctly. ' ...
                             'Check limits.']);
@@ -1312,10 +1315,266 @@ classdef ScopeMacros < handle
         
         % x
         function status = autoscale(obj, varargin)
-            % adjust its vertical and/or horizontal scaling
+            % autoscale       : adjust vertical and/or horizontal scaling
+            %                   vDiv, vOffset for vertical and
+            %                   tDiv for horizontal
+            %   'mode'        : 'hor', 'vert', 'both'
+            %   'channel'     : 1 .. 4
             
-            disp('ToDo ...');
-            status = 0;
+            % init output
+            status = NaN;
+            
+            % initialize all supported parameters
+            mode      = '';
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'channel'
+                        % split and copy to cell array of char
+                        channels = split(paramValue, ',');
+                        % remove spaces
+                        channels = regexprep(channels, '\s+', '');
+                        % loop
+                        for cnt = 1 : length(channels)
+                            switch channels{cnt}
+                                case {'', '1', '2', '3', '4'}
+                                    % do nothing
+                                otherwise
+                                    channels{cnt} = '';
+                                    disp(['Scope: Warning - ' ...
+                                        '''autoscale'' invalid ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                        % remove invalid (empty) entries
+                        channels = channels(~cellfun(@isempty, channels));
+                    case 'mode'
+                        switch lower(paramValue)
+                            case ''
+                                mode = 'both'; % set to default
+                                if obj.ShowMessages
+                                    disp('  - mode         : BOTH (coerced)');
+                                end
+                            case 'both'
+                                mode = 'both';
+                            case {'hor', 'horizontal'}
+                                mode = 'horizontal';
+                            case {'vert', 'vertical'}
+                                mode = 'vertical';
+                            otherwise
+                                disp(['Scope: Warning - ''autoscale'' ' ...
+                                    'mode parameter value is unknown ' ...
+                                    '--> ignore and continue']);
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['  WARNING - parameter ''' ...
+                                paramName ''' is unknown --> ignore']);
+                        end
+                end
+            end
+            
+            % two config parameters:
+            % how many signal periods should be visible in waveform?
+            % sensible range 2 .. 50 (large values result in slow sweeps
+            % for horizontal (tDiv) scaling
+            numOfSignalPeriods    = obj.AutoscaleHorizontalSignalPeriods;
+            %
+            % ratio of ADC-fullscale range
+            % > 1  ATTENTION: ADC will be overloaded
+            % 1.00 means full ADC-range and display range (-5 ..+5) vDiv
+            % sensible range 0.5 .. 0.9
+            verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            % define default when channel parameter is missing
+            if isempty(channels)
+                channels = {'1', '2', '3', '4'};
+                if obj.ShowMessages
+                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
+                end
+            end
+            
+            % vertical scaling: adjust vDiv, vOffset
+            if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
+                for cnt = 1:length(channels)
+                    % check if trace is on or off
+                    traceOn = obj.VisaIFobj.query( ...
+                        ['CHANnel' channels{cnt} ':STATe?']);
+                    traceOn = abs(str2double(char(traceOn)));
+                    if isnan(traceOn)
+                        traceOn = false;
+                        status  = -2;
+                    else
+                        traceOn = logical(traceOn);
+                    end
+                    if traceOn
+                        % init
+                        loopcnt  = 0;
+                        maxcnt   = 9;
+                        obj.VisaIFobj.write('MEASurement:TIMeout:AUTO ON');
+                        % measurement place 3 for vMin
+                        obj.VisaIFobj.write('MEASurement3:ENABle 1');
+                        obj.VisaIFobj.write('MEASurement3:MAIN LPEakvalue');
+                        obj.VisaIFobj.write(['MEASurement3:SOURce CH' ...
+                            channels{cnt}]);
+                        % measurement place 4 for vMax
+                        obj.VisaIFobj.write('MEASurement4:ENABle 1');
+                        obj.VisaIFobj.write('MEASurement4:MAIN UPEakvalue');
+                        obj.VisaIFobj.write(['MEASurement4:SOURce CH' ...
+                            channels{cnt}]);
+                        % get time span for acquisition
+                        numPoints = obj.VisaIFobj.query('ACQuire:POINts?');
+                        sRate     = obj.VisaIFobj.query('ACQuire:SRATe?');
+                        span      = str2double(char(numPoints)) / ...
+                            str2double(char(sRate));
+                        while loopcnt < maxcnt
+                            % sufficient settling time is required
+                            if isnan(span)
+                                pause(1);
+                            else
+                                pause(0.2 + span);
+                            end
+                            
+                            % measure min and max voltage
+                            vMin = obj.VisaIFobj.query( ...
+                                'MEASurement3:RESult:ACTual?');
+                            vMin = str2double(char(vMin));
+                            vMax = obj.VisaIFobj.query( ...
+                                'MEASurement4:RESult:ACTual?');
+                            vMax = str2double(char(vMax));
+                            if isnan(vMin) || isnan(vMax)
+                                status  = -3;
+                                break;
+                            elseif abs(vMin) > 1e36
+                                vMin = NaN;          % invalid measurement
+                            elseif abs(vMax) > 1e36
+                                vMax = NaN;          % invalid measurement
+                            end
+                            % ADC is clipped? RTB manual (10v00, page 573)
+                            adcState = obj.VisaIFobj.query( ...
+                                'STATus:QUEStionable:ADCState:CONDition?');
+                            adcState = abs(str2double(char(adcState)));
+                            if isnan(adcState)
+                                status  = -4;
+                                break;
+                            else
+                                % Bit 1 (LSB): channel 1 positive clipping
+                                % Bit 2      : channel 1 negative clipping
+                                % ...
+                                % Bit 8 (MSB): channel 4 negative clipping
+                                adcState = dec2binvec(adcState, 8);
+                                adcMax   = adcState( ...
+                                    str2double(channels{cnt})*2 -1);
+                                adcMin   = adcState( ...
+                                    str2double(channels{cnt})*2 -0);
+                            end
+                            
+                            % estimate voltage scaling (gain)
+                            % 10 vertical divs at display
+                            vDiv = (vMax - vMin) / 10;
+                            if isnan(vDiv)
+                                % request current vDiv setting
+                                vDiv = obj.VisaIFobj.query( ...
+                                    ['CHANnel' channels{cnt} ':SCALe?']);
+                                vDiv = str2double(char(vDiv));
+                                if isnan(vDiv)
+                                    status = -5;
+                                    break;
+                                end
+                            end
+                            
+                            % estimate voltage offset
+                            vOffset = (vMax + vMin)/2;
+                            if isnan(vOffset)
+                                % request current vOffset setting
+                                vOffset = obj.VisaIFobj.query( ...
+                                    ['CHANnel' channels{cnt} ':OFFSet?']);
+                                vOffset = str2double(char(vOffset));
+                                if isnan(vOffset)
+                                    status = -6;
+                                    break;
+                                end
+                            end
+                            
+                            if adcMax && adcMin
+                                % pos. and neg. clipping: scale down
+                                vDiv    = vDiv / 0.3;
+                            elseif adcMax
+                                % positive clipping: scale down
+                                vOffset = vOffset + 4* vDiv;
+                                vDiv    = vDiv / 0.5;
+                            elseif adcMin
+                                % negative clipping: scale down
+                                vOffset = vOffset - 4* vDiv;
+                                vDiv    = vDiv / 0.5;
+                            else
+                                % adjust gently
+                                vDiv    = vDiv / verticalScalingFactor;
+                            end
+                            
+                            % send new vDiv, vOffset parameters to scope
+                            statConf = obj.configureInput(...
+                                'channel' , channels{cnt}, ...
+                                'vDiv'    , num2str(vDiv   , '%1.1e'),  ...
+                                'vOffset' , num2str(vOffset, '%1.1e'));
+                            
+                            if statConf
+                                status = -8;
+                            end
+                            
+                            % wait for completion
+                            obj.VisaIFobj.opc;
+                            
+                            % update loop counter
+                            loopcnt = loopcnt + 1;
+                            
+                            if ~adcMax && ~adcMin && loopcnt ~= maxcnt
+                                % shorten loop when no clipping ==> do a
+                                % final loop run to ensure proper scaling
+                                loopcnt = maxcnt - 1;
+                            end
+                        end
+                    end
+                end
+            end
+            
+            % horizontal scaling: adjust tDiv
+            if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
+                
+                
+                % for horizontal scaling use trigger frequency
+                %    query('TRIGger:A:SOURce?')
+                %    ch1 .. ch4 ==> strrep(response, 'ch', '')
+                %    check if channel is within channels list
+                %    and trace is enabled, then run measurement
+                
+                
+                
+                
+                % status
+                numOfSignalPeriods
+                
+                
+                
+                
+                
+                
+                
+                
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
         end
         
         function status = makeScreenShot(obj, varargin)
@@ -1442,29 +1701,183 @@ classdef ScopeMacros < handle
         
         % x
         function meas = runMeasurement(obj, varargin)
-            % request measurement value
+            % runMeasurement  : request measurement value
+            %   'channel'
+            %   'parameter'
+            % meas.status
+            % meas.value     : reported measurement value (double)
+            % meas.unit      : corresponding unit         (char)
+            % meas.channel   : specified channel(s)       (char)
+            % meas.parameter : specified parameter        (char)
             
             
+            % ?????
+            % additional elements
+            % meas.overload
+            % meas.underload
+            % meas.errorid
+            % meas.errormsg
             
             % init output
             meas.status    = NaN;
             meas.value     = NaN;
             meas.unit      = '';
-            meas.overload  = NaN;
-            meas.underload = NaN;
             meas.channel   = '';
             meas.parameter = '';
-            meas.errorid   = NaN;
-            meas.errormsg  = '';
+            
+            meas.overload  = NaN;   % additional   ?
+            meas.underload = NaN;   % additional   ?
+            meas.errorid   = NaN;   % additional   ?
+            meas.errormsg  = '';    % additional   ?
             
             
             
-            disp('ToDo ...');
-            meas.status    = 0;
+            
+            
+            % default values
+            channels  = {};
+            parameter = '';
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'channel'
+                        % split and copy to cell array of char
+                        channels = split(paramValue, ',');
+                        % remove spaces
+                        channels = regexprep(channels, '\s+', '');
+                        % loop
+                        for cnt = 1 : length(channels)
+                            switch channels{cnt}
+                                case {'', '1', '2', '3', '4'}
+                                    % do nothing: all fine
+                                otherwise
+                                    channels{cnt} = '';
+                                    disp(['Scope: WARNING - ' ...
+                                        '''runMeasurement'' invalid ' ...
+                                        'channel --> ignore and continue']);
+                            end
+                        end
+                        % remove invalid (empty) entries
+                        channels     = ...
+                            channels(~cellfun(@isempty, channels));
+                    case 'parameter'
+                        switch lower(paramValue)
+                            case ''
+                                parameter = '';
+                            case {'frequency', 'freq'}
+                                parameter = 'frequency';
+                            case {'period', 'peri'}
+                                parameter = 'period';
+                            case 'mean'
+                                parameter = 'mean';
+                            case {'pkpk', 'pk-pk', 'pk2pk'}
+                                parameter = 'pk2pk';
+                            case {'crms', 'crm'}
+                                parameter = 'crms';
+                            case 'rms'
+                                parameter = 'rms';
+                            case {'minimum', 'min'}
+                                parameter = 'minimum';
+                            case {'maximum', 'max'}
+                                parameter = 'maximum';
+                            case 'cursorrms'
+                                parameter = 'cursorrms';
+                            case {'risetime', 'rise'}
+                                parameter = 'rise';
+                            case {'falltime', 'fall'}
+                                parameter = 'fall';
+                            case {'poswidth', 'pwidth'}
+                                parameter = 'pwidth';
+                            case {'negwidth', 'nwidth'}
+                                parameter = 'nwidth';
+                            case 'dutycycle'
+                                parameter = 'pduty';
+                            case 'phase'
+                                parameter = 'phase';
+                                % -----------------------------------------
+                                % additional parameters
+                            case 'delay'
+                                parameter = 'delay';
+                            otherwise
+                                disp(['Scope: ERROR - ''runMeasurement'' ' ...
+                                    'measurement type ' paramValue ...
+                                    ' is unknown --> abort function']);
+                                meas.status = -1;
+                                return
+                        end
+                    otherwise
+                        disp(['  WARNING - parameter ''' ...
+                            paramName ''' is unknown --> ignore']);
+                end
+            end
+            
+            % check inputs (parameter)
+            if isempty(parameter)
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'measurement parameter must not be empty ' ...
+                    '--> abort function']);
+                meas.status = -1;
+                return
+            end
+            % copy to output
+            meas.parameter = parameter;
+            
+            % check inputs (channel)
+            if length(channels) < 1
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'source channel must not be empty ' ...
+                    '--> abort function']);
+                meas.status  = -1;
+                return
+            end
+            
+            if strcmpi(parameter, 'phase') || strcmpi(parameter, 'delay')
+                if length(channels) ~= 2
+                    disp(['Scope: ERROR ''runMeasurement'' ' ...
+                        'two source channels have to be specified ' ...
+                        'for phase or delay measurements ' ...
+                        '--> abort function']);
+                    meas.status = -1;
+                    return
+                end
+            elseif length(channels) ~= 1
+                % all other measurements for single channel only
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'only one source channel has to be specified ' ...
+                    '--> abort function']);
+                meas.status = -1;
+                return
+            end
+            
+            % copy to output
+            meas.channel = strjoin(channels, ', ');
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            
+            
+            channels
+            parameter
             
             
             
             
+            
+            
+            
+            
+            
+            
+            
+            % set final status
+            if isnan(meas.status)
+                % no error so far ==> set to 0 (fine)
+                meas.status = 0;
+            end
         end
         
         function waveData = captureWaveForm(obj, varargin)
