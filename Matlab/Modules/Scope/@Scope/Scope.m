@@ -186,7 +186,7 @@ classdef Scope < VisaIF
     %                                parameters will be adjusted
     %           'channel' : specifies channel(s) to be adjusted, 
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
-    %                       optional parameter, default is all channels,
+    %                       optional parameter, default is all channels
     %
     %   - acqRun         : start data acquisitions at scope like pressing
     %                      run/stop button at scope
@@ -220,7 +220,7 @@ classdef Scope < VisaIF
     %          result.unit      : corresponding unit         (char)
     %          result.channel   : specified channel/source   (char)
     %          result.parameter : specified parameter        (char)
-    %          some scopes will report additional output elements
+    %          some scopes will report additional output fields
     %       with varargin: pairs of parameters NAME, VALUE
     %          'channel'  : specifies source for measurement
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
@@ -230,20 +230,30 @@ classdef Scope < VisaIF
     %                       nearly all parameters support a single channel,
     %                       except for e.g. phase and delay measurements
     %          'parameter': specifies parameter for measurement, 
-    %                       list of suppoted measurements depend on scope
+    %                       list of supported measurements depend on scope
     %                         'frequency' - frequency
     %                         'period'    - period
+    %                         'cycmean'   - cyclic mean value
     %                         'mean'      - mean value
-    %                         'pk-pk'     - peak-to-peak value
-    %                         'crms'      - cyclic RMS value
+    %                         'cycrms'    - cyclic RMS value
     %                         'rms'       - RMS value
-    %                         'min'       - minimum value
-    %                         'max'       - maximum value
+    %                         'cycstddev' - cyclic standard deviation
+    %                         'stddev'    - standard deviation
+    %                         'pk-pk'     - peak-to-peak value
+    %                         'minimum'   - minimum value (pos. peak)
+    %                         'maximum'   - maximum value (neg. peak)
+    %                         'high'      - mean value of the high level
+    %                         'low'       - mean value of the low level
+    %                         'amplitude' - high-to-low (similar to pk-pk)
+    %                         'povershoot'- positive overshoot (square w.)
+    %                         'novershoot'- negative overshoot (square w.)
     %                         'risetime'  - 10% to 90% rise time
     %                         'falltime'  - 90% to 10% fall time
+    %                         'posslewrate'- slew rate of rising edge
+    %                         'negslewrate'- slew rate of falling edge
     %                         'poswidth'  - pos. width at 50% level
     %                         'negwidth'  - neg. width at 50% level
-    %                         'dutycycle' - duty cycle
+    %                         'dutycycle' - (positive) duty cycle
     %                         'phase'     - phase between two channels
     %                         'delay'     - delay between two channels
     %                       mandatory parameter, method will print out a 
@@ -422,7 +432,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.0';      % release version (= class version)
-        ScopeDate       = '2021-02-08'; % release date
+        ScopeDate       = '2021-02-14'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

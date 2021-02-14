@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for R&S firmware: 02.300 ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.2.0';      % release version (min 1.2.0)
-        MacrosDate    = '2021-02-12'; % release date
+        MacrosVersion = '1.2.0';      % release version
+        MacrosDate    = '2021-02-14'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1773,9 +1773,14 @@ classdef ScopeMacros < handle
                         channels     = ...
                             channels(~cellfun(@isempty, channels));
                     case 'parameter'
+                        % default for most measurements (Attention: should 
+                        % change when unit of channel is set to 'A', see
+                        % method configureInput('unit', 'A'))
+                        unit = 'V';
                         switch lower(paramValue)
                             case ''
                                 % do nothing (skip measurement)
+                                unit      = '';
                             case {'frequency', 'freq'}
                                 parameter = 'FREQuency';
                                 unit      = 'Hz';
@@ -1784,73 +1789,61 @@ classdef ScopeMacros < handle
                                 unit      = 's';
                             case {'cycmean', 'cmean'}
                                 parameter = 'CYCMean';
-                                unit      = '';
                             case 'mean'
                                 parameter = 'MEAN';
-                                unit      = '';
                             case {'cycrms', 'crms'}
                                 parameter = 'CYCRms';
-                                unit      = '';
                             case 'rms'
                                 parameter = 'RMS';
-                                unit      = '';
                             case {'cycstddev', 'cycstd', 'cstddev', 'cstd'}
                                 parameter = 'CYCStddev';
-                                unit      = '';
                             case {'stddev, std'}
                                 parameter = 'STDDev';
-                                unit      = '';
-                            case {'pkpk', 'pk-pk', 'pk2pk', 'peak'}
+                            case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
                                 parameter = 'PEAK';
-                                unit      = '';
                             case {'minimum', 'min'}
                                 parameter = 'LPEakvalue';
-                                unit      = '';
                             case {'maximum', 'max'}
                                 parameter = 'UPEakvalue';
-                                unit      = '';
                             case {'high', 'top'}
                                 parameter = 'HIGH';
-                                unit      = '';
                             case {'low', 'base'}
                                 parameter = 'LOW';
-                                unit      = '';
                             case {'amplitude', 'amp'}
                                 parameter = 'AMPLitude';
-                                unit      = '';
                             case {'posovershoot', 'povershoot', 'pover'}
                                 parameter = 'POVershoot';
-                                unit      = '';
+                                unit      = '%';
                             case {'negovershoot', 'novershoot', 'nover'}
                                 parameter = 'NOVershoot';
-                                unit      = '';
+                                unit      = '%';
                             case {'risetime', 'rise'}
                                 parameter = 'RTIMe';
-                                unit      = '';
+                                unit      = 's';
                             case {'falltime', 'fall'}
                                 parameter = 'FTIMe';
-                                unit      = '';
+                                unit      = 's';
                             case {'posslewrate', 'possr', 'srrise'}
                                 parameter = 'SRRise';
-                                unit      = '';
+                                unit      = 'V/s';
                             case {'negslewrate', 'negsr', 'srfall'}
                                 parameter = 'SRFall';
-                                unit      = '';
+                                unit      = 'V/s';
                             case {'poswidth', 'pwidth'}
                                 parameter = 'PPWidth';
-                                unit      = '';
+                                unit      = 's';
                             case {'negwidth', 'nwidth'}
                                 parameter = 'NPWidth';
-                                unit      = '';
+                                unit      = 's';
                             case {'dutycycle', 'dutycyc', 'dcycle', 'dcyc'}
                                 parameter = 'PDCycle';
                                 unit      = '%';
                             case 'phase'
                                 parameter = 'PHASe';
-                                unit      = '';
+                                unit      = 'deg';
                             case 'delay'
                                 parameter = 'DELay';
-                                unit      = '';
+                                unit      = 's';
                             otherwise
                                 disp(['Scope: Warning - ''runMeasurement'' ' ...
                                     'measurement type ' paramValue ...
@@ -1868,31 +1861,31 @@ classdef ScopeMacros < handle
                     disp(['Scope: ERROR ''runMeasurement'' ' ...
                         'supported measurement parameters are ' ...
                         '--> skip and exit']);
-                    disp('  frequency');
-                    disp('  period');
-                    disp('  cycmean');
-                    disp('  mean');
-                    disp('  cycrms');
-                    disp('  rms');
-                    disp('  cycstddev');
-                    disp('  stddev');
-                    disp('  pkpk');
-                    disp('  minimum');
-                    disp('  maximum');
-                    disp('  high');
-                    disp('  low');
-                    disp('  amplitude');
-                    disp('  povershoot');
-                    disp('  novershoot');
-                    disp('  risetime');
-                    disp('  falltime');
-                    disp('  posslewrate');
-                    disp('  negslewrate');
-                    disp('  poswidth');
-                    disp('  negwidth');
-                    disp('  dutycycle');
-                    disp('  phase');
-                    disp('  delay');
+                    disp('  ''frequency''');
+                    disp('  ''period''');
+                    disp('  ''cycmean''');
+                    disp('  ''mean''');
+                    disp('  ''cycrms''');
+                    disp('  ''rms''');
+                    disp('  ''cycstddev''');
+                    disp('  ''stddev''');
+                    disp('  ''pk-pk''');
+                    disp('  ''minimum''');
+                    disp('  ''maximum''');
+                    disp('  ''high''');
+                    disp('  ''low''');
+                    disp('  ''amplitude''');
+                    disp('  ''povershoot''');
+                    disp('  ''novershoot''');
+                    disp('  ''risetime''');
+                    disp('  ''falltime''');
+                    disp('  ''posslewrate''');
+                    disp('  ''negslewrate''');
+                    disp('  ''poswidth''');
+                    disp('  ''negwidth''');
+                    disp('  ''dutycycle''');
+                    disp('  ''phase''');
+                    disp('  ''delay''');
                     meas.status = -1;
                     return
                 case {'phase', 'delay'}
@@ -1959,9 +1952,9 @@ classdef ScopeMacros < handle
                 ['MEASurement' measPlace ':RESult:ACTual?']);
             value = str2double(char(value));
             if isnan(value)
-                meas.status = -5;
+                meas.status = -5;     % error   (negative status)
             elseif abs(value) > 1e36
-                meas.status = 1;
+                meas.status = 1;      % warning (positive status)
                 value = NaN;          % invalid measurement
             end
             
