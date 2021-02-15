@@ -25,12 +25,12 @@ classdef VisaIFLogger < handle
     %                   see property myLogger.ShowMessages
     %   - delete  : destructor of this class
     %     * deletes listeners and VisaIFLogger object
-    %     * writes command history table to file (myLog.AutoSaveFileName 
+    %     * writes command history table to file (myLog.AutoSaveFileName
     %       when myLog.AutoSave = true)
     %     * usage:
     %           myLog.delete
     %       without any input or output parameters
-    %   - listVisaListener   : displays list of existing listeners to 
+    %   - listVisaListener   : displays list of existing listeners to
     %                   VisaIF log events
     %   - listCommandHistory : displays content of property CommandHistory
     %     * with additional information when myLog.ShowMessages = 'all'
@@ -46,9 +46,9 @@ classdef VisaIFLogger < handle
     %         fileName (optional): string or character array;
     %                   supported file format is '.csv' only
     %                   default is myLogger.AutoSaveFileName
-    %   - readHistoryTable   : imports history from csv file 
+    %   - readHistoryTable   : imports history from csv file
     %     * overwrites internal command history table
-    %     * be careful to prevent manipulation of history table (disable 
+    %     * be careful to prevent manipulation of history table (disable
     %       notifiers)
     %     * usage:
     %         myLogger.readHistoryTable('fileName');
@@ -56,7 +56,7 @@ classdef VisaIFLogger < handle
     %         fileName (optional): string or character array;
     %                   supported file format is '.csv' only
     %                   default is myLogger.AutoSaveFileName
-    % 
+    %
     % properties of class 'VisaIFLogger':
     %   - with read/write access
     %     * ShowMessages   : 'all',  2, true (default) for talkative mode
@@ -67,12 +67,12 @@ classdef VisaIFLogger < handle
     %                   file with period myLog.AutoSaveInterval
     %     * AutoSaveInterval : positive integer (double); default is 500
     %     * AutoSaveFileName : char; default is './VisaIFLog_AutoSave.csv'
-    %     * Filter           : logical; default is false; 
+    %     * Filter           : logical; default is false;
     %         false: all lines command history will be output
     %         true : only lines matching the filter settings will be output
     %     * FilterLine       : array of doubles with numel = 2;
     %         default is [-inf 0]; specifying lines to be displayed;
-    %         positive values    : index relates to table head 
+    %         positive values    : index relates to table head
     %           ==> [1:3] for lines 1 .. 3 of history table
     %         non positive values: index relates to table tail
     %           ==> [-inf : -2] for all lines except for last 2 lines
@@ -94,7 +94,7 @@ classdef VisaIFLogger < handle
     %         specified range
     %         [1  10]  : up to 10 bytes
     %         [10 inf] : at least 10 bytes
-    %         [5 20]   : from 5 to 20 bytes 
+    %         [5 20]   : from 5 to 20 bytes
     %
     %   - with read only access
     %     * CommandHistory : command history table; filtered according to
@@ -120,9 +120,9 @@ classdef VisaIFLogger < handle
     %   and 'VisaIFLoggerDate'
     %
     % tested with
-    %   - VisaIF             v2.3.0  (2020-05-25)
-    %   - VisaIFLogEventData v2.0.0  (2020-05-25)
-    %   - Matlab 2019b update 5 (Windows 10)
+    %   - VisaIF             v2.4.3  (2021-02-15)
+    %   - VisaIFLogEventData v2.0.1  (2021-01-09)
+    %   - Matlab 2020b update 4 (Windows 10)
     %   - for further requirements see VisaIF
     %
     % ---------------------------------------------------------------------
@@ -132,8 +132,8 @@ classdef VisaIFLogger < handle
     % ---------------------------------------------------------------------
     
     properties(Constant = true)
-        VisaIFLoggerVersion = '2.0.1';      % current version
-        VisaIFLoggerDate    = '2021-01-09'; % release date
+        VisaIFLoggerVersion = '2.0.2';      % current version
+        VisaIFLoggerDate    = '2021-02-15'; % release date
     end
     
     properties
@@ -141,9 +141,9 @@ classdef VisaIFLogger < handle
         AutoSave          logical = true;   %
         AutoSaveInterval  double  = 500;    %
         AutoSaveFileName  char    = './VisaIFLog_AutoSave.csv';
-        Filter            logical = false; 
+        Filter            logical = false;
         FilterLine        double  = [-inf 0];
-        FilterCmdID       double  = [-inf 0]; 
+        FilterCmdID       double  = [-inf 0];
         FilterDevice      char    = '.';
         FilterMode        char    = '.';
         FilterSCPIcommand char    = '.';
@@ -171,7 +171,29 @@ classdef VisaIFLogger < handle
         CmdHistTable           % history table (internal full table)
     end
     
-    methods
+    % ---------------------------------------------------------------------
+    methods(Static)  % auxiliary
+        
+        function doc(className)
+            % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
+            % to display the help text. Classes named FGen or Scope
+            % conflict with other classes and cause troubles.
+            %
+            % This method open a help windows using web-command.
+            
+            narginchk(0, 1);
+            if nargin == 0
+                className  = mfilename('class');
+            end
+            
+            web(regexprep(which(className), '.p$', '.m'), ...
+                '-new', '-notoolbar');
+        end
+        
+    end
+    
+    % ---------------------------------------------------------------------
+    methods  % main
         
         function obj = VisaIFLogger(showmsg)
             % constructor of logger class
@@ -500,7 +522,8 @@ classdef VisaIFLogger < handle
         end
         
     end
-        
+    
+    % ---------------------------------------------------------------------
     methods(Access = private)
         
         % it would be possible to merge addVisaListener and

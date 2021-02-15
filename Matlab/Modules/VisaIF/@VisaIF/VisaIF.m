@@ -207,6 +207,7 @@ classdef VisaIF < handle
     % known issues and planned extensions / fixes
     %   - no bugs reported so far (version 1.5.2) ==> winter term 2019/20
     %                             (version 2.4.1) ==> winter term 2020/21
+    %                             (version 2.4.3) ==> summer term 2021
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)
@@ -239,7 +240,7 @@ classdef VisaIF < handle
     
     properties(Constant = true)
         VisaIFVersion = '2.4.3';      % current version of VisaIF
-        VisaIFDate    = '2021-01-09'; % release date
+        VisaIFDate    = '2021-02-15'; % release date
     end
     
     properties(SetAccess = private, GetAccess = public)
@@ -336,8 +337,8 @@ classdef VisaIF < handle
         
         function doc(className)
             % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
-            % to display the help text. For classes named FGen or Scope
-            % conflicts with other classes causes troubles.
+            % to display the help text. Classes named FGen or Scope
+            % conflict with other classes and cause troubles.
             %
             % This method open a help windows using web-command.
             
