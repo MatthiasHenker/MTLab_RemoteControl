@@ -21,9 +21,9 @@
 % -------------------------------------------------------------------------
 % some config
 
-ModuleName = 'Scope';    % name of class file
-%VersionID  = '1.0.3';   % should match name of tag in git (version control)
-VersionID  = 'x.y.z';
+ModuleName = 'Scope'; % name of class file
+VersionID  = '1.2.0'; % should match name of tag in git (version control)
+%VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)

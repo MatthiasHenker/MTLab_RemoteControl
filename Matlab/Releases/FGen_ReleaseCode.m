@@ -21,9 +21,9 @@
 % -------------------------------------------------------------------------
 % some config
 
-ModuleName = 'FGen';    % name of class file
-%VersionID  = '1.0.5';   % should match name of tag in git (version control)
-VersionID  = 'x.y.z';
+ModuleName = 'FGen';  % name of class file
+VersionID  = '1.0.6'; % should match name of tag in git (version control)
+%VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)

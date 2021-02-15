@@ -2,6 +2,10 @@
 
 in preparation
 ---------------------------------------------------------------------------
+Release vx.x.x 
+
+
+---------------------------------------------------------------------------
 Release v1.0.6 (same as FGen class) requires VisaIF v2.4.3 or later
   - FGen                                              v1.0.6   (2021-02-15)
       minor beautifications in doc

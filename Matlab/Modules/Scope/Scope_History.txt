@@ -2,6 +2,10 @@
 
 in preparation
 ---------------------------------------------------------------------------
+Release vx.x.x
+
+
+---------------------------------------------------------------------------
 Release v1.2.0 (same as Scope class) requires VisaIF v2.4.3 or later
   - Scope                                             v1.2.0   (2021-02-15)
       documentation updated: changes in TriggerState,
@@ -25,7 +29,6 @@ Release v1.2.0 (same as Scope class) requires VisaIF v2.4.3 or later
       'parameter' is empty or missing
   - Scope.RS.RTB2000.ScopeMacros                      v1.2.0   (2021-02-15)
       initial package, supports all features
-  
   - Scope.Siglent.SDS2000X.ScopeMacros                n/a
       coming soon (hopefully)
   - Scope.Rigol.XXXXXXX.ScopeMacros                   n/a
