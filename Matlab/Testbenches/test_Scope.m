@@ -16,8 +16,8 @@ ScopeID   = '';         % don't care ==> connect to first found scope
 %interface = 'demo';
 interface = 'visa-usb';
 
-showmsg   = 'all';
-%showmsg   = 'few';
+%showmsg   = 'all';
+showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -51,11 +51,11 @@ myScope;
 myScope.open;
 
 % R&S RTB2004: dedicated low-level commands
-myScope.write('wgenerator:function sin');
-myScope.write('wgenerator:voltage 0.1');
-myScope.write('wgenerator:frequency 100e3');
-myScope.write('wgenerator:output:load highz');
-myScope.write('wgenerator:output:enable on');
+%myScope.write('wgenerator:function sin');
+%myScope.write('wgenerator:voltage 1.5');
+%myScope.write('wgenerator:frequency 3e3');
+%myScope.write('wgenerator:output:load highz');
+%myScope.write('wgenerator:output:enable on');
 
 
 myScope.ErrorMessages;
@@ -127,8 +127,8 @@ myScope.autoscale('mode', 'both');
 myScope.configureInput( ...
     'channel'  , 1        , ...
     'inputdiv' , 1       , ...
-    'vDiv'     , 0.012      , ...
-    'vOffset'  , 0.0      );
+    'vDiv'     , 0.25      , ...
+    'vOffset'  , 0.1      );
 
 return
 
@@ -136,7 +136,7 @@ myScope.configureInput( ...
     'channel'  , [1, 2, 3, 4]    , ...
     'trace'    , 'on'     , ...
     'impedance', '1e6'    , ...
-    'vDiv'     , 0.1        , ...
+    'vDiv'     , 0.2        , ...
     'vOffset'  , '0'      , ...
     'coupling' , 'DC'     , ...
     'inputdiv' ,  1       , ...
@@ -201,6 +201,7 @@ myScope.configureZoom('zoomFactor', 1.1, 'zoomPos', 14e-6);
 
 myScope.makeScreenShot('fileName', './tmp5.png');
 
+data = myScope.captureWaveForm;
 data = myScope.captureWaveForm('channel', [1, 2, 3, 4]);
 
 if true

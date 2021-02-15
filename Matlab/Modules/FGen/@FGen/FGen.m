@@ -12,7 +12,7 @@ classdef FGen < VisaIF
     % accessible and a suiting support package is installed.
     %
     % All public properties and methods from super class 'VisaIF' can also
-    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.1).
+    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
     %
     % Use 'FGen.doc' for this help page. 
     %
@@ -56,7 +56,7 @@ classdef FGen < VisaIF
     %       with optional varargin: pairs of parameters NAME, VALUE
     %           'channel'    : specifies channel(s) to be configured
     %                          [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-    %                          default is 'ch1' (instead of <empty>)
+    %                          optional parameter, default is 'ch1'
     %           'waveform'   : specifies type of output signal
     %                          most commonly supported values are
     %                          'sin' or 'sine'   for sine wave
@@ -106,7 +106,7 @@ classdef FGen < VisaIF
     %       with optional varargin: pairs of parameters NAME, VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-    %                       default is 'ch1' (instead of <empty>)
+    %                       optional parameter, default is 'ch1'
     %           'mode'    : selects the configuration mode like 
     %                       'list'     - list available wavenames at 
     %                                    generator, depends also on submode 
@@ -137,7 +137,7 @@ classdef FGen < VisaIF
     %       with optional varargin: pairs of parameters NAME, VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-    %                       default is 'ch1' (instead of <empty>)
+    %                       optional parameter, default is 'ch1'
     %
     %   - disableOutput : disable output of specified channels at generator
     %     * usage:
@@ -145,7 +145,7 @@ classdef FGen < VisaIF
     %       with optional varargin: pairs of parameters NAME, VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-    %                       default is 'ch1' (instead of <empty>)
+    %                       optional parameter, default is 'ch1'
     %
     % additional properties of class 'FGen':
     %   - with read access only
@@ -205,12 +205,12 @@ classdef FGen < VisaIF
     %   'FGenDate'
     %
     % tested with
-    %   - Matlab (version 9.8 = 2020a update 5) and
-    %   - Instrument Control Toolbox (version 4.2)
+    %   - Matlab (version 9.9 = 2020b update 4) and
+    %   - Instrument Control Toolbox (version 4.3)
     %   - NI-Visa 19.5 & 20.0 (download from NI, separate installation)
     %
     % known issues
-    %   - no bugs reported so far (version 1.0.3) ==> winter term 2020/21
+    %   - no bugs reported so far (version 1.0.5) ==> summer term 2021
     %
     % planned extensions / fixes
     %   - support modulation, sweep, burst, ...
@@ -230,8 +230,8 @@ classdef FGen < VisaIF
     %                           to file at host
     
     properties(Constant = true)
-        FGenVersion    = '1.0.5';      % release version (= class version)
-        FGenDate       = '2021-01-09'; % release date
+        FGenVersion    = '1.0.6';      % release version (= class version)
+        FGenDate       = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

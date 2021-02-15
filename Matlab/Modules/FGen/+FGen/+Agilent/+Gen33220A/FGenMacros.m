@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
         
     properties(Constant = true)
-        MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-01-16'; % release date
+        MacrosVersion = '1.0.4';      % release version
+        MacrosDate    = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -197,7 +197,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'ch1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '(default)']);
+                                            '(coerced)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'ch1';

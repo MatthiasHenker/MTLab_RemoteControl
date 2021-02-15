@@ -1,5 +1,18 @@
 % FGen support package (from newest to older versions)
 
+in preparation
+---------------------------------------------------------------------------
+Release v1.0.6 (same as FGen class) requires VisaIF v2.4.3 or later
+  - FGen                                              v1.0.6   (2021-02-15)
+      minor beautifications in doc
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.4   (2021-02-15)
+      minor change in a display message
+  - FGen.Keysight.Gen33511B.FGenMacros                v1.0.2   (2021-02-15)
+      update a warning message about channel parameter
+      configureOutput (not implemented parameter yet)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.0.2   (2021-01-09)
+      nearly empty template ==> ToDo
+
 ---------------------------------------------------------------------------
 Release v1.0.5 (same as FGen class) requires VisaIF v2.4.1 or later
   - FGen                                              v1.0.5   (2021-01-09)

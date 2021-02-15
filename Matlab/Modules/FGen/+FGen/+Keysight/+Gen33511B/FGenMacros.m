@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '1.0.1';      % release version
-        MacrosDate    = '2021-01-21'; % release date
+        MacrosVersion = '1.0.2';      % release version
+        MacrosDate    = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -240,10 +240,10 @@ classdef FGenMacros < handle
                             switch channels{cnt}
                                 case ''
                                     channels{cnt} = 'ch1';
-                                    %if obj.ShowMessages
-                                    %    disp(['  - channel      : 1 ' ...
-                                    %        '(default)']);
-                                    %end
+                                    if obj.ShowMessages
+                                        disp(['  - channel      : 1 ' ...
+                                            '(coerced)']);
+                                    end
                                 case '1'
                                     channels{cnt} = 'ch1';
                                 otherwise
@@ -256,9 +256,6 @@ classdef FGenMacros < handle
                                         '--> ignore and continue']);
                             end
                         end
-                        disp(['FGen: Warning - ''configureOutput'' ' ...
-                            '''channel'' parameter is not implemented yet ' ...
-                            '--> ignore and continue']);
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     case 'waveform'
