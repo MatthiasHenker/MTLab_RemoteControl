@@ -168,8 +168,8 @@ classdef Scope < VisaIF
     %                      (horizontal) scaling parameters
     %     * similar to autoset, but no trigger options are modified
     %     * preferred method in automated test scripts
-    %     * autoscale is not as powerful as autoset ==> it is intended for
-    %       adjustment and not for initial setup
+    %     * autoscale can fail when settings are out of capture range 
+    %       ==> it is intended for adjustment and not for initial setup
     %     * vertical settings will be adjusted for enabled channels only
     %     * horizontal settings are adjusted according to trigger channel
     %     * BUT autoscale can be CONFIGURED by properties 
@@ -184,6 +184,7 @@ classdef Scope < VisaIF
     %                                on active channels
     %                       'both' - vertical and horizontal scaling
     %                                parameters will be adjusted
+    %                       optional parameter, default is 'both'
     %           'channel' : specifies channel(s) to be adjusted, 
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       optional parameter, default is all channels
@@ -277,6 +278,7 @@ classdef Scope < VisaIF
     %       with varargin: pairs of parameters NAME, VALUE
     %          'channel'  : channel selector
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
+    %                       optional parameter, default is all channels
     %
     % additional properties of class 'Scope':
     %   - with read access only
@@ -432,7 +434,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.0';      % release version (= class version)
-        ScopeDate       = '2021-02-14'; % release date
+        ScopeDate       = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

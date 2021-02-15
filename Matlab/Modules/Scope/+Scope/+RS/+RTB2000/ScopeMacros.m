@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-02-14'; % release date
+        MacrosDate    = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -88,7 +88,7 @@ classdef ScopeMacros < handle
             end
             
             % selects range of samples that will be returned to maximum
-            if obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')
+            if obj.VisaIFobj.write('CHANnel:DATA:POINts MAXimum')
                 status = -1;
             end
             
@@ -160,7 +160,7 @@ classdef ScopeMacros < handle
             end
             
             % selects range of samples that will be returned to maximum
-            if obj.VisaIFobj.write('CHANNEL:DATA:POINTS MAXIMUM')
+            if obj.VisaIFobj.write('CHANnel:DATA:POINts MAXimum')
                 status = -1;
             end
             
@@ -800,14 +800,18 @@ classdef ScopeMacros < handle
                 % read and verify
                 response = obj.VisaIFobj.query('ACQuire:POINts:VALue?');
                 actualVal = str2double(char(response));
-                if maxLength == actualVal
-                    % fine
+                if isnan(actualVal)
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'mode parameter could not be set correctly.']);
+                    status = -1;
                 elseif maxLength == 20e6 && actualVal == 10e6
                     if obj.ShowMessages
                         disp('  - maxLength    : 10000000 (coerced)');
                     end
+                elseif actualVal >= maxLength
+                    % fine
                 else
-                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                    disp(['Scope: Warning - ''configureAcquisition'' ' ...
                         'mode parameter could not be set correctly.']);
                     status = -1;
                 end
@@ -1999,13 +2003,13 @@ classdef ScopeMacros < handle
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
                                 case '1'
-                                    channels{cnt} = 'CHANNEL1';
+                                    channels{cnt} = 'CHANnel1';
                                 case '2'
-                                    channels{cnt} = 'CHANNEL2';
+                                    channels{cnt} = 'CHANnel2';
                                 case '3'
-                                    channels{cnt} = 'CHANNEL3';
+                                    channels{cnt} = 'CHANnel3';
                                 case '4'
-                                    channels{cnt} = 'CHANNEL4';
+                                    channels{cnt} = 'CHANnel4';
                                 case ''
                                     % do nothing
                                 otherwise
@@ -2023,11 +2027,13 @@ classdef ScopeMacros < handle
                             'parameter ''' paramName ''' will be ignored']);
                 end
             end
+            
+            % define default when channel parameter is missing
             if isempty(channels)
-                waveData.status     = -1;
-                disp(['Scope: Error - ''captureWaveForm'' no channels ' ...
-                    'are specified. --> skip and continue']);
-                return; % exit
+                channels = {'CHANnel1', 'CHANnel2', 'CHANnel3', 'CHANnel4'};
+                if obj.ShowMessages
+                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
+                end
             end
             
             % -------------------------------------------------------------
@@ -2064,8 +2070,30 @@ classdef ScopeMacros < handle
                     % 0   when channel is not active ==> next channel
                     continue;
                 else
-                    % NaN when error
+                    % NaN (or negative) when error
                     waveData.status = -11;
+                    return; % exit
+                end
+                
+                % ---------------------------------------------------------
+                % read resolution in bits
+                yRes = obj.VisaIFobj.query([channel ':DATA:YRESOLUTION?']);
+                % yRes is 10..32 bits ==> set to either uint-16 or uint-32
+                %   UINT,16 is sensible for all acq modes except averaging
+                %   UINT,32 is relevant for average waveforms
+                yRes = str2double(char(yRes));
+                if yRes <= 16
+                    % saves time when downloading longer waveforms
+                    % max 20MSa (40MBytes, uint-16) ==> about 6.8s (47Mbit/s)
+                    obj.VisaIFobj.write('FORMAT:DATA UINT,16');
+                    uint16format = true;
+                elseif yRes <= 32
+                    % max 20MSa (80MBytes, uint-32 or real) ==> about 13.5s
+                    obj.VisaIFobj.write('FORMAT:DATA UINT,32');
+                    uint16format = false;
+                else
+                    % logical error or data error
+                    waveData.status = -12;
                     return; % exit
                 end
                 
@@ -2094,7 +2122,7 @@ classdef ScopeMacros < handle
                     if (abs(xstop - (xorigin+(xlength-1)*xinc)) > 0.1 * xinc) ...
                             || (abs(xstart - xorigin) > 0.1 * xinc)
                         % logical error or data error
-                        waveData.status = -12;
+                        waveData.status = -13;
                         return; % exit
                     end
                     % set sample time (identical for all active channels)
@@ -2105,31 +2133,9 @@ classdef ScopeMacros < handle
                         waveData.volt   = zeros(length(channels), xlength);
                     elseif size(waveData.volt, 2) ~= xlength
                         % logical error or data error
-                        waveData.status = -13;
+                        waveData.status = -14;
                         return; % exit
                     end
-                else
-                    % logical error or data error
-                    waveData.status = -14;
-                    return; % exit
-                end
-                
-                % ---------------------------------------------------------
-                % read resolution in bits
-                yRes = obj.VisaIFobj.query([channel ':DATA:YRESOLUTION?']);
-                % yRes is 10..32 bits ==> set to either uint-16 or uint-32
-                %   UINT,16 is sensible for all acq modes except averaging
-                %   UINT,32 is relevant for average waveforms
-                yRes = str2double(char(yRes));
-                if yRes <= 16
-                    % saves time when downloading longer waveforms
-                    % max 20MSa (40MBytes, uint-16) ==> about 6.8s (47Mbit/s)
-                    obj.VisaIFobj.write('FORMAT:DATA UINT,16');
-                    uint16format = true;
-                elseif yRes <= 32
-                    % max 20MSa (80MBytes, uint-32 or real) ==> about 13.5s
-                    obj.VisaIFobj.write('FORMAT:DATA UINT,32');
-                    uint16format = false;
                 else
                     % logical error or data error
                     waveData.status = -15;

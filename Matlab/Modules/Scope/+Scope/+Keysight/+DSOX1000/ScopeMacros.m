@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-02-05'; % release date
+        MacrosDate    = '2021-02-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1775,11 +1775,12 @@ classdef ScopeMacros < handle
                 end
             end
             
+            % define default when channel parameter is missing
             if isempty(channels)
-                waveData.status = -1;
-                disp(['Scope: Error - ''captureWaveForm'' no channels ' ...
-                    'are specified. --> skip and continue']);
-                return
+                channels = {'CHANnel1', 'CHANnel2'};
+                if obj.ShowMessages
+                    disp('  - channel      : 1, 2 (coerced)');
+                end
             end
             
             % -------------------------------------------------------------
