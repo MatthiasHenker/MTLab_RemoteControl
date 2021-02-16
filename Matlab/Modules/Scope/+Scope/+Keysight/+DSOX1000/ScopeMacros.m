@@ -856,7 +856,7 @@ classdef ScopeMacros < handle
                     
                     % read and verify
                     response = char(obj.VisaIFobj.query(':TRIGger:SWEep?'));
-                    if ~strcmpi(mode, response)
+                    if ~startsWith(mode, response)
                         disp(['Scope: Error - ''configureTrigger'' ' ...
                             'mode parameter could not be set correctly.']);
                         status = -1;

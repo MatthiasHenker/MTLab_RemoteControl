@@ -5,8 +5,8 @@ close all;
 clc;
 
 %ScopeName = 'TDS';      % Tektronix Scope
-%ScopeName = 'DSO';      % Keysight scope
-ScopeName = 'RTB';      % R&S Scope
+ScopeName = 'DSO';      % Keysight scope
+%ScopeName = 'RTB';      % R&S Scope
 ScopeID   = '';         % don't care ==> connect to first found scope
 %ScopeID   = 'C011107';  % a specific scope
 %ScopeID   = 'C011127';  % (when more than one scope is connected)
@@ -16,8 +16,8 @@ ScopeID   = '';         % don't care ==> connect to first found scope
 %interface = 'demo';
 interface = 'visa-usb';
 
-%showmsg   = 'all';
-showmsg   = 'few';
+showmsg   = 'all';
+%showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -120,15 +120,16 @@ toc
 
 
 
-myScope.AutoscaleHorizontalSignalPeriods = 5;
-myScope.AutoscaleVerticalScalingFactor   = 0.9;
-myScope.autoscale('mode', 'both');
+myScope.AutoscaleHorizontalSignalPeriods = 2;
+myScope.AutoscaleVerticalScalingFactor   = 0.7;
+%myScope.autoscale('mode', 'both');
+myScope.autoscale('mode', 'vert', 'chan', 2);
 
 myScope.configureInput( ...
     'channel'  , 1        , ...
     'inputdiv' , 1       , ...
-    'vDiv'     , 0.25      , ...
-    'vOffset'  , 0.1      );
+    'vDiv'     , 1.5      , ...
+    'vOffset'  , 1.5      );
 
 return
 
@@ -161,9 +162,9 @@ myScope.configureTrigger( ...
     'level'   , nan           , ...
     'delay'   , 0             );
 myScope.configureTrigger( ...
-    'type'    , 'fallingEdge'  , ...
+    'type'    , 'fallingEdge' , ...
     'source'  , 'ch1'         , ...
-    'coupling', 'DC'          );
+    'coupling', 'noisereject' );
 
 myScope.configureAcquisition( ...
     'tdiv'  , 1.2345e-4     , ...
