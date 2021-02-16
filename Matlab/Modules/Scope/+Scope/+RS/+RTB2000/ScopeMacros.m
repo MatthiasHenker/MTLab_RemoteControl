@@ -1329,6 +1329,7 @@ classdef ScopeMacros < handle
             
             % initialize all supported parameters
             mode      = '';
+            channels  = {};
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -1390,8 +1391,15 @@ classdef ScopeMacros < handle
             % ratio of ADC-fullscale range
             % > 1  ATTENTION: ADC will be overloaded
             % 1.00 means full ADC-range and display range (-5 ..+5) vDiv
-            % sensible range 0.5 .. 0.9
+            % sensible range 0.3 .. 0.9
             verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
+            
+            % to get similar behavior as for Tektronix and Keysight scopes
+            % ==> scaling factor of 1 means +/- 4 vDiv display range
+            % scaling factor up to 1.25 is possible (ADC-full range)
+            % ==> theoretically scaling factor should be scaled down by 0.8
+            % ==> compromise: 0.9
+            verticalScalingFactor = 0.9 * verticalScalingFactor;
             
             % -------------------------------------------------------------
             % actual code
@@ -1770,7 +1778,8 @@ classdef ScopeMacros < handle
                                     channels{cnt} = '';
                                     disp(['Scope: WARNING - ' ...
                                         '''runMeasurement'' invalid ' ...
-                                        'channel --> ignore and continue']);
+                                        'channel (allowed are 1 .. 4) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -1805,20 +1814,30 @@ classdef ScopeMacros < handle
                                 parameter = 'STDDev';
                             case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
                                 parameter = 'PEAK';
-                            case {'minimum', 'min'}
-                                parameter = 'LPEakvalue';
                             case {'maximum', 'max'}
                                 parameter = 'UPEakvalue';
+                            case {'minimum', 'min'}
+                                parameter = 'LPEakvalue';
                             case {'high', 'top'}
                                 parameter = 'HIGH';
                             case {'low', 'base'}
                                 parameter = 'LOW';
                             case {'amplitude', 'amp'}
                                 parameter = 'AMPLitude';
-                            case {'posovershoot', 'povershoot', 'pover'}
+                            case {'overshoot', 'over'}
+                                disp(['Scope: WARNING - ' ...
+                                    '''runMeasurement'' coerce ' ...
+                                    'overshoot measurement to positive ' ...
+                                    'edge --> coerce and continue']);
+                                if obj.ShowMessages
+                                    disp('  - parameter    : povershoot (coerced)');
+                                end
                                 parameter = 'POVershoot';
                                 unit      = '%';
-                            case {'negovershoot', 'novershoot', 'nover'}
+                            case {'povershoot', 'posovershoot', 'pover'}
+                                parameter = 'POVershoot';
+                                unit      = '%';
+                            case {'novershoot', 'negovershoot', 'nover'}
                                 parameter = 'NOVershoot';
                                 unit      = '%';
                             case {'risetime', 'rise'}
@@ -1874,8 +1893,8 @@ classdef ScopeMacros < handle
                     disp('  ''cycstddev''');
                     disp('  ''stddev''');
                     disp('  ''pk-pk''');
-                    disp('  ''minimum''');
                     disp('  ''maximum''');
+                    disp('  ''minimum''');
                     disp('  ''high''');
                     disp('  ''low''');
                     disp('  ''amplitude''');

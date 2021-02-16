@@ -939,17 +939,42 @@ classdef ScopeMacros < handle
             %                   vDiv, vOffset for vertical and 
             %                   tDiv for horizontal
             %   'mode'        : 'hor', 'vert', 'both'
+            %   'channel'     : 1 .. 2
             
             % init output
             status = NaN;
             
             % initialize all supported parameters
-            mode      = '';
+            mode     = '';
+            channels = {};
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
                 switch paramName
+                    case 'channel'
+                        % split and copy to cell array of char
+                        channels = split(paramValue, ',');
+                        % remove spaces
+                        channels = regexprep(channels, '\s+', '');
+                        % loop
+                        for cnt = 1 : length(channels)
+                            switch channels{cnt}
+                                case ''
+                                    % do nothing
+                                case {'1', '2'}
+                                    % add prefix 'ch' for channel
+                                    channels{cnt} = ['ch' channels{cnt}];
+                                otherwise
+                                    channels{cnt} = '';
+                                    disp(['Scope: Warning - ' ...
+                                        '''autoscale'' invalid ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                        % remove invalid (empty) entries
+                        channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
                         switch lower(paramValue)
                             case ''
@@ -964,6 +989,7 @@ classdef ScopeMacros < handle
                             case 'both'
                                 mode = 'both';
                             otherwise
+                                mode = '';
                                 disp(['Scope: Warning - ''autoscale'' ' ...
                                     'mode parameter is unknown --> ignore ' ...
                                     'and continue']);
@@ -994,9 +1020,16 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
+            % define default when channel parameter is missing
+            if isempty(channels)
+                channels = {'ch1', 'ch2'};
+                if obj.ShowMessages
+                    disp('  - channel      : 1, 2 (coerced)');
+                end
+            end
+            
             % vertical scaling (vDiv, vOffset)
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
-                channels = {'ch1', 'ch2'};
                 for cnt = 1:length(channels)
                     % check if trace is on or off
                     trace = obj.VisaIFobj.query(['select:' channels{cnt} '?']);
@@ -1042,7 +1075,7 @@ classdef ScopeMacros < handle
                             %    'vDiv'    , vDiv,  ...
                             %    'vOffset' , vOffset);
                             obj.configureInput(...
-                                'channel' , num2str(cnt, '%d'), ...
+                                'channel' , channels{cnt}(end), ...
                                 'vDiv'    , num2str(vDiv, 4),  ...
                                 'vOffset' , num2str(vOffset, 4));
                             
@@ -1225,10 +1258,11 @@ classdef ScopeMacros < handle
             meas.status    = NaN;
             meas.value     = NaN;
             meas.unit      = '';
-            meas.overload  = NaN;
-            meas.underload = NaN;
             meas.channel   = {};
             meas.parameter = '';
+            %
+            meas.overload  = NaN;
+            meas.underload = NaN;
             meas.errorid   = NaN;
             meas.errormsg  = '';
                         
@@ -1248,6 +1282,9 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
+                                case ''
+                                    channels{cnt}     = '';
+                                    meas.channel{cnt} = '';
                                 case '1'
                                     channels{cnt}     = 'ch1';
                                     meas.channel{cnt} = '1';
@@ -1259,7 +1296,8 @@ classdef ScopeMacros < handle
                                     meas.channel{cnt} = '';
                                     disp(['Scope: WARNING - ' ...
                                         '''runMeasurement'' invalid ' ...
-                                        'channel --> ignore and continue']);
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -1270,25 +1308,23 @@ classdef ScopeMacros < handle
                     case 'parameter'
                         switch lower(paramValue)
                             case ''
-                                parameter = '';
+                                % do nothing
                             case {'frequency', 'freq'}
                                 parameter = 'frequency';
-                            case {'period', 'peri'}
+                            case {'period', 'peri', 'per'}
                                 parameter = 'period';
                             case 'mean'
                                 parameter = 'mean';
-                            case {'pkpk', 'pk-pk', 'pk2pk'}
-                                parameter = 'pk2pk';
-                            case {'crms', 'crm'}
+                            case {'cycrms', 'crms'}
                                 parameter = 'crms';
                             case 'rms'
                                 parameter = 'rms';
-                            case {'minimum', 'min'}
-                                parameter = 'minimum';
+                            case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
+                                parameter = 'pk2pk';
                             case {'maximum', 'max'}
                                 parameter = 'maximum';
-                            case 'cursorrms'
-                                parameter = 'cursorrms';
+                            case {'minimum', 'min'}
+                                parameter = 'minimum';
                             case {'risetime', 'rise'}
                                 parameter = 'rise';
                             case {'falltime', 'fall'}
@@ -1297,16 +1333,14 @@ classdef ScopeMacros < handle
                                 parameter = 'pwidth';
                             case {'negwidth', 'nwidth'}
                                 parameter = 'nwidth';
-                            case 'dutycycle'
+                            case {'dutycycle', 'dutycyc', 'dcycle', 'dcyc'}
                                 parameter = 'pduty';
                             case 'phase'
                                 parameter = 'phase';
                             otherwise
-                                disp(['Scope: ERROR - ''runMeasurement'' ' ...
+                                disp(['Scope: Warning - ''runMeasurement'' ' ...
                                     'measurement type ' paramValue ...
-                                    ' is unknown --> abort function']);
-                                meas.status = -1;
-                                return
+                                    ' is unknown --> skip measurement']);
                         end
                     otherwise
                         disp(['  WARNING - parameter ''' ...
@@ -1315,49 +1349,60 @@ classdef ScopeMacros < handle
             end
             
             % check inputs (parameter)
-            if isempty(parameter)
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'measurement parameter must not be empty ' ...
-                    '--> abort function']);
-                meas.status = -1;
-                return
+            switch lower(parameter)
+                case ''
+                    disp(['Scope: ERROR ''runMeasurement'' ' ...
+                        'supported measurement parameters are ' ...
+                        '--> skip and exit']);
+                    disp('  ''frequency''');
+                    disp('  ''period''');
+                    disp('  ''mean''');
+                    disp('  ''cycrms''');
+                    disp('  ''rms''');
+                    disp('  ''pk-pk''');
+                    disp('  ''maximum''');
+                    disp('  ''minimum''');
+                    disp('  ''risetime''');
+                    disp('  ''falltime''');
+                    disp('  ''poswidth''');
+                    disp('  ''negwidth''');
+                    disp('  ''dutycycle''');
+                    disp('  ''phase''');
+                    meas.status  = -1;
+                    meas.channel = '';
+                    return
+                case 'phase'
+                    if length(channels) ~= 2
+                        disp(['Scope: Warning - ''runMeasurement'' ' ...
+                            'two source channels have to be specified ' ...
+                            'for phase measurement ' ...
+                            '--> coerce and continue']);
+                        if obj.ShowMessages
+                            disp('  - channel      : 1, 2 (coerced)');
+                        end
+                        % correct settings (always ascending order (framework))
+                        channels     = {'ch1', 'ch2'};
+                        meas.channel = {'1', '2'};
+                    end
+                    % only channel 1 has to be used for configuration
+                    channels = channels(1); % same as {'ch1'}
+                otherwise
+                    if length(channels) ~= 1
+                        % all other measurements for single channel only
+                        disp(['Scope: ERROR ''runMeasurement'' ' ...
+                            'one source channel has to be specified ' ...
+                            '--> skip and exit']);
+                        meas.status  = -1;
+                        meas.channel = '';
+                        return
+                    end
             end
+            
             % copy to output
             meas.parameter = parameter;
-            
-            % check inputs (channels)
-            if length(channels) < 1
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'source channel must not be empty ' ...
-                    '--> abort function']);
-                meas.status  = -1;
-                meas.channel = '';
-                return
-            end
-            
-            if strcmpi(parameter, 'phase')
-                if length(channels) ~= 2
-                    disp(['Scope: WARNING - ''runMeasurement'' ' ...
-                        'set channel = ''1, 2'' for phase measurement ' ...
-                        '--> correct and continue']);
-                    % correct settings (always ascending order (framework))
-                    channels     = {'ch1', 'ch2'};
-                    meas.channel = {'1', '2'};
-                end
-                % only channel 1 has to be used for configuration
-                channels = channels(1); % same as {'ch1'}
-            elseif length(channels) ~= 1
-                % all other measurements for single channels only
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'only one channel has to be specified ' ...
-                    '--> abort function']);
-                meas.status = -1;
-                return
-            end
-            % copy to output
-            meas.channel = strjoin(meas.channel, ', ');
+            meas.channel   = strjoin(meas.channel, ', ');
             % build up config parameter (length of channels is always 1)
-            channel      = strjoin(channels);
+            channel        = strjoin(channels);
                         
             % -------------------------------------------------------------
             % actual code

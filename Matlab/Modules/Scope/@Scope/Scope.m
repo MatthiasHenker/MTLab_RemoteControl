@@ -4,8 +4,8 @@ classdef Scope < VisaIF
     % This class defines common methods for scope control. This class is a
     % sub class of the super class 'VisaIF'. Type (in command window):
     % 'Scope' - to get a full list of accessible scopes which means that
-    %           their IP-addresses (for visa-tcpip) or USB IDs (for 
-    %           visa-usb) are listed in config files 
+    %           their IP-addresses (for visa-tcpip) or USB IDs (for
+    %           visa-usb) are listed in config files
     % 'Scope.listAvailablePackages' - to get a list of installed Scope
     %           packages.
     % Your scope can be controlled by the Scope class, when it is
@@ -14,7 +14,7 @@ classdef Scope < VisaIF
     % All public properties and methods from super class 'VisaIF' can also
     % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
     %
-    % Use 'Scope.doc' for this help page. 
+    % Use 'Scope.doc' for this help page.
     %
     %   - Scope : constructor of sub class (class name)
     %     * use this function to create an object for your scope
@@ -22,15 +22,15 @@ classdef Scope < VisaIF
     %     * default value of showmsg is 'few'
     %     * overloads VisaIF
     %
-    % NOTES: 
-    %     * the output parameter 'status' has the same meaning for all 
-    %       listed methods 
+    % NOTES:
+    %     * the output parameter 'status' has the same meaning for all
+    %       listed methods
     %           status   :  0 when okay
     %                      -1 when something went wrong
     %     * all parameter names and values (varargin) are NOT case sensitive
     %     * vargargin are input as pairs NAME, VALUE
     %     * any number and order of NAME, VALUE pairs can be specified
-    %     * not all parameters and values are supported by all scopes 
+    %     * not all parameters and values are supported by all scopes
     %     * check for warnings and errors
     %
     % additional methods (static) of class 'Scope':
@@ -40,7 +40,7 @@ classdef Scope < VisaIF
     %           Scope.listAvailablePackages
     %
     % additional methods (public) of class 'Scope':
-    %   - clear          : clear status at scope 
+    %   - clear          : clear status at scope
     %     * send SCPI command '*CLS' to scope
     %     * usage:
     %           status = myScope.clear  or  myScope.clear
@@ -57,7 +57,7 @@ classdef Scope < VisaIF
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %           'trace'   : enables or disables specified channel
     %                       'on', "on", 1, true or 'off', "off", 0, false
-    %           'impedance':specifies input termination (when supported) 
+    %           'impedance':specifies input termination (when supported)
     %                       50, '50', "50" or 1e6, '1M', '1e6', "1e6" ...
     %           'vDiv'    : input voltage scaling, positive numeric value,
     %                       in Volt/div; scope will display [-x ..+x]*vDiv;
@@ -70,7 +70,7 @@ classdef Scope < VisaIF
     %                        AC or DC coupling of input signal
     %           'inputdiv': ..., 1, 10, 20, 50, 100, 200, 500, 1000, ...
     %           or 'probe'  used to display correct voltage values
-    %                       at display, 
+    %                       at display,
     %                       =  1 for BNC-BNC cable,
     %                       = 10 for standard probe (10:1)
     %           'bwlimit' : 'off', false, 0 or 'on', true, 1
@@ -86,11 +86,11 @@ classdef Scope < VisaIF
     %     * usage:
     %           status = myScope.configureAcquisition(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'tDiv'    : positive numeric value, specifies the 
-    %                       horizontal (time) scale per division; input 
+    %           'tDiv'    : positive numeric value, specifies the
+    %                       horizontal (time) scale per division; input
     %                       value will be rounded internally,
     %                       scope will show [-N ..+N]*tDiv at display
-    %           'samplerate' : alternative to tDiv (some scopes only), 
+    %           'samplerate' : alternative to tDiv (some scopes only),
     %                       sample rate of signals, with N - number of div
     %                       at screen: 2*N*tDiv = numOfSamples / samplerate,
     %                       affects tDiv and numOfSamples
@@ -98,94 +98,94 @@ classdef Scope < VisaIF
     %                       number of samples for waveforms
     %           'mode'    : 'sample', 'peakdetect', average, ...
     %           'numAverage' : positive numeric value, specifies the number
-    %                       of waveform acquisitions that make up an 
-    %                       averaged waveform (only of interest when 
+    %                       of waveform acquisitions that make up an
+    %                       averaged waveform (only of interest when
     %                       mode=average)
     %
     %   - configureTrigger : configure trigger parameters
     %     * usage:
     %           status = myScope.configureTrigger(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'mode'    : specify the relation between trigger events and 
+    %           'mode'    : specify the relation between trigger events and
     %                       taking acquisitions;
     %                       'single'- wait for next trigger event, capture
     %                                 waveform and stop acquisitions
     %                       'normal'- wait for next trigger event, capture
-    %                                 waveform and wait for next trigger 
-    %                                 event 
+    %                                 waveform and wait for next trigger
+    %                                 event
     %                       'auto'  - similar to normal, but a trigger
     %                                 event will be generated automatically
-    %                                 when no trigger is detected within a 
+    %                                 when no trigger is detected within a
     %                                 specific time period
     %           'type'    : selects trigger option;
     %                       'risingedge' or 'fallingedge'
     %           'source'  : selects trigger source,
     %                       'ch1', 'ch2'  for channel 1 or 2
-    %                       'ext', 'ext5' for external trigger 
+    %                       'ext', 'ext5' for external trigger
     %                                     (ext5 with attuation factor 5)
     %                       'AC-line'     for power line signal trigger
     %           'coupling': coupling of trigger signal,
     %                       'AC'         - AC coupling
     %                       'DC'         - DC coupling
     %                       'LFReject'   - like AC, but with additional
-    %                                      high pass filter to remove 
+    %                                      high pass filter to remove
     %                                      low-frequency signal parts
     %                       'HFRreject'  - like DC, but with additional
-    %                                      low pass filter to remove 
+    %                                      low pass filter to remove
     %                                      high-frequency signal parts
     %                       'NoiseReject'- low DC sensitivity
     %           'level'   : set trigger level in Volt, double;
     %                       use NaN to set level to 50% of signal range
     %           'delay'   : set (horizontal) delay in s, double;
     %                       value 0 means trigger event at center of
-    %                       display, neg. values shift curve to the right 
+    %                       display, neg. values shift curve to the right
     %
-    %   - configureZoom : configure zoom window 
+    %   - configureZoom : configure zoom window
     %     * usage:
     %           status = myScope.configureTrigger(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'zoomFactor'  : specifies zoom factor (greater than 1), 
+    %           'zoomFactor'  : specifies zoom factor (greater than 1),
     %                           default is 1 (dectivates zoom window)
     %                           value >= 2 activates zoom window
     %           'zoomPosition': specifies position of zoom window in s,
     %                           default is 0 (center of waveform/trigger)
     %
-    %   - autoset        : Causes the oscilloscope to adjust its vertical, 
-    %                      horizontal, and trigger controls to display a 
-    %                      stable waveform 
+    %   - autoset        : Causes the oscilloscope to adjust its vertical,
+    %                      horizontal, and trigger controls to display a
+    %                      stable waveform
     %     * uses the scope-internal (builtin) AUTOSET function (button)
     %     * because quite a lot of vertical, horizontal, and trigger
     %       parameters will be modified, it is sensible to use this method
     %       for initial setup only, use autoscale method to adjust
     %       horizontal or vertical scaling while measurements
-    %     * it initiates a single execution of parameter adjustment. That 
-    %       means later signal changes (level, frequency) will not change 
+    %     * it initiates a single execution of parameter adjustment. That
+    %       means later signal changes (level, frequency) will not change
     %       vertical, horizontal or trigger settings
     %     * usage:
     %           status = myScope.autoset
     %
-    %   - autoscale      : macro to adjust voltage (vertical) and/or time 
+    %   - autoscale      : macro to adjust voltage (vertical) and/or time
     %                      (horizontal) scaling parameters
     %     * similar to autoset, but no trigger options are modified
     %     * preferred method in automated test scripts
-    %     * autoscale can fail when settings are out of capture range 
+    %     * autoscale can fail when settings are out of capture range
     %       ==> it is intended for adjustment and not for initial setup
     %     * vertical settings will be adjusted for enabled channels only
     %     * horizontal settings are adjusted according to trigger channel
-    %     * BUT autoscale can be CONFIGURED by properties 
+    %     * BUT autoscale can be CONFIGURED by properties
     %       AutoscaleHorizontalSignalPeriods and AutoscaleVerticalScalingFactor
     %     * usage:
     %           status = myScope.autoscale(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'mode'    : 'hor'  - (or 'horizontal') only horizontal 
-    %                                (tDiv) parameter will be adjusted 
-    %                       'vert' - (or 'vertical') only vertical (vDiv, 
+    %           'mode'    : 'hor'  - (or 'horizontal') only horizontal
+    %                                (tDiv) parameter will be adjusted
+    %                       'vert' - (or 'vertical') only vertical (vDiv,
     %                                vOffset) parameters will be adjusted
     %                                on active channels
     %                       'both' - vertical and horizontal scaling
     %                                parameters will be adjusted
     %                       optional parameter, default is 'both'
-    %           'channel' : specifies channel(s) to be adjusted, 
+    %           'channel' : specifies channel(s) to be adjusted,
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       optional parameter, default is all channels
     %
@@ -193,22 +193,22 @@ classdef Scope < VisaIF
     %                      run/stop button at scope
     %     * usage:
     %           status = myScope.acqRun   or   myScope.acqRun
-    %       
+    %
     %   - acqStop        : stop data acquisitions at scope like pressing
     %                      run/stop button at scope
     %     * usage:
     %           status = myScope.acqStop   or   myScope.acqStop
-    %       
+    %
     %   - makeScreenShot : make a screenshot of scope display and save to
     %                      file
     %     * usage:
     %           status = myScope.makeScreenShot(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'filename' : file name as char,  
+    %           'filename' : file name as char,
     %           filename: char array, specifying filename; omit file
     %                     extension for default
     %           darkmode: 'off', 0, false (default): white background color
-    %                     'on', 1, true: dark background color 
+    %                     'on', 1, true: dark background color
     %
     %   - runMeasurement : request measurement value
     %     * usage:
@@ -230,7 +230,7 @@ classdef Scope < VisaIF
     %                       delay measurements
     %                       nearly all parameters support a single channel,
     %                       except for e.g. phase and delay measurements
-    %          'parameter': specifies parameter for measurement, 
+    %          'parameter': specifies parameter for measurement,
     %                       list of supported measurements depend on scope
     %                         'frequency' - frequency
     %                         'period'    - period
@@ -246,6 +246,7 @@ classdef Scope < VisaIF
     %                         'high'      - mean value of the high level
     %                         'low'       - mean value of the low level
     %                         'amplitude' - high-to-low (similar to pk-pk)
+    %                         'overshoot' - overshoot of nearest edge
     %                         'povershoot'- positive overshoot (square w.)
     %                         'novershoot'- negative overshoot (square w.)
     %                         'risetime'  - 10% to 90% rise time
@@ -257,7 +258,7 @@ classdef Scope < VisaIF
     %                         'dutycycle' - (positive) duty cycle
     %                         'phase'     - phase between two channels
     %                         'delay'     - delay between two channels
-    %                       mandatory parameter, method will print out a 
+    %                       mandatory parameter, method will print out a
     %                       list of all supported measurements for the
     %                       connected scope when this parameter is empty
     %
@@ -354,14 +355,16 @@ classdef Scope < VisaIF
     %
     %   - with read/write access
     %     * AutoscaleHorizontalSignalPeriods : config parameter for
-    %       autoscale method, specifies number of signal periods in
-    %       display, sensible range is 2 .. 50        
+    %       autoscale method, specifies number of signal periods in display,
+    %       sensible range is 2 .. 50 with default value 5 
+    %       setting range is 1 .. 1000
     %     * AutoscaleVerticalScalingFactor : config parameter for
     %       autoscale method, specifies amplitude range in display,
-    %       1.00 means full display@scope range (-N ..+N) vDiv,
-    %       sensible range is 0.3 .. 0.95,
+    %       1.00 means full display@scope range (-4 ..+4) vDiv,
+    %       sensible range is 0.3 .. 1.0 with default value 0.95 
+    %       setting range is 0.1 ... 1.25
     %       values larger than 1 are possible for some scopes, but ADC
-    %       overloading can occure and trigger stage will possibly fail 
+    %       overloading can occure and trigger stage will possibly fail
     %
     % ---------------------------------------------------------------------
     % example for usage of class 'Scope':
@@ -369,10 +372,10 @@ classdef Scope < VisaIF
     %
     %   disp(['Version: ' myScope.ScopeVersion]); % show versions
     %   disp(['Version: ' myScope.VisaIFVersion]);
-    % 
+    %
     %   myScope.open;                     % open interface
-    %   myScope.reset;                    % reset scope 
-    % 
+    %   myScope.reset;                    % reset scope
+    %
     %   myScope.configureInput( ...
     %       'channel',  [1 2] , ...
     %       'trace',    'on'  , ...
@@ -381,9 +384,9 @@ classdef Scope < VisaIF
     %       'coupling', 'dc'  , ...
     %       'bwlimit',  'off' , ...
     %       'inputdiv', 1);    % or 'probe'
-    %   
+    %
     %   % set up scope with 'configureAcquisition',  'configureTrigger'
-    %   
+    %
     %   myScope.acqStop;
     %   wavedata = myScope.captureWaveForm('channel', 'ch1');
     %
@@ -392,11 +395,11 @@ classdef Scope < VisaIF
     %   % low level commands (inherited from super class 'VisaIF')
     %   % for supported SCPI commands see programmer guide of your scope
     %   myScope.query('wfmpre:wfid?');         % list some settings
-    %   myScope.write('display:persitence 5'); % 5s 
-    % 
+    %   myScope.write('display:persistence 5'); % 5s
+    %
     %   myScope.close;                    % close interface
     %   myScope.delete;                   % delete object
-    % 
+    %
     % ---------------------------------------------------------------------
     % HTW Dresden, faculty of electrical engineering
     %   for version and release date see properties 'ScopeVersion' and
@@ -414,7 +417,7 @@ classdef Scope < VisaIF
     %   - Constantin Wimmer (student, automation)
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
-       
+    
     
     % ---------------------------------------------------------------------
     % Rules:
@@ -426,7 +429,7 @@ classdef Scope < VisaIF
     %
     % important change (compared to former ScopeTekTDS1001C class)
     % runMeasurement: phase : always ch1, ch2 (ch1 -> ch2) inverted sign
-    % 
+    %
     % trace  (syntax examples)
     % 'off', "off", '0', "0", 0, false  ==> '0'
     % 'on',  "on",  '1', "1", 1, true   ==> '1'
@@ -447,7 +450,7 @@ classdef Scope < VisaIF
     
     properties
         AutoscaleHorizontalSignalPeriods double = 5;
-        AutoscaleVerticalScalingFactor   double = 0.9;
+        AutoscaleVerticalScalingFactor   double = 0.95;
     end
     
     properties(SetAccess = private, GetAccess = private)
@@ -509,7 +512,7 @@ classdef Scope < VisaIF
             if isempty(obj.Device)
                 error('Initialization failed.');
             end
-                
+            
             % build up path to selected device package directory
             fString = [ ...
                 className    '.' ...
@@ -530,8 +533,8 @@ classdef Scope < VisaIF
         
         function delete(obj)
             % destructor
-
-            try 
+            
+            try
                 % save property
                 myShowMsg = obj.ShowMessages;
                 % close connection silently
@@ -543,7 +546,7 @@ classdef Scope < VisaIF
                 disp('Closing connection to scope causes warnings.');
             end
             
-            % only run delete when object exists 
+            % only run delete when object exists
             if ~isempty(obj.MacrosObj)
                 % delete MacroObj
                 obj.MacrosObj.delete;
@@ -1021,8 +1024,8 @@ classdef Scope < VisaIF
                     && isreal(periods) && periods > 0
                 % check and limit
                 periods = double(periods);
-                periods = min(periods, 60);
-                periods = max(periods, 0.5);
+                periods = min(periods, 1000);
+                periods = max(periods, 1);
                 % set property
                 obj.AutoscaleHorizontalSignalPeriods = periods;
             else
@@ -1042,8 +1045,8 @@ classdef Scope < VisaIF
                     && isreal(factor) && factor > 0
                 % check and limit
                 factor = double(factor);
-                factor = min(factor, 1.1);
-                factor = max(factor, 0.15);
+                factor = min(factor, 1.25);
+                factor = max(factor, 0.1);
                 % set property
                 obj.AutoscaleVerticalScalingFactor = factor;
             else

@@ -1118,22 +1118,49 @@ classdef ScopeMacros < handle
             %                   vDiv, vOffset for vertical and
             %                   tDiv for horizontal
             %   'mode'        : 'hor', 'vert', 'both'
+            %   'channel'     : 1 .. 2
             
             % init output
             status = NaN;
             
             % initialize all supported parameters
-            mode   = '';
+            mode     = '';
+            channels = {};
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
                 switch paramName
+                    case 'channel'
+                        % split and copy to cell array of char
+                        channels = split(paramValue, ',');
+                        % remove spaces
+                        channels = regexprep(channels, '\s+', '');
+                        % loop
+                        for cnt = 1 : length(channels)
+                            switch channels{cnt}
+                                case ''
+                                    % do nothing
+                                case {'1', '2'}
+                                    % add prefix 'ch' for channel
+                                    channels{cnt} = [':CHANnel' channels{cnt}];
+                                otherwise
+                                    channels{cnt} = '';
+                                    disp(['Scope: Warning - ' ...
+                                        '''autoscale'' invalid ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
+                            end
+                        end
+                        % remove invalid (empty) entries
+                        channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
                         switch lower(paramValue)
                             case ''
                                 mode = 'both'; % set to default
-                                disp('  - mode         : BOTH');
+                                if obj.ShowMessages
+                                    disp('  - mode         : BOTH (coerced)');
+                                end
                             case {'hor', 'horizontal'}
                                 mode = 'horizontal';
                             case {'vert', 'vertical'}
@@ -1141,6 +1168,7 @@ classdef ScopeMacros < handle
                             case 'both'
                                 mode = 'both';
                             otherwise
+                                mode = '';
                                 disp(['Scope: Warning - ''autoscale'' ' ...
                                     'mode parameter is unknown --> ignore ' ...
                                     'and continue']);
@@ -1159,35 +1187,46 @@ classdef ScopeMacros < handle
             % for horizontal (tDiv) scaling
             numOfSignalPeriods    = obj.AutoscaleHorizontalSignalPeriods;
             %
-            % ratio of ADC-fullscale range (CHECK description !!!)
-            % 1.27 means full ADC-range, ATTENTION trigger stage will be
-            %      overloaded and reports senseless trigger frequencies
-            % 1.00 means full display@scope range (-4 ..+4) vDiv
-            % 0.55 like with autoset (1 channel is active only)
-            % 0.30 like with autoset (2 channels are active)
+            % ratio of ADC-fullscale range
+            % > 1  ATTENTION: ADC can be overloaded
+            % 1.25 means 100% ADC range (clipped in display)
+            % 1.0 means 80% ADC-range and full display range (-4 ..+4) vDiv
+            % sensible range 0.5 .. 0.9
             verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
-            channelOn = [0, 0]; % which channel is displayed?
-            channels = {':CHANnel1', ':CHANnel2'};
-            for cnt = 1:length(channels)
-                % check if trace is on or off
-                channelOn(cnt) = str2double(char(obj.VisaIFobj.query(...
-                    [channels{cnt} ':DISPlay?'])));
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            % define default when channel parameter is missing
+            if isempty(channels)
+                channels = {':CHANnel1', ':CHANnel2'};
+                if obj.ShowMessages
+                    disp('  - channel      : 1, 2 (coerced)');
+                end
             end
             
             % --> for horizontal scaling
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
                 for cnt = 1:length(channels)
                     % check if trace is on or off
-                    if channelOn(cnt)
+                    channelOn = obj.VisaIFobj.query([channels{cnt} ':DISPlay?']);
+                    channelOn = str2double(char(channelOn));
+                    if isnan(channelOn)
+                        channelOn = false;
+                        status    = -1;
+                    else
+                        channelOn = logical(channelOn);
+                    end
+                    if channelOn
                         % init
                         loopcnt = 0;
                         maxcnt  = 8;
                         while loopcnt < maxcnt
                             % measure min and max voltage
-                            %measmax = obj.VisaIFobj.runMeasurement(...
-                            %    'channel',num2str(cnt),'parameter', 'max');
-                            measmax = obj.runMeasurement(...
-                                'channel',num2str(cnt),'parameter', 'max');
+                            measmax = obj.runMeasurement( ...
+                                'channel'   , channels{cnt}(end), ...
+                                'parameter' , 'max');
                             if ~measmax.errorid
                                 vMax = measmax.value;
                                 cMax = measmax.overload;
@@ -1203,15 +1242,14 @@ classdef ScopeMacros < handle
                             else
                                 disp(['Scope: Warning - ''autoscale'': ' ...
                                     'voltage (vMax) measurement failed ' ...
-                                    ' for channel ' num2str(cnt) '.' ...
-                                    ' Skip vertical scaling.']);
+                                    'for channel ' channels{cnt}(end) ...
+                                    '. Skip vertical scaling.']);
                                 break;
                             end
                             
-                            %measmin = obj.VisaIFobj.runMeasurement(...
-                            %    'channel',num2str(cnt),'parameter', 'min');
-                            measmin = obj.runMeasurement(...
-                                'channel',num2str(cnt),'parameter', 'min');
+                            measmin = obj.runMeasurement( ...
+                                'channel'   , channels{cnt}(end), ...
+                                'parameter' , 'min');
                             if ~measmin.errorid
                                 vMin = measmin.value;
                                 cMin = measmin.overload;
@@ -1227,8 +1265,8 @@ classdef ScopeMacros < handle
                             else
                                 disp(['Scope: Warning - ''autoscale'': ' ...
                                     'voltage (vMin) measurement failed ' ...
-                                    ' for channel ' num2str(cnt) '.' ...
-                                    ' Skip vertical scaling.']);
+                                    'for channel ' channels{cnt}(end) ...
+                                    '. Skip vertical scaling.']);
                                 break;
                             end
                             
@@ -1241,7 +1279,7 @@ classdef ScopeMacros < handle
                                 if statQuery ~= 0 || isnan(vDiv)
                                     disp(['Scope: Warning - ''autoscale'': ' ...
                                         'No scaling returned for channel ' ...
-                                        num2str(cnt) ...
+                                        channels{cnt}(end) ...
                                         '. Skip vertical scaling.']);
                                     break
                                 end
@@ -1252,7 +1290,7 @@ classdef ScopeMacros < handle
                                 if statQuery ~= 0 || isnan(vOffset)
                                     disp(['Scope: Warning - ''autoscale'': ' ...
                                         'No offset returned for channel ' ...
-                                        num2str(cnt) ...
+                                        channels{cnt}(end) ...
                                         '. Skip vertical scaling.']);
                                     break
                                 end
@@ -1281,11 +1319,11 @@ classdef ScopeMacros < handle
                             
                             % send new vDiv parameter to scope
                             %obj.VisaIFobj.configureInput(...
-                            %    'channel' , cnt, ...
+                            %    'channel' , channels{cnt}(end), ...
                             %    'vDiv'    , vDiv, ...
                             %    'vOffset' , vOffset);
                             obj.configureInput(...
-                                'channel' , num2str(cnt, '%d'), ...
+                                'channel' , channels{cnt}(end), ...
                                 'vDiv'    , num2str(vDiv, 4),  ...
                                 'vOffset' , num2str(vOffset, 4));
                             
@@ -1486,17 +1524,18 @@ classdef ScopeMacros < handle
             meas.status    = NaN;
             meas.value     = NaN;
             meas.unit      = '';
-            meas.overload  = NaN;
-            meas.underload = NaN;
             meas.channel   = {};
             meas.parameter = '';
+            %
+            meas.overload  = NaN;
+            meas.underload = NaN;
             meas.errorid   = NaN;
             meas.errormsg  = '';
             
             % default values
             channels  = {};
             parameter = '';
-            param2    = ''; % additional parameter (option for measurement) 
+            param2    = ''; % additional parameter (option for measurement)
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -1510,6 +1549,9 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
+                                case ''
+                                    channels{cnt}     = '';
+                                    meas.channel{cnt} = '';
                                 case '1'
                                     channels{cnt}     = 'CHANNEL1';
                                     meas.channel{cnt} = '1';
@@ -1521,7 +1563,8 @@ classdef ScopeMacros < handle
                                     meas.channel{cnt} = '';
                                     disp(['Scope: WARNING - ' ...
                                         '''runMeasurement'' invalid ' ...
-                                        'channel --> ignore and continue']);
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -1535,22 +1578,41 @@ classdef ScopeMacros < handle
                                 parameter = '';
                             case {'frequency', 'freq'}
                                 parameter = 'frequency';
-                            case {'period', 'peri'}
+                            case {'period', 'peri', 'per'}
                                 parameter = 'period';
                             case 'mean'
                                 parameter = 'vaverage';
                                 param2    = 'cycle';
-                            case {'pkpk', 'pk-pk', 'pk2pk'}
-                                parameter = 'vpp';
-                            case {'crms', 'crm'}
+                            case {'cycrms', 'crms'}
                                 parameter = 'vrms';
                                 param2    = 'cycle';
                             case 'rms'
                                 parameter = 'vrms';
-                            case {'minimum', 'min'}
-                                parameter = 'vmin';
+                            case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
+                                parameter = 'vpp';
                             case {'maximum', 'max'}
                                 parameter = 'vmax';
+                            case {'minimum', 'min'}
+                                parameter = 'vmin';
+                            case {'high', 'top'}
+                                parameter = 'vtop';
+                            case {'low', 'base'}
+                                parameter = 'vbase';
+                            case {'amplitude', 'amp'}
+                                parameter = 'vamplitude';
+                            case {'overshoot', 'over'}
+                                parameter = 'overshoot';
+                            case {'povershoot', 'novershoot'}
+                                disp(['Scope: WARNING - ' ...
+                                    '''runMeasurement'' coerce ' ...
+                                    'overshoot measurement to nearest ' ...
+                                    'edge--> coerce and continue']);
+                                if obj.ShowMessages
+                                    disp('  - parameter    : overshoot (coerced)');
+                                end
+                                parameter = 'overshoot';
+                            case 'preshoot'  % additional parameter
+                                parameter = 'preshoot';
                             case {'risetime', 'rise'}
                                 parameter = 'risetime';
                             case {'falltime', 'fall'}
@@ -1559,26 +1621,13 @@ classdef ScopeMacros < handle
                                 parameter = 'pwidth';
                             case {'negwidth', 'nwidth'}
                                 parameter = 'nwidth';
-                            case 'dutycycle'
+                            case {'dutycycle', 'dutycyc', 'dcycle', 'dcyc'}
                                 parameter = 'dutycycle';
                             case 'phase'
                                 parameter = 'phase';
-                                %
-                                % additional parameters
                             case 'delay'
                                 parameter = 'delay';
-                            case 'overshoot'
-                                parameter = 'overshoot';
-                            case 'preshoot'
-                                parameter = 'preshoot';
-                            case {'amp', 'amplitude'}
-                                parameter = 'vamplitude';
-                            case 'base'
-                                parameter = 'vbase';
-                            case 'top'
-                                parameter = 'vtop';
                             otherwise
-                                % like cursorrms
                                 disp(['Scope: ERROR - ''runMeasurement'' ' ...
                                     'measurement type ' paramValue ...
                                     ' is unknown --> abort function']);
@@ -1592,47 +1641,66 @@ classdef ScopeMacros < handle
             end
             
             % check inputs (parameter)
-            if isempty(parameter)
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'measurement parameter must not be empty ' ...
-                    '--> abort function']);
-                meas.status = -1;
-                return
+            switch lower(parameter)
+                case ''
+                    disp(['Scope: ERROR ''runMeasurement'' ' ...
+                        'supported measurement parameters are ' ...
+                        '--> skip and exit']);
+                    disp('  ''frequency''');
+                    disp('  ''period''');
+                    disp('  ''mean''');
+                    disp('  ''cycrms''');
+                    disp('  ''rms''');
+                    disp('  ''pk-pk''');
+                    disp('  ''maximum''');
+                    disp('  ''minimum''');
+                    disp('  ''high''');
+                    disp('  ''low''');
+                    disp('  ''amplitude''');
+                    disp('  ''overshoot''');
+                    disp('  ''preshoot''');
+                    disp('  ''risetime''');
+                    disp('  ''falltime''');
+                    disp('  ''poswidth''');
+                    disp('  ''negwidth''');
+                    disp('  ''dutycycle''');
+                    disp('  ''phase''');
+                    disp('  ''delay''');
+                    meas.status  = -1;
+                    meas.channel = '';
+                    return
+                case {'phase', 'delay'}
+                    if length(channels) ~= 2
+                        disp(['Scope: Warning - ''runMeasurement'' ' ...
+                            'two source channels have to be specified ' ...
+                            'for phase and delay measurements ' ...
+                            '--> coerce and continue']);
+                        if obj.ShowMessages
+                            disp('  - channel      : 1, 2 (coerced)');
+                        end
+                        % correct settings (always ascending order (framework))
+                        channels     = {'CHANNEL1', 'CHANNEL2'};
+                        meas.channel = {'1', '2'};
+                    end
+                    % only channel 1 has to be used for configuration
+                    channels = channels(1); % same as {'ch1'}
+                otherwise
+                    if length(channels) ~= 1
+                        % all other measurements for single channel only
+                        disp(['Scope: ERROR ''runMeasurement'' ' ...
+                            'one source channel has to be specified ' ...
+                            '--> skip and exit']);
+                        meas.status  = -1;
+                        meas.channel = '';
+                        return
+                    end
             end
+            
             % copy to output
             meas.parameter = parameter;
-            
-            % check inputs (channels)
-            if length(channels) < 1
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'source channel must not be empty ' ...
-                    '--> abort function']);
-                meas.status  = -1;
-                meas.channel = '';
-                return
-            end
-            
-            if strcmpi(parameter, 'phase') || strcmpi(parameter, 'delay')
-                if length(channels) ~= 2
-                    disp(['Scope: WARNING - ''runMeasurement'' ' ...
-                        'set channel = ''1, 2'' for phase measurement ' ...
-                        '--> correct and continue']);
-                    % correct settings (always ascending order (framework))
-                    channels     = {'CHANNEL1', 'CHANNEL2'};
-                    meas.channel = {'1', '2'};
-                end
-            elseif length(channels) ~= 1
-                % all other measurements for single channels only
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'only one channel has to be specified ' ...
-                    '--> abort function']);
-                meas.status = -1;
-                return
-            end
-            % copy to output
-            meas.channel = strjoin(meas.channel, ', ');
+            meas.channel   = strjoin(meas.channel, ', ');
             % build up config parameter
-            channel      = strjoin(channels, ',');
+            channel        = strjoin(channels, ',');
             
             % -------------------------------------------------------------
             % actual code
@@ -1683,7 +1751,7 @@ classdef ScopeMacros < handle
                         'NWIDTH', 'DELAY'}
                     meas.unit = 's';
                 case {'DUTYCYCLE', 'OVERSHOOT', 'PRESHOOT'}
-                    meas.unit = '';
+                    meas.unit = '%';
                 case 'PHASE'
                     meas.unit = 'deg';
                 otherwise
