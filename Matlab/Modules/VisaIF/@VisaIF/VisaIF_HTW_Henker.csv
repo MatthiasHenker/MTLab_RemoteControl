@@ -71,6 +71,7 @@ Siglent-SPD3303X ;; Siglent  ;; SPD3300X ;; DCPwr      ;; visa-usb  ;; USB0::0x0
 #             10^6 Samples = 2 * 10^6 Bytes + some overhead
 Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-tcpip;; TCPIP0::192.168.178.11    ;;   20.01e6 ;;  20.01e6 ;; 0
 Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-usb  ;; USB0::0xF4EC::0x1101::\w+ ;;   20.01e6 ;;  20.01e6 ;; 0
+Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; demo      ;; USB0::0xF4EC::0x1101::demo;;   20.01e6 ;;  20.01e6 ;; 0
 # 
 # Keithley DMM                     (SID = 04380812)
 # OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine

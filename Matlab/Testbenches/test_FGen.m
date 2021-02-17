@@ -5,15 +5,15 @@ close all;
 clc;
 
 %FGenName = 'Agi';        % Agilent  generator
-%FGenName = 'SDG';        % Siglent  generator
-FGenName = 'Key';        % Keysight generator
-FGenID   = '';           % don't care ==> connect to first found generator
+FGenName = 'SDG';        % Siglent  generator
+%FGenName = 'Key';        % Keysight generator
+%FGenID   = '';           % don't care ==> connect to first found generator
 %FGenID   = 'MY44022964'; % a specific generator (Agilent/Keysight)
 
 
 % demo mode or with real hardware?
-%interface = 'demo';
-interface = 'visa-usb';
+interface = 'demo';
+%interface = 'visa-usb';
 %interface = 'visa-tcpip';
 
 showmsg   = 'all';
@@ -22,26 +22,32 @@ showmsg   = 'all';
 
 % -------------------------------------------------------------------------
 % display versions
-disp(['Version of FGen              : ' FGen.FGenVersion]);
-disp(['Version of VisaIF            : ' FGen.VisaIFVersion]);
-disp(['Version of VisaIFLogEventData: ' VisaIFLogEventData.VisaIFLogEventVersion]);
-disp(['Version of VisaIFLogger      : ' VisaIFLogger.VisaIFLoggerVersion]);
+disp(['Version of FGen              : ' FGen.FGenVersion ...
+    ' (' FGen.FGenDate ')']);
+disp(['Version of VisaIF            : ' FGen.VisaIFVersion ...
+    ' (' FGen.VisaIFDate ')']);
+disp(['Version of VisaIFLogEventData: ' ...
+    VisaIFLogEventData.VisaIFLogEventVersion ...
+    ' (' VisaIFLogEventData.VisaIFLogEventDate ')']);
+disp(['Version of VisaIFLogger      : ' ...
+    VisaIFLogger.VisaIFLoggerVersion ...
+    ' (' VisaIFLogger.VisaIFLoggerDate ')']);
 disp(' ');
 
 % -------------------------------------------------------------------------
 % print out some information
-FGen.listAvailableConfigFiles;
-FGen.listContentOfConfigFiles;
+%FGen.listAvailableConfigFiles;
+%FGen.listContentOfConfigFiles;
 FGen.listAvailableVisaUsbDevices;
-FGen.listAvailablePackages;
+%FGen.listAvailablePackages;
 
 %myFGen = FGen({FGenName, FGenID}, interface);
 myFGen = FGen(FGenName, interface, showmsg);
-myFGen.EnableCommandLog = true;
+%myFGen.EnableCommandLog = true;
 %myFGen.ShowMessages     = 'few';
 
-myLog = VisaIFLogger();
-myLog.ShowMessages = 0;
+%myLog = VisaIFLogger();
+%myLog.ShowMessages = 0;
 
 % display details (properties) of FGen object
 %myFGen
@@ -49,6 +55,8 @@ myLog.ShowMessages = 0;
 myFGen.open;
 %myFGen.clear;
 myFGen.reset;
+
+return
 
 %myFGen.unlock;
 %myFGen.lock;
