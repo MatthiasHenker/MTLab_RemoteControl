@@ -2,10 +2,10 @@ classdef FGenMacros < handle
     % generator macros for Siglent SDG6022X, SDG6032X, SDG6052X
     %
     % add device specific documentation (when sensible)
-       
+    
     properties(Constant = true)
         MacrosVersion = '0.0.2';      % release version
-        MacrosDate    = '2021-01-09'; % release date
+        MacrosDate    = '2021-02-17'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -34,6 +34,7 @@ classdef FGenMacros < handle
             end
         end
         
+        % x
         function status = runAfterOpen(obj)
             
             % init output
@@ -62,6 +63,7 @@ classdef FGenMacros < handle
             end
         end
         
+        % x
         function status = runBeforeClose(obj)
             
             % init output
@@ -93,19 +95,22 @@ classdef FGenMacros < handle
                 status = -1;
             end
             % clear status (event registers and error queue)
-            if obj.VisaIFobj.write('*CLS')
+            % command not available
+            %if obj.VisaIFobj.write('*CLS')
+            %    status = -1;
+            %end
+            
+            % set phase-locked mode (both channels are NOT independent)
+            % default state after generator reset or power-on is already
+            % phase-locked
+            if obj.VisaIFobj.write('MODE PHASE-LOCKED')
                 status = -1;
             end
-            
-            disp('ToDo ...');
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            % verify setting
+            response = obj.VisaIFobj.query('Mode?');
+            if ~strcmpi(char(response), 'MODE PHASE-LOCKED')
+                status = -1;
+            end
             
             % wait for operation complete
             obj.VisaIFobj.opc;
@@ -124,25 +129,46 @@ classdef FGenMacros < handle
         
         function status = clear(obj)
             % clear status at generator
-            status = obj.VisaIFobj.write('*CLS');
+            
+            %status = obj.VisaIFobj.write('*CLS');
+            status = 0;
+            
+            disp(['FGen Warning - Method ''clear'' is not ' ...
+                'supported for ']);
+            disp(['  ' obj.VisaIFobj.Vendor '-' ...
+                obj.VisaIFobj.Product ...
+                ' --> skip and continue']);
         end
-                 
+        
         function status = lock(obj)
             % lock all buttons at generator
             
-            disp('ToDo ...');
+            %status = obj.VisaIFobj.write('XXX');
             status = 0;
+            
+            disp(['FGen Warning - Method ''lock'' is not ' ...
+                'supported for ']);
+            disp(['  ' obj.VisaIFobj.Vendor '-' ...
+                obj.VisaIFobj.Product ...
+                ' --> skip and continue']);
         end
         
         function status = unlock(obj)
             % unlock all buttons at generator
             
-            disp('ToDo ...');
+            %status = obj.VisaIFobj.write('XXX');
             status = 0;
+            
+            disp(['FGen Warning - Method ''unlock'' is not ' ...
+                'supported for ']);
+            disp(['  ' obj.VisaIFobj.Vendor '-' ...
+                obj.VisaIFobj.Product ...
+                ' --> skip and continue']);
         end
         
         % -----------------------------------------------------------------
         
+        % x
         function status = configureOutput(obj, varargin)
             % configureOutput : configure output of specified channels
             %   'channel'     : '1' '1, 2'
@@ -195,7 +221,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '(default)']);
+                                            '(coerced)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'C1';
@@ -204,8 +230,8 @@ classdef FGenMacros < handle
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['FGen: Warning - ''configureOutput'' ' ...
-                                        'invalid channel --> ignore ' ...
-                                        'and continue']);
+                                        'invalid channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -224,7 +250,7 @@ classdef FGenMacros < handle
                                     waveform = '';
                                     disp(['FGen: Warning - ' ...
                                         '''configureOutput'' ' ...
-                                        'waveform parameter is unknown ' ...
+                                        'waveform parameter value is unknown ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -244,7 +270,7 @@ classdef FGenMacros < handle
                                     unit = '';
                                     disp(['FGen: Warning - ' ...
                                         '''configureOutput'' ' ...
-                                        'unit parameter is unknown ' ...
+                                        'unit parameter value is unknown ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -339,8 +365,6 @@ classdef FGenMacros < handle
             for cnt = 1:length(channels)
                 channel = channels{cnt};
                 
-                disp(['ToDo ... (' channel  ')']);
-                
                 % --- set waveform ----------------------------------------
                 if ~isempty(waveform)
                     
@@ -351,8 +375,57 @@ classdef FGenMacros < handle
                 % --- set outputimp ---------------------------------------
                 if ~isempty(outputimp)
                     
-                    disp('ToDo ... (outputimp)');
+                    % round and coerce input value
+                    outputimp = round(outputimp);
+                    outimpStr = num2str(outputimp, '%d');
+                    if outputimp > 1e5
+                        outputimp = inf;
+                        outimpStr = 'HZ';
+                        if obj.ShowMessages
+                            disp('  - outputimp    : inf (coerced)');
+                        end
+                    elseif outputimp < 50
+                        outputimp = 50;
+                        outimpStr = '50';
+                        if obj.ShowMessages
+                            disp('  - outputimp    : 50 (coerced)');
+                        end
+                    end
                     
+                    % set parameter
+                    obj.VisaIFobj.write([channel ':OUTPUT LOAD,' outimpStr]);
+                    % verify
+                    response = obj.VisaIFobj.query([channel ':OUTPUT?']);
+                    response = char(response);
+                    if startsWith(response, [channel ':OUTP '])
+                        % remove header
+                        response = response(8:end);
+                        % separate parameter
+                        ParamList = split(response, ',');
+                        ParamList = strtrim(ParamList);
+                        % verify response string with requested settings
+                        if length(ParamList) >= 3
+                            % ParamList{1} : output state is not of interest
+                            if strcmpi(ParamList{2}, 'LOAD')
+                                % okay
+                                if strcmpi(ParamList{3}, outimpStr)
+                                    % okay
+                                else
+                                    % error (incorrect output impedance)
+                                    status = -1;
+                                end
+                            else
+                                % error (incorrect parameter name)
+                                status = -1;
+                            end
+                        else
+                            % error (incorrect number of parameters)
+                            status = -1;
+                        end
+                    else
+                        % error (incorrect header of response)
+                        status = -1;
+                    end
                 end
                 
                 % --- set stdev -------------------------------------------
@@ -391,7 +464,7 @@ classdef FGenMacros < handle
                 
                 % --- set frequency ---------------------------------------
                 if ~isempty(frequency)
-                   
+                    
                     disp('ToDo ... (frequency)');
                     
                 end
@@ -441,6 +514,7 @@ classdef FGenMacros < handle
             
         end
         
+        % x
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
@@ -483,7 +557,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '   (default)']);
+                                            '   (coerced)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'C1';
@@ -492,8 +566,8 @@ classdef FGenMacros < handle
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['FGen: Warning - ''configureOutput'' ' ...
-                                        'invalid channel --> ignore ' ...
-                                        'and continue']);
+                                        'invalid channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -508,7 +582,7 @@ classdef FGenMacros < handle
                                     mode = '';
                                     disp(['FGen: Warning - ' ...
                                         '''arbWaveform'' ' ...
-                                        'mode parameter is unknown ' ...
+                                        'mode parameter value is unknown ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -524,7 +598,7 @@ classdef FGenMacros < handle
                                             submode = '';
                                             disp(['FGen: Warning - ' ...
                                                 '''arbWaveform'' submode ' ...
-                                                'parameter is unknown ' ...
+                                                'parameter value is unknown ' ...
                                                 '--> ignore and continue']);
                                     end
                                 case 'list'
@@ -535,13 +609,13 @@ classdef FGenMacros < handle
                                             submode = '';
                                             disp(['FGen: Warning - ' ...
                                                 '''arbWaveform'' submode ' ...
-                                                'parameter is unknown ' ...
+                                                'parameter value is unknown ' ...
                                                 '--> ignore and continue']);
                                     end
                                 otherwise
                                     disp(['FGen: Warning - ' ...
                                         '''arbWaveform'' submode ' ...
-                                        'parameter is senseless ' ...
+                                        'parameter value is senseless ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -564,11 +638,11 @@ classdef FGenMacros < handle
                             end
                             wavedata = real(wavedata);
                         end
-                    %case 'filename'
-                    %    if ~isempty(paramValue)
-                    %        % no further tests needed
-                    %        filename = paramValue;
-                    %    end
+                        %case 'filename'
+                        %    if ~isempty(paramValue)
+                        %        % no further tests needed
+                        %        filename = paramValue;
+                        %    end
                     otherwise
                         if ~isempty(paramValue)
                             disp(['  WARNING - parameter ''' ...
@@ -647,7 +721,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '(default)']);
+                                            '(coerced)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'C1';
@@ -657,8 +731,8 @@ classdef FGenMacros < handle
                                     channels{cnt} = '';
                                     disp(['FGen: Warning - ' ...
                                         '''enableOutput'' invalid ' ...
-                                        'channel --> ignore and ' ...
-                                        'continue']);
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -677,10 +751,16 @@ classdef FGenMacros < handle
             
             % loop over channels
             for cnt = 1:length(channels)
-                %channel = channels{cnt};   % when >1 channel only
+                channel = channels{cnt};
                 
-                disp('ToDo ... (enableOutput)');
+                % set output at Fgen
+                obj.VisaIFobj.write([channel ':OUTPUT ON']);
                 
+                % verify
+                response = obj.VisaIFobj.query([channel ':OUTPUT?']);
+                if ~startsWith(char(response), [channel ':OUTP ON'])
+                    status = -1;
+                end
             end
             
             % set final status
@@ -716,7 +796,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '(default)']);
+                                            '(coerced)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'C1';
@@ -725,9 +805,9 @@ classdef FGenMacros < handle
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['FGen: Warning - ' ...
-                                        '''disableOutput'' invalid ' ...
-                                        'channel --> ignore and ' ...
-                                        'continue']);
+                                        '''enableOutput'' invalid ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
+                                        '--> ignore and continue']);
                             end
                         end
                         % remove invalid (empty) entries
@@ -746,10 +826,16 @@ classdef FGenMacros < handle
             
             % loop over channels
             for cnt = 1:length(channels)
-                %channel = channels{cnt};   % when >1 channel only
+                channel = channels{cnt};
                 
-                disp('ToDo ... (disableOutput)');
+                % set output at Fgen
+                obj.VisaIFobj.write([channel ':OUTPUT OFF']);
                 
+                % verify
+                response = obj.VisaIFobj.query([channel ':OUTPUT?']);
+                if ~startsWith(char(response), [channel ':OUTP OFF'])
+                    status = -1;
+                end
             end
             
             % set final status
@@ -766,45 +852,14 @@ classdef FGenMacros < handle
         function errMsg = get.ErrorMessages(obj)
             % read error list from the generator’s error buffer
             
-            % config
-            maxErrCnt = 20;  % size of error stack at 33220A
-            errCell   = cell(1, maxErrCnt);
-            cnt       = 0;
-            done      = false;
-            
-            % read error from buffer until done
-            while ~done && cnt < maxErrCnt
-                cnt = cnt + 1;
-                
-                
-                disp('ToDo ...');
-                errMsg = '<undefined>';
-                
-                errCell{cnt} = errMsg;
-                
-                done = true;
-                
-                
-            end
-            
-            % remove empty cell elements
-            errCell = errCell(~cellfun(@isempty, errCell));
-            
-            % optionally display results
-            if obj.ShowMessages
-                if ~isempty(errCell)
-                    disp('FGen error list:');
-                    for cnt = 1:length(errCell)
-                        disp(['  (' num2str(cnt,'%02i') ') ' ...
-                            errCell{cnt} ]);
-                    end
-                else
-                    disp('FGen error list is empty');
-                end
-            end
+            disp(['FGen Warning - Property ''ErrorMessages'' is not ' ...
+                'supported for ']);
+            disp(['  ' obj.VisaIFobj.Vendor '-' ...
+                obj.VisaIFobj.Product ...
+                ' --> skip and continue']);
             
             % copy result to output
-            errMsg = strjoin(errCell, '; ');
+            errMsg = '<undefined>';
             
         end
         
