@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.3';      % release version
-        MacrosDate    = '2021-02-19'; % release date
+        MacrosVersion = '0.0.4';      % release version
+        MacrosDate    = '2021-02-21'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -305,7 +305,7 @@ classdef FGenMacros < handle
                         end
                     case 'dutycycle'
                         if ~isempty(paramValue)
-                            dutycycle = abs(str2double(paramValue));
+                            dutycycle = str2double(paramValue);
                             dutycycle = min(dutycycle, 100);
                             dutycycle = max(dutycycle, 0);
                             if isnan(dutycycle) || isinf(dutycycle)
@@ -314,7 +314,7 @@ classdef FGenMacros < handle
                         end
                     case 'symmetry'
                         if ~isempty(paramValue)
-                            symmetry = abs(str2double(paramValue));
+                            symmetry = str2double(paramValue);
                             symmetry = min(symmetry, 100);
                             symmetry = max(symmetry, 0);
                             if isnan(symmetry) || isinf(symmetry)
@@ -397,34 +397,33 @@ classdef FGenMacros < handle
                     % verify
                     response = obj.VisaIFobj.query([channel ':OUTPut?']);
                     response = char(response);
-                    if startsWith(response, [channel ':OUTP '])
-                        % remove header
-                        response = response(7:end);
+                    if ~startsWith(response, [channel ':OUTP '])
+                        % error (incorrect header of response)
+                        status = -1;
+                    else
+                        % header okay: remove header
+                        response = response(8:end);
                         % separate parameter
                         ParamList = split(response, ',');
                         ParamList = strtrim(ParamList);
                         % verify response string with requested settings
-                        if length(ParamList) >= 3
+                        if length(ParamList) < 3
+                            % error (incorrect number of parameters)
+                            status = -1;
+                        else
+                            % at least 3 elements
                             % ParamList{1} : output state is not of interest
-                            if strcmpi(ParamList{2}, 'LOAD')
+                            if ~strcmpi(ParamList{2}, 'LOAD')
+                                % error (incorrect parameter name)
+                                status = -1;
+                            else
                                 % okay
-                                if strcmpi(ParamList{3}, outimpStr)
-                                    % okay
-                                else
+                                if ~strcmpi(ParamList{3}, outimpStr)
                                     % error (incorrect output impedance)
                                     status = -1;
                                 end
-                            else
-                                % error (incorrect parameter name)
-                                status = -1;
                             end
-                        else
-                            % error (incorrect number of parameters)
-                            status = -1;
                         end
-                    else
-                        % error (incorrect header of response)
-                        status = -1;
                     end
                 end
                 
@@ -504,7 +503,7 @@ classdef FGenMacros < handle
                     
                     % set parameter
                     obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
-                        'DUTY,' num2str(dutycycle, '%1.3e')]);
+                        'DUTY,' num2str(dutycycle, '%1.4e')]);
                 end
                 
                 % --- set symmetry ----------------------------------------
@@ -519,55 +518,99 @@ classdef FGenMacros < handle
                 % --- set bandwidth ---------------------------------------
                 if ~isempty(bandwidth)
                     % Only settable when WVTP is NOISE
-                    
-                    
-                    % bandstate on/off define a max bandwidth to turn off
+                    %
+                    % max. Bandwidth for SDG6022X is 200 MHz
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
-                        'BANDWIDTH,' num2str(bandwidth, '%1.3e')]);
+                    if bandwidth >= 200e6
+                        % disable bandstate ==> max. noise bandwidth
+                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                            'BANDSTATE,OFF']);
+                    else
+                        % enable bandstate and set noise bandwidth
+                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                            'BANDSTATE,ON']);
+                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                            'BANDWIDTH,' num2str(bandwidth, '%1.3e')]);
+                    end
                 end
                 
                 % --- set transition --------------------------------------
                 if ~isempty(transition)
+                    % set transition time of rising and falling edge
                     
-                    disp('ToDo ... (transition)');
-                    % for rise and fall time
-                    
-                    
+                    % set parameter
+                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                            'RISE,' num2str(transition, '%1.3e')]);
+                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                            'FALL,' num2str(transition, '%1.3e')]);
                 end
                 
+                % ---------------------------------------------------------
+                % verify Basic_wave settings (waveform, amplitude, unit, 
+                % offset, stdev, frequency, phase, dutycycle, symmetry, 
+                % bandwidth, transition)
                 
-                
-                % verify
                 response = obj.VisaIFobj.query([channel ':BaSic WaVe?']);
                 response = char(response);
-                % 'WVTP'   waveform
-                % unit     amplitude
-                
-                
-                if startsWith(response, [channel ':BSWV '])
-                    % remove header
-                    response = response(7:end);
-                    % separate parameter
-                    ParamList     = split(response,',');
-                    ParamList     = strtrim(ParamList);
-                    
-                    
-                    % TEMP: display parameter values
-                    if obj.ShowMessages
-                        for idx = (1 : 2 : length(ParamList)-1)
-                            disp(['Basic_Wave: ' ...
-                                pad(ParamList{idx}, 9) ...
-                                '= ' ParamList{idx+1}]);
+                if ~startsWith(response, [channel ':BSWV '])
+                    % error (incorrect header of response)
+                    status = -1;
+                else
+                    % header okay: remove header
+                    response = response(8:end);
+                    % separate elements ==> list (cell) of char
+                    ParamList = split(response,',');
+                    ParamList = strtrim(ParamList);
+                    % list is a sequence of name,value dupels
+                    ParamList = ParamList(1:floor(length(ParamList)/2)*2);
+                    ParamList = reshape(ParamList, 2, []);
+                    pNames    = ParamList(1, :);
+                    pValues   = ParamList(2, :);
+                    for idx = 1 : length(pNames)
+                        % TEMP: display parameter names and values
+                        if obj.ShowMessages
+                            disp(['  Basic_Wave: ' ...
+                                pad(pNames{idx}, 9) '= ' pValues{idx}]);
                         end
-                        disp(' ');
+                                                
+                        
+                        switch upper(pNames{idx})
+                            case 'WVTP'
+                                % waveform
+                                if ~isempty(waveform)
+                                    if ~strcmpi(pValues{idx}, waveform)
+                                        status = -1;
+                                    end
+                                end
+                            case {'AMP', 'AMPVRMS', 'AMPDBM'}
+                                % unit & amplitude
+                            case {'OFST', 'MEAN'} 
+                                % offset
+                            case 'STDEV'
+                                % stdev
+                            case 'FRQ'
+                                % frequency
+                            case 'PHSE'
+                                % phase
+                            case 'DUTY'
+                                % dutycycle
+                            case 'SYM'
+                                % symmetry
+                            case 'BANDWIDTH'
+                                % bandwidth
+                            case {'RISE', 'FALL'}
+                                % transition
+                            otherwise
+                                % do nothing
+                        end
                     end
+                    
                     
                     
                     % verify response string with requested settings
                     ParamValue    = [];
-                    for idx = 1 : length(ParamList)
+                    for idx = 1 : 2 : length(ParamList)-1
                         % parse parameter list and search for right keyword
                         % either 'AMP', 'AMPVRMS' or 'AMPDBM'
                         if strcmpi(ParamList{idx}, unit)
@@ -599,10 +642,9 @@ classdef FGenMacros < handle
                         % error (incorrect parameter value)
                         status = -1;
                     end
-                else
-                    % error (incorrect header of response)
-                    status = -1;
                 end
+                
+                
                 
                 
                 
