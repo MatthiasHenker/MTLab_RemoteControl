@@ -12,9 +12,10 @@ FGenName = 'SDG';        % Siglent  generator
 
 
 % demo mode or with real hardware?
-interface = 'demo';
+%interface = 'demo';
 %interface = 'visa-usb';
 %interface = 'visa-tcpip';
+interface = '';
 
 showmsg   = 'all';
 %showmsg   = 'few';
@@ -54,7 +55,7 @@ myFGen = FGen(FGenName, interface, showmsg);
 
 myFGen.open;
 %myFGen.clear;
-myFGen.reset;
+%myFGen.reset;
 
 return
 

@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.4';      % release version
-        MacrosDate    = '2021-02-21'; % release date
+        MacrosVersion = '0.0.5';      % release version
+        MacrosDate    = '2021-02-22'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -433,7 +433,7 @@ classdef FGenMacros < handle
                     % 'NOISE', 'DC' or 'ARB'
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         'WVTP,' waveform]);
                 end
                 
@@ -452,7 +452,7 @@ classdef FGenMacros < handle
                     % -56.02 .. +23.98 for -56dBm to +24dBm (load = 50 Ohm)
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         unit ',' num2str(amplitude, '%1.3e')]);
                 end
                 
@@ -461,7 +461,7 @@ classdef FGenMacros < handle
                     % Only settable when waveform is NOISE
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         'STDEV,' num2str(stdev, '%1.3e')]);
                 end
                 
@@ -470,11 +470,11 @@ classdef FGenMacros < handle
                     % Not valid when WVTP is NOISE ==> use mean instead
                     
                     % set parameter
-                    if strcmpi(waveform, noise)
-                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    if strcmpi(waveform, 'noise')
+                        obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'MEAN,' num2str(offset, '%1.3e')]);
                     else
-                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                        obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'OFST,' num2str(offset, '%1.3e')]);
                     end
                 end
@@ -484,8 +484,8 @@ classdef FGenMacros < handle
                     % Not valid when WVTP is NOISE or DC
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
-                        'FRQ,' num2str(frequency, '%1.8e')]);
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
+                        'FRQ,' num2str(frequency, '%1.9e')]);
                 end
                 
                 % --- set phase -------------------------------------------
@@ -493,7 +493,7 @@ classdef FGenMacros < handle
                     % Not valid when WVTP is NOISE , PULSE or DC
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         'PHSE,' num2str(phase, '%1.3e')]);
                 end
                 
@@ -502,7 +502,7 @@ classdef FGenMacros < handle
                     % Only settable when WVTP is SQUARE or PULSE
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         'DUTY,' num2str(dutycycle, '%1.4e')]);
                 end
                 
@@ -511,7 +511,7 @@ classdef FGenMacros < handle
                     % Only settable when WVTP is RAMP
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                         'SYM,' num2str(symmetry, '%1.3e')]);
                 end
                 
@@ -522,15 +522,15 @@ classdef FGenMacros < handle
                     % max. Bandwidth for SDG6022X is 200 MHz
                     
                     % set parameter
-                    if bandwidth >= 200e6
+                    if bandwidth > 200e6
                         % disable bandstate ==> max. noise bandwidth
-                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                        obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'BANDSTATE,OFF']);
                     else
                         % enable bandstate and set noise bandwidth
-                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                        obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'BANDSTATE,ON']);
-                        obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                        obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'BANDWIDTH,' num2str(bandwidth, '%1.3e')]);
                     end
                 end
@@ -540,9 +540,9 @@ classdef FGenMacros < handle
                     % set transition time of rising and falling edge
                     
                     % set parameter
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'RISE,' num2str(transition, '%1.3e')]);
-                    obj.VisaIFobj.write([channel ':BaSic WaVe ' ...
+                    obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'FALL,' num2str(transition, '%1.3e')]);
                 end
                 
@@ -551,7 +551,7 @@ classdef FGenMacros < handle
                 % offset, stdev, frequency, phase, dutycycle, symmetry, 
                 % bandwidth, transition)
                 
-                response = obj.VisaIFobj.query([channel ':BaSic WaVe?']);
+                response = obj.VisaIFobj.query([channel ':BaSic_WaVe?']);
                 response = char(response);
                 if ~startsWith(response, [channel ':BSWV '])
                     % error (incorrect header of response)
@@ -567,14 +567,26 @@ classdef FGenMacros < handle
                     ParamList = reshape(ParamList, 2, []);
                     pNames    = ParamList(1, :);
                     pValues   = ParamList(2, :);
+                    % display parameter names and values
+                    if obj.ShowMessages
+                        disp('  reported settings (SDG6000X)');
+                    end
                     for idx = 1 : length(pNames)
-                        % TEMP: display parameter names and values
+                        % display parameter names and values
                         if obj.ShowMessages
-                            disp(['  Basic_Wave: ' ...
-                                pad(pNames{idx}, 9) '= ' pValues{idx}]);
+                            disp(['  - ' pad(pNames{idx}, 13) ': ' ...
+                                pValues{idx}]);
                         end
-                                                
-                        
+                        % now remove units (''s', 'Hz', V', 'Vrms' or 'dBm')
+                        ParamValue = regexp(pValues{idx},'\-?\d+\.?\d*\e?\-?\d*','match');
+                        if ~isempty(ParamValue)
+                            ParamValue = ParamValue{1};
+                            % finally convert string to number
+                            ParamValue = str2double(ParamValue);
+                        else
+                            ParamValue = NaN;
+                        end
+                        % verify
                         switch upper(pNames{idx})
                             case 'WVTP'
                                 % waveform
@@ -585,68 +597,50 @@ classdef FGenMacros < handle
                                 end
                             case {'AMP', 'AMPVRMS', 'AMPDBM'}
                                 % unit & amplitude
-                            case {'OFST', 'MEAN'} 
-                                % offset
+                                if strcmpi(unit, pNames{idx})
+                                    if abs(ParamValue - amplitude) > 1e-3
+                                        status = -1;
+                                    end
+                                end
+                            case {'OFST', 'MEAN'}
+                                if abs(ParamValue - offset) > 1e-3
+                                    status = -1;
+                                end
                             case 'STDEV'
-                                % stdev
+                                if abs(ParamValue - stdev) > 1e-3
+                                    status = -1;
+                                end
                             case 'FRQ'
-                                % frequency
+                                if abs(ParamValue - frequency) > 1e-1
+                                    status = -1;
+                                end
                             case 'PHSE'
-                                % phase
+                                if abs(ParamValue - phase) > 0.1
+                                    status = -1;
+                                end
                             case 'DUTY'
-                                % dutycycle
+                                if abs(ParamValue - dutycycle) > 0.1
+                                    status = -1;
+                                end
                             case 'SYM'
-                                % symmetry
+                                if abs(ParamValue - symmetry) > 0.1
+                                    status = -1;
+                                end
                             case 'BANDWIDTH'
                                 % bandwidth
+                                if abs(ParamValue - bandwidth) > 1
+                                    status = -1;
+                                end
                             case {'RISE', 'FALL'}
                                 % transition
+                                if abs(transition / ParamValue) > 1
+                                    status = -1;
+                                end
                             otherwise
                                 % do nothing
                         end
                     end
-                    
-                    
-                    
-                    % verify response string with requested settings
-                    ParamValue    = [];
-                    for idx = 1 : 2 : length(ParamList)-1
-                        % parse parameter list and search for right keyword
-                        % either 'AMP', 'AMPVRMS' or 'AMPDBM'
-                        if strcmpi(ParamList{idx}, unit)
-                            try
-                                % next entry should be the actual parameter value
-                                ParamValue = ParamList{idx+1};
-                            catch
-                                ParamValue = '';
-                            end
-                            % now remove unit from string ('V', 'Vrms' or 'dBm')
-                            ParamValue = regexp(ParamValue,'\-?\d+\.?\d*\e?\-?\d*','match');
-                            if ~isempty(ParamValue)
-                                ParamValue = ParamValue{1};
-                                % finally convert string to number
-                                ParamValue = str2double(ParamValue);
-                            else
-                                ParamValue = [];
-                            end
-                        end
-                    end
-                    % verify value
-                    if isempty(ParamValue)
-                        % error (incorrect header, parameter not found)
-                        status = -1;
-                    elseif abs(amplitude - ParamValue) < 1e-3 || ...
-                            abs(ParamValue / amplitude -1) < 1e-4
-                        %okay
-                    else
-                        % error (incorrect parameter value)
-                        status = -1;
-                    end
                 end
-                
-                
-                
-                
                 
                 % --- set samplerate --------------------------------------
                 if ~isempty(samplerate)
