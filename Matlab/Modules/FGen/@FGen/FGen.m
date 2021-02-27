@@ -14,7 +14,7 @@ classdef FGen < VisaIF
     % All public properties and methods from super class 'VisaIF' can also
     % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
     %
-    % Use 'FGen.doc' for this help page. 
+    % Use 'FGen.doc' for this help page.
     %
     %   - FGen : constructor of sub class (class name)
     %     * use this function to create an object for your generator
@@ -74,14 +74,14 @@ classdef FGen < VisaIF
     %           'frequency'  : frequency of signal in Hz
     %           'phase'      : phase offset of signal (0 .. 360), mainly of
     %                          interest for generators with two channels
-    %           'dutycycle'  : duty cycle of signal in % (0 .. 100), 
+    %           'dutycycle'  : duty cycle of signal in % (0 .. 100),
     %                          for waveform = square or pulse only
-    %           'symmetry'   : symmetry of signal in % (0 .. 100), 
+    %           'symmetry'   : symmetry of signal in % (0 .. 100),
     %                          for waveform = ramp only
     %           'transition' : transition time in s of signal,
     %                          for waveform = pulse only
     %           'stdev'      : standard deviation of signal in V(rms),
-    %                          for waveform = noise 
+    %                          for waveform = noise
     %           'bandwidth'  : bandwidth of signal in Hz,
     %                          for waveform = noise only
     %           'outputimp'  : output impedance in Ohm, most typical value
@@ -94,42 +94,50 @@ classdef FGen < VisaIF
     %
     %   - arbWaveform : upload, download, list, select arbitrary waveforms
     %     * usage:
-    %           status = myFGen.arbWaveform(varargin) or 
+    %           status = myFGen.arbWaveform(varargin) or
     %           [status, waveout] = myFGen.arbWaveform(varargin)
     %       with output arguments: (additional outputs to status)
     %           waveout  = when 'mode' = 'download'
-    %                      sample values of arbitrary wave signal, vector 
-    %                      of real numbers in range (-1 ... +1) (signal is 
-    %                      internally downscaled by 2^(#numBITSofDAC-1)
+    %                      sample values of arbitrary wave signal, vector
+    %                      of real numbers in range (-1 ... +1) (signal is
+    %                      internally downscaled by 2^(#numBITSofDAC-1)-1
     %           waveout  = when 'mode' = 'list'
     %                      character array with comma separated wavenames
     %       with optional varargin: pairs of parameters NAME, VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                       optional parameter, default is 'ch1'
-    %           'mode'    : selects the configuration mode like 
-    %                       'list'     - list available wavenames at 
-    %                                    generator, depends also on submode 
+    %           'mode'    : selects the configuration mode like
+    %                       'list'     - list available wavenames at
+    %                                    generator, depends also on submode
     %                       'select'   - select wavename as output signal
-    %                                    Attention: affects output only 
-    %                                    when waveform is set to arb
+    %                                    Attention: affects output only
+    %                                    when waveform is set to arb in 
+    %                                    configureOutput
     %                       'delete'   - select wavename to be deleted,
-    %                                    only user waveforms can be deleted 
-    %                       'upload'   - upload signal 
-    %                       'download' - download signal
+    %                                    only user waveforms can be deleted
+    %                       'upload'   - upload signal from host to FGen
+    %                       'download' - download signal from FGen to host
     %           'submode' : select an option for certain config modes
     %                         for mode = list:
     %                           'user'    - user-defined wavenames only
     %                           'builtin' - pre-defined wavenames only
-    %                           'all'     - all wavenames
+    %                           'all'     - all wavenames (default)
     %                         for mode = upload:
-    %                           'override'- override an existing wavename  
-    %                                       at generator, true/false, 1/0
+    %                           'override'- override an existing wavename
+    %                                       at generator, if not specified
+    %                                       file will not be overridden
+    %                         for mode = upload and select:
+    %                           'volatile'- do not save to hard disk and
+    %                                       keep wavedata in volatile
+    %                                       memory only (only supported by
+    %                                       few generators)
     %           'wavename': specifies signal name at generator
-    %           'wavedata': sample values of arbitrary wave signal, vector 
-    %                       of real numbers in range (-1 ... +1) (signal is 
-    %                       internally upscaled by 2^(#numBITSofDAC-1), 
-    %                       clipped and rounded)
+    %           'wavedata': sample values of arbitrary wave signal, vector
+    %                       of real numbers (preferred as row vector) in
+    %                       range (-1 ... +1) (signal is internally
+    %                       upscaled by 2^(#numBITSofDAC-1)-1, clipped and
+    %                       rounded)
     %
     %   - enableOutput  : enable output of specified channels at generator
     %     * usage:
@@ -230,8 +238,8 @@ classdef FGen < VisaIF
     %                           to file at host
     
     properties(Constant = true)
-        FGenVersion    = '1.0.6';      % release version (= class version)
-        FGenDate       = '2021-02-15'; % release date
+        FGenVersion    = '1.0.7';      % release version (= class version)
+        FGenDate       = '2021-02-27'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

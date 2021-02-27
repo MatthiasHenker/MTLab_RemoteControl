@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
         
     properties(Constant = true)
-        MacrosVersion = '1.0.4';      % release version
-        MacrosDate    = '2021-02-15'; % release date
+        MacrosVersion = '1.0.5';      % release version
+        MacrosDate    = '2021-02-27'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -774,7 +774,18 @@ classdef FGenMacros < handle
                             else
                                 wavedata = paramValue;
                             end
-                            wavedata = real(wavedata);
+                            % check format
+                            if isrow(wavedata)
+                                wavedata = real(wavedata);
+                            elseif iscolumn(wavedata)
+                                wavedata = transpose(real(wavedata));
+                            else
+                                wavedata = [];
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' wavedata ' ...
+                                    'is not a vector ' ...
+                                    '--> ignore and continue']);
+                            end
                         end
                     %case 'filename'
                     %    if ~isempty(paramValue)
@@ -813,7 +824,7 @@ classdef FGenMacros < handle
                 end
                 
                 % convert to integers (14-bit)
-                wavedata = round(2^(14-1) * wavedata);
+                wavedata = round((2^(14-1)-1) * wavedata);
                 
                 % clip wave data
                 wavedata = min( 8191, wavedata);

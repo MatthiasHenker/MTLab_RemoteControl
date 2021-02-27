@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '1.0.2';      % release version
-        MacrosDate    = '2021-02-15'; % release date
+        MacrosVersion = '1.0.3';      % release version
+        MacrosDate    = '2021-02-27'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -915,9 +915,20 @@ classdef FGenMacros < handle
                             else
                                 wavedata = paramValue;
                             end
-                            wavedata = real(wavedata);
+                            % check format
+                            if isrow(wavedata)
+                                wavedata = real(wavedata);
+                            elseif iscolumn(wavedata)
+                                wavedata = transpose(real(wavedata));
+                            else
+                                wavedata = [];
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' wavedata ' ...
+                                    'is not a vector ' ...
+                                    '--> drop data and continue']);
+                            end
                             if length(wavedata) < 8
-                                wavedata =  [];
+                                wavedata = [];
                                 disp(['FGen: Warning - ' ...
                                     '''arbWaveform'' wavedata ' ...
                                     'is shorter than 8 samples ' ...
@@ -983,7 +994,7 @@ classdef FGenMacros < handle
                 end
                 
                 % convert to integers (16-bit) and clip wave data
-                wavedata = round(2^(16-1) * wavedata);
+                wavedata = round((2^(16-1)-1) * wavedata);
                 wavedata = min( 32767, wavedata);
                 wavedata = max(-32767, wavedata);
                 

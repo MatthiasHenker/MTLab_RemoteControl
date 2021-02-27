@@ -187,6 +187,10 @@ for nArgsIn = 2:2:length(inVars)
                 % exception allowed: can be either char or double
                 if ~ischar(paramValue)
                     wavedata   = double(paramValue); % exception: double
+                    % check format of vector
+                    if iscolumn(wavedata)
+                        wavedata = transpose(wavedata);
+                    end
                 elseif ~isempty(regexp(paramValue, '^[\w\.\+\-\s]+$', 'once'))
                     wavedata   = paramValue;
                 end
