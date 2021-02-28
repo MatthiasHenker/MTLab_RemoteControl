@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-02-27'; % release date
+        MacrosDate    = '2021-02-28'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -791,10 +791,11 @@ classdef FGenMacros < handle
                             switch channels{cnt}
                                 case ''
                                     channels{cnt} = 'ch1';
-                                    %if obj.ShowMessages
-                                    %    disp(['  - channel      : 1 ' ...
-                                    %        '   (default)']);
-                                    %end
+                                    if obj.ShowMessages
+                                        disp(['  - channel      : 1 ' ...
+                                            '   (default, for mode = ' ...
+                                            'select only)']);
+                                    end
                                 case '1'
                                     channels{cnt} = 'ch1';
                                 otherwise
@@ -803,7 +804,8 @@ classdef FGenMacros < handle
                                     %    'invalid channel --> ignore ' ...
                                     %    'and continue']);
                                     disp(['FGen: Warning - ''arbWaveform'' ' ...
-                                        '''channel'' parameter is not implemented yet ' ...
+                                        '''channel'' parameter ~= 1 is ' ...
+                                        'not implemented yet ' ...
                                         '--> ignore and continue']);
                             end
                         end

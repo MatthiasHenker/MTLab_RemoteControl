@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.6';      % release version
-        MacrosDate    = '2021-02-27'; % release date
+        MacrosVersion = '0.0.7';      % release version
+        MacrosDate    = '2021-02-28'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -393,36 +393,61 @@ classdef FGenMacros < handle
                     % set parameter
                     obj.VisaIFobj.write([channel ':OUTPut ' ...
                         'LOAD,' outimpStr]);
-                    
-                    % verify
-                    response = obj.VisaIFobj.query([channel ':OUTPut?']);
-                    response = char(response);
-                    if ~startsWith(response, [channel ':OUTP '])
-                        % error (incorrect header of response)
-                        status = -1;
+                else
+                    outimpStr = '';
+                end
+                
+                % ---------------------------------------------------------
+                % verify OUTPut settings (output impedance / load)
+                response = obj.VisaIFobj.query([channel ':OUTPut?']);
+                response = char(response);
+                if ~startsWith(response, [channel ':OUTP '])
+                    % error (incorrect header of response)
+                    status = -1;
+                else
+                    % header okay: remove header
+                    response = response(8:end);
+                    % separate elements ==> list (cell) of char
+                    ParamList = split(response, ',');
+                    ParamList = strtrim(ParamList);
+                    if length(ParamList) > 2
+                        % list is a sequence of output state
+                        pOutputstate = ParamList{1};
+                        % followed by name,value dupels
+                        ParamList = ParamList(2:end);
+                        ParamList = ParamList(1:floor(length(ParamList)/2)*2);
+                        ParamList = reshape(ParamList, 2, []);
+                        pNames    = ParamList(1, :);
+                        pValues   = ParamList(2, :);
+                        % display parameter names and values
+                        if obj.ShowMessages
+                            disp(['  reported output settings ' ...
+                                'for channel ' channel ' (SDG6000X)']);
+                            disp(['  - output state : ' pOutputstate]);
+                        end
                     else
-                        % header okay: remove header
-                        response = response(8:end);
-                        % separate parameter
-                        ParamList = split(response, ',');
-                        ParamList = strtrim(ParamList);
-                        % verify response string with requested settings
-                        if length(ParamList) < 3
-                            % error (incorrect number of parameters)
-                            status = -1;
-                        else
-                            % at least 3 elements
-                            % ParamList{1} : output state is not of interest
-                            if ~strcmpi(ParamList{2}, 'LOAD')
-                                % error (incorrect parameter name)
-                                status = -1;
-                            else
-                                % okay
-                                if ~strcmpi(ParamList{3}, outimpStr)
+                        % error (incorrect number of parameters)
+                        status = -1;
+                        pNames    = {};
+                        pValues   = {};
+                    end
+                    for idx = 1 : length(pNames)
+                        % display parameter names and values
+                        if obj.ShowMessages
+                            disp(['  - ' pad(pNames{idx}, 13) ': ' ...
+                                pValues{idx}]);
+                        end
+                        % verify
+                        switch upper(pNames{idx})
+                            case 'LOAD'
+                                if isempty(outimpStr)
+                                    % output was not configured
+                                elseif ~strcmpi(pValues{idx}, outimpStr)
                                     % error (incorrect output impedance)
                                     status = -1;
                                 end
-                            end
+                            otherwise
+                                % do nothing
                         end
                     end
                 end
@@ -547,10 +572,9 @@ classdef FGenMacros < handle
                 end
                 
                 % ---------------------------------------------------------
-                % verify Basic_wave settings (waveform, amplitude, unit, 
+                % verify BaSic_WaVe settings (waveform, amplitude, unit, 
                 % offset, stdev, frequency, phase, dutycycle, symmetry, 
                 % bandwidth, transition)
-                
                 response = obj.VisaIFobj.query([channel ':BaSic_WaVe?']);
                 response = char(response);
                 if ~startsWith(response, [channel ':BSWV '])
@@ -560,7 +584,7 @@ classdef FGenMacros < handle
                     % header okay: remove header
                     response = response(8:end);
                     % separate elements ==> list (cell) of char
-                    ParamList = split(response,',');
+                    ParamList = split(response, ',');
                     ParamList = strtrim(ParamList);
                     % list is a sequence of name,value dupels
                     ParamList = ParamList(1:floor(length(ParamList)/2)*2);
@@ -569,7 +593,8 @@ classdef FGenMacros < handle
                     pValues   = ParamList(2, :);
                     % display parameter names and values
                     if obj.ShowMessages
-                        disp('  reported settings (SDG6000X)');
+                        disp(['  reported basic wave settings ' ...
+                            'for channel ' channel ' (SDG6000X)']);
                     end
                     for idx = 1 : length(pNames)
                         % display parameter names and values
@@ -577,7 +602,7 @@ classdef FGenMacros < handle
                             disp(['  - ' pad(pNames{idx}, 13) ': ' ...
                                 pValues{idx}]);
                         end
-                        % now remove units (''s', 'Hz', V', 'Vrms' or 'dBm')
+                        % now remove units ('s', 'Hz', V', 'Vrms' or 'dBm')
                         ParamValue = regexp(pValues{idx},'\-?\d+\.?\d*\e?\-?\d*','match');
                         if ~isempty(ParamValue)
                             ParamValue = ParamValue{1};
@@ -589,7 +614,6 @@ classdef FGenMacros < handle
                         % verify
                         switch upper(pNames{idx})
                             case 'WVTP'
-                                % waveform
                                 if ~isempty(waveform)
                                     if ~strcmpi(pValues{idx}, waveform)
                                         status = -1;
@@ -599,41 +623,57 @@ classdef FGenMacros < handle
                                 % unit & amplitude
                                 if strcmpi(unit, pNames{idx})
                                     if abs(ParamValue - amplitude) > 1e-3
+                                        status = -2;
+                                    elseif isnan(ParamValue)
                                         status = -1;
                                     end
                                 end
                             case {'OFST', 'MEAN'}
                                 if abs(ParamValue - offset) > 1e-3
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'STDEV'
                                 if abs(ParamValue - stdev) > 1e-3
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'FRQ'
                                 if abs(ParamValue - frequency) > 1e-1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'PHSE'
                                 if abs(ParamValue - phase) > 0.1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'DUTY'
                                 if abs(ParamValue - dutycycle) > 0.1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'SYM'
                                 if abs(ParamValue - symmetry) > 0.1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case 'BANDWIDTH'
-                                % bandwidth
                                 if abs(ParamValue - bandwidth) > 1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             case {'RISE', 'FALL'}
-                                % transition
                                 if abs(transition / ParamValue) > 1
+                                    status = -2;
+                                elseif isnan(ParamValue)
                                     status = -1;
                                 end
                             otherwise

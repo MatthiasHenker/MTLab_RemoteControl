@@ -104,13 +104,15 @@ classdef FGen < VisaIF
     %           waveout  = when 'mode' = 'list'
     %                      character array with comma separated wavenames
     %       with optional varargin: pairs of parameters NAME, VALUE
-    %           'channel' : specifies channel(s) to be configured
+    %           'channel' : specifies channel(s) to be configured when 
+    %                       'mode' is set to 'select',
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                       optional parameter, default is 'ch1'
     %           'mode'    : selects the configuration mode like
     %                       'list'     - list available wavenames at
     %                                    generator, depends also on submode
     %                       'select'   - select wavename as output signal
+    %                                    for specified channel
     %                                    Attention: affects output only
     %                                    when waveform is set to arb in 
     %                                    configureOutput
@@ -134,8 +136,9 @@ classdef FGen < VisaIF
     %                                       few generators)
     %           'wavename': specifies signal name at generator
     %           'wavedata': sample values of arbitrary wave signal, vector
-    %                       of real numbers (preferred as row vector) in
-    %                       range (-1 ... +1) (signal is internally
+    %                       of real numbers (for all FGen) or 
+    %                       complex numbers (for dual channel FGen only)
+    %                       in range (-1 ... +1) (signal is internally
     %                       upscaled by 2^(#numBITSofDAC-1)-1, clipped and
     %                       rounded)
     %
@@ -239,7 +242,7 @@ classdef FGen < VisaIF
     
     properties(Constant = true)
         FGenVersion    = '1.0.7';      % release version (= class version)
-        FGenDate       = '2021-02-27'; % release date
+        FGenDate       = '2021-02-28'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

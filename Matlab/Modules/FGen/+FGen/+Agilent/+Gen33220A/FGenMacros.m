@@ -5,7 +5,7 @@ classdef FGenMacros < handle
         
     properties(Constant = true)
         MacrosVersion = '1.0.5';      % release version
-        MacrosDate    = '2021-02-27'; % release date
+        MacrosDate    = '2021-02-28'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -679,7 +679,8 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'ch1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '   (default)']);
+                                            '   (default, for mode = ' ...
+                                            'select only)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'ch1';
