@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.7';      % release version
-        MacrosDate    = '2021-02-28'; % release date
+        MacrosVersion = '0.0.8';      % release version
+        MacrosDate    = '2021-03-01'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -223,7 +223,7 @@ classdef FGenMacros < handle
                                 case ''
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
-                                        disp(['  - channel      : 1 ' ...
+                                        disp(['  - channel      : 1    ' ...
                                             '(coerced)']);
                                     end
                                 case '1'
@@ -427,9 +427,9 @@ classdef FGenMacros < handle
                         end
                     else
                         % error (incorrect number of parameters)
-                        status = -1;
-                        pNames    = {};
-                        pValues   = {};
+                        status  = -1;
+                        pNames  = {};
+                        pValues = {};
                     end
                     for idx = 1 : length(pNames)
                         % display parameter names and values
@@ -453,6 +453,13 @@ classdef FGenMacros < handle
                 end
                 
                 % --- set waveform ----------------------------------------
+                if isempty(waveform) && ~isempty(samplerate)
+                    % samplerate command will activate ARB mode anyway
+                    waveform = 'ARB';
+                    if obj.ShowMessages
+                        disp('  - waveform     : ARB  (coerced)');
+                    end
+                end
                 if ~isempty(waveform)
                     % waveform is either 'SINE', 'SQUARE', 'RAMP', 'PULSE',
                     % 'NOISE', 'DC' or 'ARB'
@@ -586,15 +593,22 @@ classdef FGenMacros < handle
                     % separate elements ==> list (cell) of char
                     ParamList = split(response, ',');
                     ParamList = strtrim(ParamList);
-                    % list is a sequence of name,value dupels
-                    ParamList = ParamList(1:floor(length(ParamList)/2)*2);
-                    ParamList = reshape(ParamList, 2, []);
-                    pNames    = ParamList(1, :);
-                    pValues   = ParamList(2, :);
-                    % display parameter names and values
-                    if obj.ShowMessages
-                        disp(['  reported basic wave settings ' ...
-                            'for channel ' channel ' (SDG6000X)']);
+                    if length(ParamList) > 1
+                        % list is a sequence of name,value dupels
+                        ParamList = ParamList(1:floor(length(ParamList)/2)*2);
+                        ParamList = reshape(ParamList, 2, []);
+                        pNames    = ParamList(1, :);
+                        pValues   = ParamList(2, :);
+                        % display parameter names and values
+                        if obj.ShowMessages
+                            disp(['  reported basic wave settings ' ...
+                                'for channel ' channel ' (SDG6000X)']);
+                        end
+                    else
+                        % error (incorrect number of parameters)
+                        status  = -1;
+                        pNames  = {};
+                        pValues = {};
                     end
                     for idx = 1 : length(pNames)
                         % display parameter names and values
@@ -684,13 +698,82 @@ classdef FGenMacros < handle
                 
                 % --- set samplerate --------------------------------------
                 if ~isempty(samplerate)
-                    
-                    disp('ToDo ... (samplerate)');
-                    
+                    % samplerate command will activate ARB mode ==> thus,
+                    % it is sensible to allow this parameter only when
+                    % waveform = 'arb'
+                    if ~strcmpi(waveform, 'arb')
+                        disp(['FGen: Warning - ' ...
+                            '''configureOutput'' samplerate parameter ' ...
+                            'can only be set when waveform is set to ' ...
+                            'arb --> ignore and continue']);
+                        % warning (status > 0)
+                        status  = 1;
+                    else
+                        % set samplerate parameter incl. TrueARB mode and
+                        % sinc interpolation mode (instead of hold or lines)
+                        obj.VisaIFobj.write([channel ':SampleRATE ' ...
+                            'Mode,TArb,' ...
+                            'Value,' num2str(samplerate, '%1.9e') ',' ...
+                            'inter,' 'sinc']);
+                    end
                 end
                 
-                
-                
+                % ---------------------------------------------------------
+                % verify samplerate settings (check samplerate only and
+                % skip test of arb-mode and interpolation-mode)
+                if strcmpi(waveform, 'arb')
+                    response = obj.VisaIFobj.query([channel ':SampleRATE?']);
+                    response = char(response);
+                    if ~startsWith(response, [channel ':SRATE '])
+                        % error (incorrect header of response)
+                        status = -1;
+                    else
+                        % header okay: remove header
+                        response = response(9:end);
+                        % separate elements ==> list (cell) of char
+                        ParamList = split(response, ',');
+                        ParamList = strtrim(ParamList);
+                        if length(ParamList) > 1
+                            % list is a sequence of name,value dupels
+                            ParamList = ParamList(1:floor(length(ParamList)/2)*2);
+                            ParamList = reshape(ParamList, 2, []);
+                            pNames    = ParamList(1, :);
+                            pValues   = ParamList(2, :);
+                            % display parameter names and values
+                            if obj.ShowMessages
+                                disp(['  reported samplerate settings ' ...
+                                    'for channel ' channel ' (SDG6000X)']);
+                            end
+                        else
+                            % error (incorrect number of parameters)
+                            status  = -1;
+                            pNames  = {};
+                            pValues = {};
+                        end
+                        for idx = 1 : length(pNames)
+                            % display parameter names and values
+                            if obj.ShowMessages
+                                disp(['  - ' pad(pNames{idx}, 13) ': ' ...
+                                    pValues{idx}]);
+                            end
+                            % verify
+                            switch upper(pNames{idx})
+                                case 'VALUE'
+                                    if ~isempty(samplerate)
+                                        srate = str2double(pValues{idx});
+                                        if (samplerate / srate -1) < 1e-3
+                                            % fine
+                                        else
+                                            % error (incorrect srate)
+                                            status = -1;
+                                        end
+                                    end
+                                otherwise
+                                    % do nothing
+                            end
+                        end
+                    end
+                end
                 
             end
             
