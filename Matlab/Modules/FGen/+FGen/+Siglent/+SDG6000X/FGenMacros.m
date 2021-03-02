@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.8';      % release version
-        MacrosDate    = '2021-03-01'; % release date
+        MacrosVersion = '0.1.0';      % release version
+        MacrosDate    = '2021-03-02'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -171,7 +171,6 @@ classdef FGenMacros < handle
         
         % -----------------------------------------------------------------
         
-        % x
         function status = configureOutput(obj, varargin)
             % configureOutput : configure output of specified channels
             %   'channel'     : '1' '1, 2'
@@ -369,6 +368,15 @@ classdef FGenMacros < handle
             % actual code
             % -------------------------------------------------------------
             
+            % coerce waveform
+            if isempty(waveform) && ~isempty(samplerate)
+                % samplerate command will activate ARB mode anyway
+                waveform = 'ARB';
+                if obj.ShowMessages
+                    disp('  - waveform     : ARB  (coerced)');
+                end
+            end
+            
             % loop over channels
             for cnt = 1:length(channels)
                 channel = channels{cnt};
@@ -453,13 +461,6 @@ classdef FGenMacros < handle
                 end
                 
                 % --- set waveform ----------------------------------------
-                if isempty(waveform) && ~isempty(samplerate)
-                    % samplerate command will activate ARB mode anyway
-                    waveform = 'ARB';
-                    if obj.ShowMessages
-                        disp('  - waveform     : ARB  (coerced)');
-                    end
-                end
                 if ~isempty(waveform)
                     % waveform is either 'SINE', 'SQUARE', 'RAMP', 'PULSE',
                     % 'NOISE', 'DC' or 'ARB'
@@ -563,7 +564,7 @@ classdef FGenMacros < handle
                         obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
                             'BANDSTATE,ON']);
                         obj.VisaIFobj.write([channel ':BaSic_WaVe ' ...
-                            'BANDWIDTH,' num2str(bandwidth, '%1.3e')]);
+                            'BANDWIDTH,' num2str(bandwidth, '%1.8e')]);
                     end
                 end
                 
@@ -756,11 +757,20 @@ classdef FGenMacros < handle
                                 disp(['  - ' pad(pNames{idx}, 13) ': ' ...
                                     pValues{idx}]);
                             end
+                            % now remove units ('Sa/s')
+                            ParamValue = regexp(pValues{idx},'\-?\d+\.?\d*\e?\-?\d*','match');
+                            if ~isempty(ParamValue)
+                                ParamValue = ParamValue{1};
+                                % finally convert string to number
+                                ParamValue = str2double(ParamValue);
+                            else
+                                ParamValue = NaN;
+                            end
                             % verify
                             switch upper(pNames{idx})
                                 case 'VALUE'
                                     if ~isempty(samplerate)
-                                        srate = str2double(pValues{idx});
+                                        srate = ParamValue;
                                         if (samplerate / srate -1) < 1e-3
                                             % fine
                                         else
@@ -789,7 +799,7 @@ classdef FGenMacros < handle
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
-            %   'channel'     : '1' '1, 2'
+            %   'channel'  : '1' '1, 2'
             %   'mode'     : 'list', 'select', 'delete', 'upload',
             %                'download'
             %   'submode'  : 'user', 'builtin', 'all', 'override'
