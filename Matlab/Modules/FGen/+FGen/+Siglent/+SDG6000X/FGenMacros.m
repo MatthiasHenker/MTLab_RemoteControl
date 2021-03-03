@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.1.0';      % release version
-        MacrosDate    = '2021-03-02'; % release date
+        MacrosDate    = '2021-03-03'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -804,7 +804,8 @@ classdef FGenMacros < handle
             %                'download'
             %   'submode'  : 'user', 'builtin', 'all', 'override'
             %   'wavename' : 'xyz' (char)
-            %   'wavedata' : vector of real (range -1 ... +1)
+            %   'wavedata' : vector of real or complex 
+            %                (range -1 ... +1 for real and imaginary part)
             %   (for future use???)   'filename' : 'xyz' (char)
             
             % init outputs
@@ -819,8 +820,6 @@ classdef FGenMacros < handle
             wavename    = '';
             wavedata    = [];
             %filename    = '';
-            
-            override    = false;  % default submode @ upload
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -838,7 +837,8 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C1';
                                     if obj.ShowMessages
                                         disp(['  - channel      : 1 ' ...
-                                            '   (coerced)']);
+                                            '   (default, for mode = ' ...
+                                            'select only)']);
                                     end
                                 case '1'
                                     channels{cnt} = 'C1';
@@ -846,7 +846,7 @@ classdef FGenMacros < handle
                                     channels{cnt} = 'C2';
                                 otherwise
                                     channels{cnt} = '';
-                                    disp(['FGen: Warning - ''configureOutput'' ' ...
+                                    disp(['FGen: Warning - ''arbWaveform'' ' ...
                                         'invalid channel (allowed are 1 .. 2) ' ...
                                         '--> ignore and continue']);
                             end
@@ -854,61 +854,140 @@ classdef FGenMacros < handle
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
-                        if ~isempty(paramValue)
-                            switch lower(paramValue)
-                                case {'list', 'select', 'delete', ...
-                                        'upload', 'download'}
-                                    mode = lower(paramValue);
-                                otherwise
-                                    mode = '';
-                                    disp(['FGen: Warning - ' ...
-                                        '''arbWaveform'' ' ...
-                                        'mode parameter value is unknown ' ...
-                                        '--> ignore and continue']);
-                            end
+                        switch lower(paramValue)
+                            case ''
+                                mode = 'list';
+                                if obj.ShowMessages
+                                    disp(['  - mode         : list ' ...
+                                        '(default)']);
+                                end
+                            case {'list', 'select', 'delete', ...
+                                    'upload', 'download'}
+                                mode = lower(paramValue);
+                            otherwise
+                                mode = '';
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' ' ...
+                                    'mode parameter value is unknown ' ...
+                                    '--> ignore and continue']);
                         end
                     case 'submode'
-                        if ~isempty(paramValue)
-                            switch mode
-                                case {'upload'}  % 'download'
-                                    switch lower(paramValue)
-                                        case {'override'}
-                                            submode  = lower(paramValue);
-                                            override = true;
-                                        otherwise
-                                            submode = '';
-                                            disp(['FGen: Warning - ' ...
-                                                '''arbWaveform'' submode ' ...
-                                                'parameter value is unknown ' ...
-                                                '--> ignore and continue']);
-                                    end
-                                case 'list'
-                                    switch lower(paramValue)
-                                        case {'user', 'all', 'builtin'}
-                                            submode  = lower(paramValue);
-                                        otherwise
-                                            submode = '';
-                                            disp(['FGen: Warning - ' ...
-                                                '''arbWaveform'' submode ' ...
-                                                'parameter value is unknown ' ...
-                                                '--> ignore and continue']);
-                                    end
-                                otherwise
-                                    disp(['FGen: Warning - ' ...
-                                        '''arbWaveform'' submode ' ...
-                                        'parameter value is senseless ' ...
-                                        '--> ignore and continue']);
-                            end
+                        switch mode
+                            case 'download'
+                                switch lower(paramValue)
+                                    case ''
+                                        submode = 'user'; % default
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'user (default)']);
+                                        end
+                                    case 'user'
+                                        submode = 'user';
+                                    case {'builtin', 'all'}
+                                        submode  = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : user ' ...
+                                                '   (coerced)']);
+                                        end
+                                    otherwise
+                                        submode = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : user ' ...
+                                                '   (coerced)']);
+                                        end
+                                        disp(['FGen: Warning - ' ...
+                                            '''arbWaveform'' submode ' ...
+                                            'parameter value is unknown ' ...
+                                            '--> coerce and continue']);
+                                end
+                            case 'upload'
+                                switch lower(paramValue)
+                                    case ''
+                                        submode = 'user'; % default
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (default)']);
+                                        end
+                                    case 'user'
+                                        submode = 'user';
+                                    case 'override'
+                                        submode = 'override';
+                                    otherwise
+                                        submode = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (coerced)']);
+                                        end
+                                        disp(['FGen: Warning - ' ...
+                                            '''arbWaveform'' submode ' ...
+                                            'parameter value is unknown ' ...
+                                            '--> coerce and continue']);
+                                end
+                            case {'list', 'select'}
+                                switch lower(paramValue)
+                                    case ''
+                                        submode = 'user'; % default
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (default)']);
+                                        end
+                                    case {'user', 'all', 'builtin'}
+                                        submode  = lower(paramValue);
+                                    otherwise
+                                        submode = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (coerced)']);
+                                        end
+                                        disp(['FGen: Warning - ' ...
+                                            '''arbWaveform'' submode ' ...
+                                            'parameter value is unknown ' ...
+                                            '--> coerce and continue']);
+                                end
+                            case 'delete'
+                                switch lower(paramValue)
+                                    case ''
+                                        submode = 'user'; % default
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (default)']);
+                                        end
+                                    case 'user'
+                                        submode = 'user';
+                                    case {'builtin', 'all'}
+                                        submode  = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (coerced)']);
+                                        end
+                                    otherwise
+                                        submode = 'user';
+                                        if obj.ShowMessages
+                                            disp(['  - submode      : ' ...
+                                                'USER (coerced)']);
+                                        end
+                                        disp(['FGen: Warning - ' ...
+                                            '''arbWaveform'' submode ' ...
+                                            'parameter value is unknown ' ...
+                                            '--> coerce and continue']);
+                                end
+                            otherwise
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' submode ' ...
+                                    'parameter value is unused ' ...
+                                    '--> ignore and continue']);
                         end
                     case 'wavename'
                         if ~isempty(paramValue)
-                            
-                            
-                            
-                            wavename = paramValue;
-                            
-                            
-                            
+                            if length(paramValue) > 30
+                                wavename = paramValue(1:30);
+                                if obj.ShowMessages
+                                    disp(['  - wavename     : ' ...
+                                        wavename ' (truncated)']);
+                                end
+                            else
+                                wavename = paramValue;
+                            end
                         end
                     case 'wavedata'
                         if ~isempty(paramValue)
@@ -917,18 +996,7 @@ classdef FGenMacros < handle
                             else
                                 wavedata = paramValue;
                             end
-                            % check format
-                            if isrow(wavedata)
-                                wavedata = real(wavedata);
-                            elseif iscolumn(wavedata)
-                                wavedata = transpose(real(wavedata));
-                            else
-                                wavedata = [];
-                                disp(['FGen: Warning - ' ...
-                                    '''arbWaveform'' wavedata ' ...
-                                    'is not a vector ' ...
-                                    '--> ignore and continue']);
-                            end
+                            % wavedata can be either real or complex
                         end
                         %case 'filename'
                         %    if ~isempty(paramValue)

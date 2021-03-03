@@ -151,7 +151,7 @@ for nArgsIn = 2:2:length(inVars)
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     symmetry   = paramValue;
                 end
-            case {'transition'}
+            case {'transition', 'trans'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     transition = paramValue;
                 end
@@ -159,11 +159,11 @@ for nArgsIn = 2:2:length(inVars)
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     stdev      = paramValue;
                 end
-            case {'bandwidth', 'trans'}
+            case {'bandwidth'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     bandwidth  = paramValue;
                 end
-            case {'outputimp', 'impedance', 'outputimpedance'}
+            case {'outputimp', 'impedance', 'outputimpedance', 'load'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     outputimp  = paramValue;
                 end
@@ -187,21 +187,21 @@ for nArgsIn = 2:2:length(inVars)
                 % exception allowed: can be either char or double
                 if ~ischar(paramValue)
                     wavedata   = double(paramValue); % exception: double
-                    % check format of vector
-                    if iscolumn(wavedata)
-                        wavedata = transpose(wavedata);
-                    end
                 elseif ~isempty(regexp(paramValue, '^[\w\.\+\-\s]+$', 'once'))
                     wavedata   = paramValue;
                 end
-%             case {'filename', 'fname'}
-%                 if ~isempty(regexp(paramValue, '^[\w\.\+\-\\/:]+$', 'once'))
-%                     try
-%                         filename = char(java.io.File(paramValue).toPath);
-%                     catch
-%                         filename = '';
-%                     end
-%                 end
+                % check format of vector
+                if iscolumn(wavedata)
+                    wavedata = transpose(wavedata);
+                end
+                % case {'filename', 'fname'}
+                %     if ~isempty(regexp(paramValue, '^[\w\.\+\-\\/:]+$', 'once'))
+                %         try
+                %             filename = char(java.io.File(paramValue).toPath);
+                %         catch
+                %             filename = '';
+                %         end
+                %     end
             otherwise
                 disp(['FGen: Warning - Parameter name ''' ...
                     paramName ''' is unknown. ' ...

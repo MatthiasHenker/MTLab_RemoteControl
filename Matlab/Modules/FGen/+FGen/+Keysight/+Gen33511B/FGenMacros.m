@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-02-28'; % release date
+        MacrosDate    = '2021-03-03'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -812,18 +812,22 @@ classdef FGenMacros < handle
                         % remove invalid (empty) entries
                         channels = channels(~cellfun(@isempty, channels));
                     case 'mode'
-                        if ~isempty(paramValue)
-                            switch lower(paramValue)
-                                case {'list', 'select', 'delete', ...
-                                        'upload', 'download'}
-                                    mode = lower(paramValue);
-                                otherwise
-                                    mode = '';
-                                    disp(['FGen: Warning - ' ...
-                                        '''arbWaveform'' ' ...
-                                        'mode parameter value is unknown ' ...
-                                        '--> ignore and continue']);
-                            end
+                        switch lower(paramValue)
+                            case ''
+                                mode = 'list';
+                                if obj.ShowMessages
+                                    disp(['  - mode         : list ' ...
+                                        '(default)']);
+                                end
+                            case {'list', 'select', 'delete', ...
+                                    'upload', 'download'}
+                                mode = lower(paramValue);
+                            otherwise
+                                mode = '';
+                                disp(['FGen: Warning - ' ...
+                                    '''arbWaveform'' ' ...
+                                    'mode parameter value is unknown ' ...
+                                    '--> ignore and continue']);
                         end
                     case 'submode'
                         if ~isempty(paramValue)
@@ -875,8 +879,8 @@ classdef FGenMacros < handle
                                         case {'builtin', 'all'}
                                             submode  = 'user';
                                             if obj.ShowMessages
-                                                disp(['  - submode      : user ' ...
-                                                    '   (coerced)']);
+                                                disp(['  - submode      : ' ...
+                                                    'USER (coerced)']);
                                             end
                                         otherwise
                                             submode = '';
@@ -887,28 +891,27 @@ classdef FGenMacros < handle
                                     end
                                 otherwise
                                     disp(['FGen: Warning - ' ...
-                                        '''arbWaveform'' submode ' ...
-                                        'parameter value will be ignored']);
+                                    '''arbWaveform'' submode ' ...
+                                    'parameter is unused ' ...
+                                    '--> ignore and continue']);
                             end
                         end
                     case 'wavename'
-                        if ~isempty(paramValue)
-                            if length(paramValue) > 12
-                                wavename = paramValue(1:12);
-                                if obj.ShowMessages
-                                    disp(['  - wavename     : ' ...
-                                        wavename ' (truncated)']);
-                                end
-                            else
-                                wavename = paramValue;
+                        if length(paramValue) > 12
+                            wavename = paramValue(1:12);
+                            if obj.ShowMessages
+                                disp(['  - wavename     : ' ...
+                                    wavename ' (truncated)']);
                             end
-                            if strcmpi(wavename, 'volatile')
-                                disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
-                                    '"VOLATILE" is reserved ' ...
-                                    '--> ignore and continue']);
-                                status   = -1; % 'failed', but we can continue
-                                wavename = '';
-                            end
+                        else
+                            wavename = paramValue;
+                        end
+                        if strcmpi(wavename, 'volatile')
+                            disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
+                                '"VOLATILE" is reserved ' ...
+                                '--> ignore and continue']);
+                            status   = -1; % 'failed', but we can continue
+                            wavename = '';
                         end
                     case 'wavedata'
                         if ~isempty(paramValue)
@@ -917,18 +920,8 @@ classdef FGenMacros < handle
                             else
                                 wavedata = paramValue;
                             end
-                            % check format
-                            if isrow(wavedata)
-                                wavedata = real(wavedata);
-                            elseif iscolumn(wavedata)
-                                wavedata = transpose(real(wavedata));
-                            else
-                                wavedata = [];
-                                disp(['FGen: Warning - ' ...
-                                    '''arbWaveform'' wavedata ' ...
-                                    'is not a vector ' ...
-                                    '--> drop data and continue']);
-                            end
+                            % use real part only
+                            wavedata = real(wavedata);
                             if length(wavedata) < 8
                                 wavedata = [];
                                 disp(['FGen: Warning - ' ...

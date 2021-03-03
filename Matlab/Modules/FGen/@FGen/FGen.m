@@ -110,7 +110,7 @@ classdef FGen < VisaIF
     %                       optional parameter, default is 'ch1'
     %           'mode'    : selects the configuration mode like
     %                       'list'     - list available wavenames at
-    %                                    generator, depends also on submode
+    %                                    generator, default if empty
     %                       'select'   - select wavename as output signal
     %                                    for specified channel
     %                                    Attention: affects output only
@@ -121,7 +121,7 @@ classdef FGen < VisaIF
     %                       'upload'   - upload signal from host to FGen
     %                       'download' - download signal from FGen to host
     %           'submode' : select an option for certain config modes
-    %                         for mode = list:
+    %                         for mode = list (maybe also for select):
     %                           'user'    - user-defined wavenames only
     %                           'builtin' - pre-defined wavenames only
     %                           'all'     - all wavenames (default)
@@ -242,7 +242,7 @@ classdef FGen < VisaIF
     
     properties(Constant = true)
         FGenVersion    = '1.0.7';      % release version (= class version)
-        FGenDate       = '2021-02-28'; % release date
+        FGenDate       = '2021-03-03'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
