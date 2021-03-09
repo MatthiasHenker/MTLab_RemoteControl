@@ -104,7 +104,7 @@ classdef FGen < VisaIF
     %           waveout  = when 'mode' = 'list'
     %                      character array with comma separated wavenames
     %       with optional varargin: pairs of parameters NAME, VALUE
-    %           'channel' : specifies channel(s) to be configured when 
+    %           'channel' : specifies channel(s) to be configured when
     %                       'mode' is set to 'select',
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                       optional parameter, default is 'ch1'
@@ -114,7 +114,7 @@ classdef FGen < VisaIF
     %                       'select'   - select wavename as output signal
     %                                    for specified channel
     %                                    Attention: affects output only
-    %                                    when waveform is set to arb in 
+    %                                    when waveform is set to arb in
     %                                    configureOutput
     %                       'delete'   - select wavename to be deleted,
     %                                    only user waveforms can be deleted
@@ -134,13 +134,15 @@ classdef FGen < VisaIF
     %                                       keep wavedata in volatile
     %                                       memory only (only supported by
     %                                       few generators)
-    %           'wavename': specifies signal name at generator
+    %           'wavename': specifies signal name at generator, starts with
+    %                       a letter and contains word characters only,
+    %                       a file extension would be ignored
     %           'wavedata': sample values of arbitrary wave signal, vector
-    %                       of real numbers (for all FGen) or 
-    %                       complex numbers (for dual channel FGen only)
-    %                       in range (-1 ... +1) (signal is internally
-    %                       upscaled by 2^(#numBITSofDAC-1)-1, clipped and
-    %                       rounded)
+    %                       of real numbers (for all FGen) or
+    %                       complex numbers (for dual channel FGen with
+    %                       IQ-option only), data in range (-1 ... +1)
+    %                       (signal is internally upscaled by
+    %                       2^(#numBITSofDAC-1)-1, clipped and rounded)
     %
     %   - enableOutput  : enable output of specified channels at generator
     %     * usage:
@@ -242,7 +244,7 @@ classdef FGen < VisaIF
     
     properties(Constant = true)
         FGenVersion    = '1.0.7';      % release version (= class version)
-        FGenDate       = '2021-03-03'; % release date
+        FGenDate       = '2021-03-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -545,7 +547,7 @@ classdef FGen < VisaIF
         
         function varargout = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
-            % waveforms 
+            % waveforms
             %   'channel'  : [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
             %   'mode'     : 'list', 'select', 'delete', 'upload',
             %                'download'

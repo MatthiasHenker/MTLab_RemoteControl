@@ -181,7 +181,16 @@ for nArgsIn = 2:2:length(inVars)
                 end
             case {'wavename'}
                 if ~isempty(regexp(paramValue, '^[a-zA-Z]\w+$', 'once'))
+                    % wavename starts with a letter and contain word
+                    % characters only
                     wavename   = paramValue;
+                else
+                    % use heading part of wavename only (till first invalid
+                    % character)
+                    heading = regexp(paramValue, '^[a-zA-Z]\w+', 'match');
+                    if ~isempty(heading)
+                        wavename   = heading{1};
+                    end
                 end
             case {'wavedata'}
                 % exception allowed: can be either char or double
