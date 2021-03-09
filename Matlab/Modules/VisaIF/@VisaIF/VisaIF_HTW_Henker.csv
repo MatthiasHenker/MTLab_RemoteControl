@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------------------------------------
-// 2021-02-08
+// 2021-03-09
 // config file listing all available Visa measurement devices in room/lab Z433
 // required columns
 //   Device     : char array as unique identifier

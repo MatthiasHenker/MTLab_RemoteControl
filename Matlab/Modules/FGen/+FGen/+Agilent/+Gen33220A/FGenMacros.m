@@ -5,7 +5,7 @@ classdef FGenMacros < handle
         
     properties(Constant = true)
         MacrosVersion = '1.0.5';      % release version
-        MacrosDate    = '2021-03-03'; % release date
+        MacrosDate    = '2021-03-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -809,6 +809,12 @@ classdef FGenMacros < handle
             
             % upload wavedata data to FGen
             if strcmp(mode, 'upload') && ~isempty(wavedata)
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed'; % default
+                end
+                
+                % check length of wavedata
                 if length(wavedata) > 2^16
                     wavedata = wavedata(1:2^16);
                     disp(['FGen: Warning - ''arbWaveform'' maximum ' ...

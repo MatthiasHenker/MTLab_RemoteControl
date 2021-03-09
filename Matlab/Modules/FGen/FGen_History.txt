@@ -7,12 +7,12 @@ Release v1.0.7 (same as FGen class) requires VisaIF v2.4.3 or later
       Bug fix: a column vector as input for wavedata in
       arbWaveform produces no error anymore, some more
       precise doc comments especially for arbWaveform
-  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.5   (2021-03-03)
+  - FGen.Agilent.Gen33220A.FGenMacros                 v1.0.5   (2021-03-09)
       change scaling factor of wavedata in arbWaveform
       from 2^(N-1) to 2^(N-1)-1 with N=numofDACbits
   - FGen.Keysight.Gen33511B.FGenMacros                v1.0.3   (2021-03-03)
       same as for Agilent 33220A package
-  - FGen.Siglent.SDG6000X.FGenMacros                  v0.1.0   (2021-03-03)
+  - FGen.Siglent.SDG6000X.FGenMacros                  v0.1.1   (2021-03-09)
       work in progress for first initial package
 
 

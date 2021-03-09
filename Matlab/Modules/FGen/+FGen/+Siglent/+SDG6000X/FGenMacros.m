@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
     
     properties(Constant = true)
-        MacrosVersion = '0.1.0';      % release version
-        MacrosDate    = '2021-03-03'; % release date
+        MacrosVersion = '0.1.1';      % release version
+        MacrosDate    = '2021-03-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -879,20 +879,20 @@ classdef FGenMacros < handle
                                         submode = 'user'; % default
                                         if obj.ShowMessages
                                             disp(['  - submode      : ' ...
-                                                'user (default)']);
+                                                'USER (default)']);
                                         end
                                     case 'user'
                                         submode = 'user';
                                     case {'builtin', 'all'}
                                         submode  = 'user';
                                         if obj.ShowMessages
-                                            disp(['  - submode      : user ' ...
+                                            disp(['  - submode      : USER ' ...
                                                 '   (coerced)']);
                                         end
                                     otherwise
                                         submode = 'user';
                                         if obj.ShowMessages
-                                            disp(['  - submode      : user ' ...
+                                            disp(['  - submode      : USER ' ...
                                                 '   (coerced)']);
                                         end
                                         disp(['FGen: Warning - ' ...
@@ -1015,6 +1015,116 @@ classdef FGenMacros < handle
             % actual code
             % -------------------------------------------------------------
             
+            if strcmp(mode, 'list')
+                % get list of wavenames already stored at FGen
+                % Note: submode is not empty (set to 'user' as default)
+                if strcmpi(submode, 'all')
+                    submodeList = {'user', 'builtin'};
+                else
+                    % either 'user' or 'builtin'
+                    submodeList = {lower(submode)};
+                end
+                                
+                % init list for results
+                resultlist = cell(0, 2); % wave names, submode
+                for selectedsubmode = submodeList
+                    switch selectedsubmode{1}
+                        case 'user'
+                            % command to get a list of wave names
+                            response = obj.VisaIFobj.query( ...
+                                'SToreList? USER');
+                            % convert to characters
+                            response = char(response);
+                            % remove header
+                            if startsWith(response, 'STL WVNM,', ...
+                                    'IgnoreCase', true)
+                                response = response(10:end);
+                            else
+                                response = '';
+                                status   = -1;
+                                disp(['FGen: ERROR - ' ...
+                                    '''arbWaveform'' unexpected ' ...
+                                    'response from VISA device ' ...
+                                    '--> ignore and continue']);
+                            end
+                        case 'builtin'
+                            % command to get a list of wave names
+                            response = obj.VisaIFobj.query( ...
+                                'SToreList? BUILDIN');
+                            % convert to characters
+                            response = char(response);
+                            % remove header
+                            if startsWith(response, 'STL', ...
+                                    'IgnoreCase', true)
+                                response = response(4:end);
+                            else
+                                response = '';
+                                status   = -1;
+                                disp(['FGen: ERROR - ' ...
+                                    '''arbWaveform'' unexpected ' ...
+                                    'response from VISA device ' ...
+                                    '--> ignore and continue']);
+                            end
+                        otherwise
+                            %status   = -1; % 'failed', but we can continue
+                            response = '';
+                            disp(['FGen: Warning - ''arbWaveform'' list: ' ...
+                                'unknown submode --> ignore and continue']);
+                    end
+                    % split (csv list of wave names)
+                    response = split(response, ',');
+                    % remove leading spaces from filenames
+                    response = strtrim(response);
+                    % sort list alphabetically
+                    response = sort(response);
+                    % reformat list
+                    tmplist  = cell(length(response), 2);
+                    tmplist(:, 1) = response;        % wave names
+                    tmplist(:, 2) = selectedsubmode; % memory type
+                    resultlist    = [resultlist; tmplist];
+                end
+                
+                % copy result to output variable
+                namelist = strjoin(resultlist(:, 1), ',');
+                waveout  = namelist;
+                
+                % was this method called internally
+                myStack = dbstack(1, '-completenames');
+                internalCall = startsWith(myStack(1).name, 'FGenMacros');
+                
+                % display results
+                if obj.ShowMessages && ~internalCall
+                    disp('  available waveforms at generator:');
+                    if size(resultlist, 1) == 0
+                        disp( '  <none>');
+                    else
+                        for cnt = 1 : size(resultlist, 1)
+                            disp(['  (' num2str(cnt,'%02i') ' ' ...
+                                resultlist{cnt, 2} ') "' ...
+                                resultlist{cnt, 1} '"']);
+                        end
+                    end
+                end
+            end
+            
+            if strcmp(mode, 'upload') && ~isempty(wavedata)
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed'; % default
+                end
+                
+                
+                
+                disp('ToDo ... (upload)');
+                disp(wavename);
+                
+                
+                
+                
+                
+                
+            end
+            
             if strcmp(mode, 'download')
                 
                 disp('ToDo ... (download)');
@@ -1022,28 +1132,19 @@ classdef FGenMacros < handle
                 
             end
             
-            if strcmp(mode, 'upload') && ~isempty(wavedata)
+            if strcmp(mode, 'select')
                 
-                disp('ToDo ... (upload)');
+                disp('ToDo ... (select)');
+                disp(channels);
                 
-            end
-            
-            if strcmp(mode, 'list')
                 
-                disp('ToDo ... (list)');
-                waveout = '';
+                
                 
             end
             
             if strcmp(mode, 'delete')
                 
                 disp('ToDo ... (delete)');
-                
-            end
-            
-            if strcmp(mode, 'select')
-                
-                disp('ToDo ... (select)');
                 
             end
             
