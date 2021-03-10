@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.1.1';      % release version
-        MacrosDate    = '2021-03-09'; % release date
+        MacrosDate    = '2021-03-10'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -883,7 +883,9 @@ classdef FGenMacros < handle
                                         end
                                     case 'user'
                                         submode = 'user';
-                                    case {'builtin', 'all'}
+                                    case 'builtin'
+                                        submode  = 'builtin';
+                                    case 'all'
                                         submode  = 'user';
                                         if obj.ShowMessages
                                             disp(['  - submode      : USER ' ...
@@ -1026,13 +1028,23 @@ classdef FGenMacros < handle
                 end
                                 
                 % init list for results
-                resultlist = cell(0, 2); % wave names, submode
+                resultlist = cell(0, 3); % id, wavename, submode
                 for selectedsubmode = submodeList
                     switch selectedsubmode{1}
                         case 'user'
                             % command to get a list of wave names
                             response = obj.VisaIFobj.query( ...
                                 'SToreList? USER');
+                            
+                            
+                            
+                            % temp: ToDo
+                            disp('ToDo: remove response');
+                            response = ['STL WVNM,abc.arb, qwe,rt,e4,' ...
+                                'r56_b.barb, gthnj_z6,abcd']
+                            
+                            
+                            
                             % convert to characters
                             response = char(response);
                             % remove header
@@ -1051,6 +1063,17 @@ classdef FGenMacros < handle
                             % command to get a list of wave names
                             response = obj.VisaIFobj.query( ...
                                 'SToreList? BUILDIN');
+                            
+                            
+                            
+                            % temp: ToDo
+                            disp('ToDo: remove response');
+                            response = ['STL M10, ExpFal, M100, ECG14, ' ...
+                                'M101, ECG15, M102, LFPulse, M103, ' ...
+                                'Tens1, M104, Tens2, M105, Tens3, M106,Airy']
+                            
+                            
+                            
                             % convert to characters
                             response = char(response);
                             % remove header
@@ -1075,18 +1098,55 @@ classdef FGenMacros < handle
                     response = split(response, ',');
                     % remove leading spaces from filenames
                     response = strtrim(response);
-                    % sort list alphabetically
-                    response = sort(response);
-                    % reformat list
-                    tmplist  = cell(length(response), 2);
-                    tmplist(:, 1) = response;        % wave names
-                    tmplist(:, 2) = selectedsubmode; % memory type
-                    resultlist    = [resultlist; tmplist];
+                    switch selectedsubmode{1}
+                        case 'user'
+                            % response is list of wavenames
+                            %
+                            % sort list alphabetically
+                            response = sort(response);
+                            % reformat list
+                            tmplist  = cell(length(response), 3);
+                            tmplist(:, 1) = cellstr(num2str( ...
+                                (1:length(response))','%d'));% id
+                            tmplist(:, 2) = response;        % wavename
+                            tmplist(:, 3) = selectedsubmode; % memory type
+                            resultlist    = [resultlist; tmplist];
+                        case 'builtin'
+                            % response is list of Mxx,wavename,Mxx, ...
+                            % length(response) should be even
+                            %
+                            % resize response
+                            lenResp = floor(length(response)/2);
+                            if lenResp < 2 || length(response) ~= 2*lenResp
+                                status   = 1; % we can continue
+                                disp(['FGen: Warning - ''arbWaveform'' ' ...
+                                    'list: unexpected response ' ...
+                                    '--> ignore and continue']);
+                            else
+                                response = reshape(response, 2, lenResp);
+                                % reformat list
+                                tmplist  = cell(lenResp, 3);
+                                tmplist(:, 1) = response(1, :)'; % id
+                                tmplist(:, 2) = response(2, :)'; % wavename
+                                tmplist(:, 3) = selectedsubmode; % memory type
+                                % sort list alphabetically
+                                tmplist       = sortrows(tmplist, 2);
+                                resultlist    = [resultlist; tmplist];
+                            end
+                        otherwise
+                            % do nothing
+                    end
                 end
                 
                 % copy result to output variable
-                namelist = strjoin(resultlist(:, 1), ',');
-                waveout  = namelist;
+                if strcmpi(submode, 'builtin')
+                    % list of comma separated dupels Mxx,wavenames
+                    % (same format as Fgen response 'STL? BUILDIN')
+                    waveout  = strjoin(resultlist(:, 1:2)', ',');
+                else
+                    % list of comma separated wavenames
+                    waveout  = strjoin(resultlist(:, 2), ',');
+                end
                 
                 % was this method called internally
                 myStack = dbstack(1, '-completenames');
@@ -1094,58 +1154,277 @@ classdef FGenMacros < handle
                 
                 % display results
                 if obj.ShowMessages && ~internalCall
+                    % entries of first column should have same length
+                    resultlist(:, 1) = pad(resultlist(:, 1), 4, 'left');
+                    % entries of third column should have same length
+                    resultlist(:, 3) = pad(resultlist(:, 3), 'left');
                     disp('  available waveforms at generator:');
                     if size(resultlist, 1) == 0
                         disp( '  <none>');
                     else
                         for cnt = 1 : size(resultlist, 1)
-                            disp(['  (' num2str(cnt,'%02i') ' ' ...
-                                resultlist{cnt, 2} ') "' ...
-                                resultlist{cnt, 1} '"']);
+                            disp(['  ('                  ...
+                                resultlist{cnt, 1} ' '   ...
+                                resultlist{cnt, 3} '): ' ...
+                                resultlist{cnt, 2}]);
                         end
                     end
                 end
             end
             
+            % -------------------------------------------------------------
             if strcmp(mode, 'upload') && ~isempty(wavedata)
                 % set default when no wavename is defined
                 if isempty(wavename)
-                    wavename = 'unnamed'; % default
+                    wavename = 'unnamed';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
+                end
+                
+                % check length of wavedata
+                MaxSamples = 1e7; % max. 10 MSa
+                if length(wavedata) > MaxSamples
+                    wavedata   = wavedata(1:MaxSamples);
+                    disp(['FGen: Warning - ''arbWaveform'' maximum ' ...
+                        'length of wavedata is ' num2str(MaxSamples, '%g')  ...
+                        '--> truncate data vector and continue']);
+                end
+                
+                % convert to integers (16-bit) and clip wave data
+                wavedata = round((2^(16-1)-1) * wavedata);
+                wavedata = min( 32767, real(wavedata)) + ...
+                    1i*    min( 32767, imag(wavedata));
+                wavedata = max(-32767, real(wavedata)) + ...
+                    1i*    max(-32767, imag(wavedata));
+                
+                % convert to binary values
+                if isreal(wavedata)
+                    RawWaveData = typecast(int16(wavedata), 'uint8');
+                else
+                    % complex wave data ==> IQ-data
+                    
+                    % ToDo ==> empty RawWaveData will cause troubles later
+                    disp('ToDo: convert complex wavedata to IQ-format');
+                    RawWaveData = []
+                    
+                end
+                
+                % optionally check if wavename already exist at generator
+                [~, namelist] = obj.arbWaveform( ...
+                    'mode'   , 'list', ...
+                    'submode', 'user');
+                matches = ~cellfun(@isempty, regexpi( ...
+                    split(namelist, ','), ...
+                    ['^' wavename '(\.arb|\.barb)?$'], 'match'));
+                if any(matches)
+                    if strcmpi(submode, 'override')
+                        disp(['FGen: Warning - ''arbWaveform'' wave ' ...
+                            'file already exist --> override file']);
+                    else
+                        disp(['FGen: ERROR - ''arbWaveform'' wave ' ...
+                            'file already exist --> cannot save file']);
+                        status = -1;
+                        return;
+                    end
+                end
+                
+                % ToDo
+                disp('ToDo: upload wavedata ==> clarify questions');
+                % WVDT auch ohne C1, C2 möglich? wenn nein
+                %   WVDT aktiviert wavedata auch gleich für den Kanal?
+                %   anpassen von Meldung channel: 1 (default, for mode = select only)
+                % WVDT ohne WVNM agiert wie wavedata im volatile memory?
+                
+                %if length(channels) > 1
+                %    disp('WARNING: ToDo coerce channel (first entry only');
+                %end
+                
+                % ToDo: check if file extension can be added
+                if isreal(wavedata)
+                    wavename = [wavename ''];
+                else
+                    wavename = ['"' wavename '.arb"']; % or .barb?
+                end
+                
+                % upload waveform data now
+                obj.VisaIFobj.write( ...
+                    ['WVDT WVNM,' wavename ',WAVEDATA,' RawWaveData]);
+                
+                % ToDo: check if Cx: can be omitted
+                % ToDo: check if "filename" is supported
+                
+                
+                
+                
+                % wait for operation complete
+                obj.VisaIFobj.opc;
+                
+            end
+            
+            % -------------------------------------------------------------
+            if strcmp(mode, 'download')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
+                end
+                
+                % submode is either set to user or builtin (coerced above)
+                %
+                % check if wavename exist at generator
+                [~, namelist] = obj.arbWaveform( ...
+                    'mode'   , 'list', ...
+                    'submode', submode);
+                nameListCell = split(namelist, ',');
+                MidxListCell = cell(size(nameListCell));
+                if strcmpi(submode, 'builtin')
+                    nameListCell = reshape(nameListCell, 2, ...
+                        length(nameListCell)/2);
+                    MidxListCell = nameListCell(1, :)';
+                    nameListCell = nameListCell(2, :)';
+                end
+                matches = ~cellfun(@isempty, regexpi( ...
+                    nameListCell, ...
+                    ['^' wavename '(\.arb|\.barb)?$'], 'match'));
+                if ~any(matches)
+                    disp(['FGen: Warning - ''arbWaveform'' wave ' ...
+                        'file doesn''t exist --> skip and continue']);
+                    waveout = [];
+                    status  = 0; % report no error
+                    return;
+                else
+                    foundFiles = nameListCell(matches);
+                    foundIdxs  = MidxListCell(matches);
+                    % file names should be unique
+                    % => extend wavename by optional file extension
+                    if ~strcmpi(wavename, foundFiles{1})
+                        wavename = ['"' foundFiles{1} '"']; % ToDo
+                    end
+                    waveIdx    = foundIdxs{1};
+                end
+                
+                % actual download of waveform data
+                switch lower(submode)
+                    case 'user'
+                        [rawWaveData, statDwld] = obj.VisaIFobj.query( ...
+                            ['WVDT? USER,' wavename]);
+                    case 'builtin'
+                        [rawWaveData, statDwld] = obj.VisaIFobj.query( ...
+                            ['WVDT? ' waveIdx]);
+                    otherwise
+                        status  = -1;
+                        waveout = [];
+                        disp(['FGen: ERROR - ''arbWaveform'' download ' ...
+                            'invalid submode --> exit and continue']);
+                        return;
+                end
+                if statDwld ~= 0
+                    status  = -1;
+                    waveout = [];
+                    disp(['FGen: ERROR - ''arbWaveform'' download ' ...
+                        'causes error --> exit and continue']);
+                    return;
+                end
+                
+                lenHeader = min(length(rawWaveData), 200);
+                % search heading bytes for keyword "WAVEDATA," indicating
+                % begin of actual binary waveform data
+                searchstr = 'WAVEDATA,';
+                idx = strfind(char(rawWaveData(1:lenHeader)), searchstr);
+                % init variable
+                wvdt_length = 0;
+                if isempty(idx)
+                    status  = -1;
+                    waveout = [];
+                    disp(['FGen: ERROR - ''arbWaveform'' download: ' ...
+                        'unexpected response --> exit and continue']);
+                    return;
+                else
+                    % extract information about waveform data length
+                    tmp_header = char(rawWaveData(1:idx));
+                    tmp_header = split(tmp_header,',');
+                    % 5th element should contain the keyword 'LENGTH'
+                    % 6th element is number of bytes (' xxB')
+                    try
+                        if contains(tmp_header{5}, 'length', 'IgnoreCase', true)
+                            % remove trailing 'B' and convert to number (in bytes)
+                            wvdt_length = str2double(tmp_header{6}(1:end-1));
+                            % is it a even number?
+                            if rem(wvdt_length, 2) ~= 0
+                                % delete parameter value again
+                                wvdt_length = 0;
+                            end
+                        end
+                    catch
+                        wvdt_length = 0;
+                    end
+                    % set pointer to beginning of binary data
+                    idx = idx + length(searchstr);
+                    % remove header to get actual raw waveform data
+                    rawWaveData = rawWaveData(idx:end);
+                end
+                % length of raw waveform data (number of bytes) should
+                % match to header
+                % ==> each int16 sample consists of two bytes (uint8)
+                if isempty(rawWaveData)
+                    status  = -1;
+                    waveout = [];
+                    disp(['FGen: ERROR - ''arbWaveform'' download: ' ...
+                        'unexpected response --> exit and continue']);
+                    return;
+                elseif length(rawWaveData) == wvdt_length
+                    % finally cast data from uint8 to correct data format
+                    rawWaveData = typecast(rawWaveData, 'int16');
+                else
+                    % weird number of bytes
+                    warning(['Fgen (''WVDT?''): Unexpected response ' ...
+                        '(# of bytes) from VISA device.']);
+                    rawWaveData = [];
+                end
+                
+                % finally convert wavedata
+                waveout = double(rawWaveData); % ToDo: IQ-data?
+                
+                % conversion into double has blown up data memory size
+                % by factor 4
+                % ==> 8 bytes instead of 2 bytes for each data sample
+                clear rawWaveData
+                
+                % scale waveform data (int16) to range [-1 ... +1]
+                waveout = waveout / 2^(16-1)-1;
+            end
+            
+            % -------------------------------------------------------------
+            if strcmp(mode, 'select')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'unnamed';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
                 end
                 
                 
-                
-                disp('ToDo ... (upload)');
-                disp(wavename);
-                
-                
-                
-                
-                
-                
-            end
-            
-            if strcmp(mode, 'download')
-                
-                disp('ToDo ... (download)');
-                waveout = [];
-                
-            end
-            
-            if strcmp(mode, 'select')
-                
-                disp('ToDo ... (select)');
-                disp(channels);
-                
+                % ToDo
+                channels
+                wavename
                 
                 
                 
             end
             
+            % -------------------------------------------------------------
             if strcmp(mode, 'delete')
-                
-                disp('ToDo ... (delete)');
-                
+                status = -1; % 'failed', but we can continue
+                disp(['FGen: ERROR - ''arbWaveform'' wave files ' ...
+                    'cannot be deleted remotely (Siglent-SDG6000X)' ...
+                    '--> ignore and continue']);
             end
             
             % set final status

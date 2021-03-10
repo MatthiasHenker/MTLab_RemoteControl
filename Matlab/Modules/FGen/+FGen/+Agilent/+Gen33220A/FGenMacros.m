@@ -5,7 +5,7 @@ classdef FGenMacros < handle
         
     properties(Constant = true)
         MacrosVersion = '1.0.5';      % release version
-        MacrosDate    = '2021-03-09'; % release date
+        MacrosDate    = '2021-03-10'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -811,7 +811,11 @@ classdef FGenMacros < handle
             if strcmp(mode, 'upload') && ~isempty(wavedata)
                 % set default when no wavename is defined
                 if isempty(wavename)
-                    wavename = 'unnamed'; % default
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
                 end
                 
                 % check length of wavedata
@@ -926,6 +930,14 @@ classdef FGenMacros < handle
             end
             
             if strcmp(mode, 'delete')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
+                end
                 % get list of wavenames already stored at FGen
                 namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
                 % convert to characters
@@ -935,7 +947,7 @@ classdef FGenMacros < handle
                 % split (csv list of wave names)
                 namelist = split(namelist, ',');
                 
-                % check if wavename is already available
+                % check if wavename is available
                 if any(strcmpi(namelist, wavename))
                     obj.VisaIFobj.write(['DATA:DELETE ' wavename]);
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Delete: ' ...
@@ -947,6 +959,14 @@ classdef FGenMacros < handle
             end
             
             if strcmp(mode, 'select')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
+                end
                 % get list of wavenames already stored at FGen
                 namelist = obj.VisaIFobj.query('DATA:CATALOG?');
                 % convert to characters

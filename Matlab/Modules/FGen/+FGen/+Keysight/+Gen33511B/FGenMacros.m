@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-03-03'; % release date
+        MacrosDate    = '2021-03-10'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -966,11 +966,15 @@ classdef FGenMacros < handle
             if strcmp(mode, 'upload') && ~isempty(wavedata)
                 % set default when no wavename is defined
                 if isempty(wavename)
-                    wavename = 'unnamed'; % default
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
                 elseif strcmpi(wavename, 'EXP_RISE')
                     disp(['FGen: Warning - ''arbWaveform'' wavename ' ...
                         '"EXP_RISE" is reserved ' ...
-                        '--> ignore and continue']);
+                        '--> exit and continue']);
                     status   = -1; % 'failed', but we can continue
                     return;
                 else
@@ -1172,6 +1176,14 @@ classdef FGenMacros < handle
             end
             
             if strcmp(mode, 'delete')
+                % set default when no wavename is defined
+                if isempty(wavename)
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
+                end
                 % set default when no submode is defined
                 if isempty(submode)
                     submode = 'user';  % default
@@ -1212,10 +1224,13 @@ classdef FGenMacros < handle
             if strcmp(mode, 'select')
                 % set default when no wavename is defined
                 if isempty(wavename)
-                    wavename = 'unnamed';  % default
-                else
-                    wavename = lower(wavename);
+                    wavename = 'UNNAMED';
+                    if obj.ShowMessages
+                        disp(['  - wavename     : ' ...
+                            'UNNAMED (default)']);
+                    end
                 end
+                wavename = lower(wavename);
                 
                 % set default when no submode is defined
                 if isempty(submode)
