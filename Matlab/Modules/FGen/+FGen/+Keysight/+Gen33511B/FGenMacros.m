@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-03-10'; % release date
+        MacrosDate    = '2021-03-11'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -170,7 +170,6 @@ classdef FGenMacros < handle
                 'supported for ']);
             disp(['  ' obj.VisaIFobj.Vendor '-' ...
                 obj.VisaIFobj.Product ...
-                %' -->  Ignore and continue']);
                 ' -->  FGen will be automatically locked by remote access']);
             %status = obj.VisaIFobj.write('SYSTEM:REMOTE');
             status = 0;
@@ -182,7 +181,6 @@ classdef FGenMacros < handle
                 'supported for ']);
             disp(['  ' obj.VisaIFobj.Vendor '-' ...
                 obj.VisaIFobj.Product ...
-                %' -->  Ignore and continue']);
                 ' -->  Press button ''System/Local'' at FGen device']);
             %status = obj.VisaIFobj.write('SYSTEM:LOCAL');
             status = 0;
