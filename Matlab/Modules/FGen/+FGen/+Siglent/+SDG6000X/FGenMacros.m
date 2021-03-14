@@ -5,7 +5,7 @@ classdef FGenMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '0.1.1';      % release version
-        MacrosDate    = '2021-03-10'; % release date
+        MacrosDate    = '2021-03-14'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -981,8 +981,8 @@ classdef FGenMacros < handle
                         end
                     case 'wavename'
                         if ~isempty(paramValue)
-                            if length(paramValue) > 30
-                                wavename = paramValue(1:30);
+                            if length(paramValue) > 24
+                                wavename = paramValue(1:24);
                                 if obj.ShowMessages
                                     disp(['  - wavename     : ' ...
                                         wavename ' (truncated)']);
@@ -1016,6 +1016,11 @@ classdef FGenMacros < handle
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
+            % real wavedata will be stored at SDG6000X as *.bin files but
+            % wavenames must not include file extension .bin
+            %
+            % complex IQ wavedata will be stored as *.arb files, details
+            % has to be investigated
             
             if strcmp(mode, 'list')
                 % get list of wavenames already stored at FGen
@@ -1040,8 +1045,8 @@ classdef FGenMacros < handle
                             
                             % temp: ToDo
                             disp('ToDo: remove response');
-                            response = ['STL WVNM,abc.arb, qwe,rt,e4,' ...
-                                'r56_b.barb, gthnj_z6,abcd']
+                            response = ['STL WVNM,wave1.arb, noisy_sine,' ...
+                                'test_85.arb, test_86,pulse_sequence']
                             
                             
                             
@@ -1215,9 +1220,10 @@ classdef FGenMacros < handle
                 [~, namelist] = obj.arbWaveform( ...
                     'mode'   , 'list', ...
                     'submode', 'user');
+                % ToDo: file extensions?
                 matches = ~cellfun(@isempty, regexpi( ...
                     split(namelist, ','), ...
-                    ['^' wavename '(\.arb|\.barb)?$'], 'match'));
+                    ['^' wavename '(\.bin|\.arb)?$'], 'match'));
                 if any(matches)
                     if strcmpi(submode, 'override')
                         disp(['FGen: Warning - ''arbWaveform'' wave ' ...
@@ -1243,9 +1249,9 @@ classdef FGenMacros < handle
                 
                 % ToDo: check if file extension can be added
                 if isreal(wavedata)
-                    wavename = [wavename ''];
+                    wavename = [wavename '']; % stored as *.bin file
                 else
-                    wavename = ['"' wavename '.arb"']; % or .barb?
+                    wavename = ['"' wavename '.arb"']; % ToDo: "   .arb
                 end
                 
                 % upload waveform data now
@@ -1288,9 +1294,10 @@ classdef FGenMacros < handle
                     MidxListCell = nameListCell(1, :)';
                     nameListCell = nameListCell(2, :)';
                 end
+                % ToDo: file extensions
                 matches = ~cellfun(@isempty, regexpi( ...
                     nameListCell, ...
-                    ['^' wavename '(\.arb|\.barb)?$'], 'match'));
+                    ['^' wavename '(\.bin|\.arb)?$'], 'match'));
                 if ~any(matches)
                     disp(['FGen: Warning - ''arbWaveform'' wave ' ...
                         'file doesn''t exist --> skip and continue']);
@@ -1354,7 +1361,7 @@ classdef FGenMacros < handle
                         if contains(tmp_header{5}, 'length', 'IgnoreCase', true)
                             % remove trailing 'B' and convert to number (in bytes)
                             wvdt_length = str2double(tmp_header{6}(1:end-1));
-                            % is it a even number?
+                            % is it an even number?
                             if rem(wvdt_length, 2) ~= 0
                                 % delete parameter value again
                                 wvdt_length = 0;
@@ -1369,7 +1376,7 @@ classdef FGenMacros < handle
                     rawWaveData = rawWaveData(idx:end);
                 end
                 % length of raw waveform data (number of bytes) should
-                % match to header
+                % match with header
                 % ==> each int16 sample consists of two bytes (uint8)
                 if isempty(rawWaveData)
                     status  = -1;
@@ -1410,13 +1417,202 @@ classdef FGenMacros < handle
                     end
                 end
                 
+                % Note: submode is not empty ('user' as default)
+                if strcmpi(submode, 'all')
+                    submodeList = {'user', 'builtin'}; % search order
+                else
+                    % either 'user' or 'builtin'
+                    submodeList = {lower(submode)};
+                end
                 
-                % ToDo
-                channels
-                wavename
+                % init
+                foundWave = false;
+                for selectedsubmode = submodeList
+                    switch selectedsubmode{1}
+                        case 'user'
+                            % check if specified wave file exist at FGen
+                            [~, namelist] = obj.arbWaveform( ...
+                                'mode'   , 'list', ...
+                                'submode', 'user');
+                            nameListCell = split(namelist, ',');
+                            % ToDo: file extensions
+                            matches = ~cellfun(@isempty, regexpi( ...
+                                nameListCell, ...
+                                ['^' wavename '(\.bin|\.arb)?$'], 'match'));
+                            if any(matches)
+                                foundFiles = nameListCell(matches);
+                                % => extend wavename by optional file extension
+                                if ~strcmpi(wavename, foundFiles{1})
+                                    % ToDo
+                                    wavename2 = ['"' foundFiles{1} '"'];
+                                else
+                                    wavename2 = wavename;
+                                end
+                            else
+                                % wavename was not found
+                                wavename2 = '';
+                            end
+                            
+                            % wavename is set to empty when not found
+                            if ~isempty(wavename2) && ~foundWave
+                                foundWave = true;
+                                for cnt = 1:length(channels)
+                                    % select waveform file: arbwave command
+                                    % also activate waveform 'arb' at FGen
+                                    obj.VisaIFobj.write([channels{cnt} ...
+                                        ':ARbWaVe NAME,' wavename2]);
+                                    
+                                    % verify
+                                    response = obj.VisaIFobj.query( ...
+                                        [channels{cnt} ':ARbWaVe?']);
+                                    % verify response
+                                    response = char(response);
+                                    if startsWith(response, ...
+                                            [channels{cnt} ':ARWV '])
+                                        % remove header
+                                        response   = response(8:end);
+                                        % separate parameter list
+                                        ParamList  = split(response, ',');
+                                        ParamList  = strtrim(ParamList);
+                                        % search for keyword 'NAME'
+                                        ParamValue = [];
+                                        for idx = 1:2:length(ParamList)
+                                            if strcmpi(ParamList{idx}, ...
+                                                    'NAME')
+                                                try
+                                                    % next entry should be
+                                                    % the parameter value
+                                                    ParamValue = ...
+                                                        ParamList{idx+1};
+                                                catch
+                                                    ParamValue = '';
+                                                end
+                                            end
+                                        end
+                                        % verify values
+                                        if isempty(regexpi(ParamValue, ...
+                                                ['^' wavename '(\.bin|\.arb)?$']))
+                                            % error (incorrect waveform)
+                                            status = -1;
+                                            disp(['FGen: ERROR - ' ...
+                                                '''arbWaveform'' select: ' ...
+                                                'failed --> ignore and continue']);
+                                        end
+                                    else
+                                        % error (incorrect header of response)
+                                        status = -1;
+                                        disp(['FGen: ERROR - ''arbWaveform'' ' ...
+                                            'select: invalid response ' ...
+                                            '--> ignore and continue']);
+                                    end
+                                end
+                            end
+                        case 'builtin'
+                            % check if specified wave file exist at FGen
+                            [~, namelist] = obj.arbWaveform( ...
+                                'mode'   , 'list', ...
+                                'submode', 'builtin');
+                            nameListCell = split(namelist, ',');
+                            if length(nameListCell) >= 2  % even
+                                nameListCell = reshape(nameListCell, 2, ...
+                                    length(nameListCell)/2);
+                                MidxListCell = nameListCell(1, :)';
+                                nameListCell = nameListCell(2, :)';
+                            else
+                                % in this case is nameListCell = {''};
+                                MidxListCell = {''};
+                            end
+                            % ToDo: file extensions
+                            matches = ~cellfun(@isempty, regexpi( ...
+                                nameListCell, ...
+                                ['^' wavename '(\.bin|\.arb)?$'], 'match'));
+                            if any(matches)
+                                foundIdxs = MidxListCell(matches);
+                                waveIdx   = foundIdxs{1};
+                                % listed wave index always start with M,
+                                % but required index for wave select is
+                                % plain index (integer) only => remove 'M'
+                                if ~isempty(regexpi(waveIdx, '^M(\d)+$'))
+                                    waveIdx = waveIdx(2:end);
+                                else
+                                    waveIdx = '';
+                                    status  = -1;
+                                    disp(['FGen: Error - ''arbWaveform'' ' ...
+                                        'select: invalid index response ' ...
+                                        '--> skip and continue']);
+                                end
+                            else
+                                % wavename was not found
+                                waveIdx   = '';
+                            end
+                            
+                            % waveIdx is not empty when wavename was found
+                            if ~isempty(waveIdx) && ~foundWave
+                                foundWave = true;
+                                for cnt = 1:length(channels)
+                                    % select waveform file: arbwave command
+                                    % also activate waveform 'arb' at FGen
+                                    obj.VisaIFobj.write([channels{cnt} ...
+                                        ':ARbWaVe INDEX,' waveIdx]);
+                                    
+                                    % verify
+                                    response = obj.VisaIFobj.query( ...
+                                        [channels{cnt} ':ARbWaVe?']);
+                                    % verify response
+                                    response = char(response);
+                                    if startsWith(response, ...
+                                            [channels{cnt} ':ARWV '])
+                                        % remove header
+                                        response   = response(8:end);
+                                        % separate parameter list
+                                        ParamList  = split(response, ',');
+                                        ParamList  = strtrim(ParamList);
+                                        % search for keyword 'NAME'
+                                        ParamValue = [];
+                                        for idx = 1:2:length(ParamList)
+                                            if strcmpi(ParamList{idx}, ...
+                                                    'NAME')
+                                                try
+                                                    % next entry should be
+                                                    % the parameter value
+                                                    ParamValue = ...
+                                                        ParamList{idx+1};
+                                                catch
+                                                    ParamValue = '';
+                                                end
+                                            end
+                                        end
+                                        % verify values
+                                        if isempty(regexpi(ParamValue, ...
+                                                ['^' wavename '(\.bin|\.arb)?$']))
+                                            % error (incorrect waveform)
+                                            status = -1;
+                                            disp(['FGen: ERROR - ' ...
+                                                '''arbWaveform'' select: ' ...
+                                                'failed --> ignore and continue']);
+                                        end
+                                    else
+                                        % error (incorrect header of response)
+                                        status = -1;
+                                        disp(['FGen: ERROR - ''arbWaveform'' ' ...
+                                            'select: invalid response ' ...
+                                            '--> ignore and continue']);
+                                    end
+                                end
+                            end
+                        otherwise
+                            % invalid state: submode should be  either
+                            % 'user' or 'builtin'
+                            disp(['FGen: Warning - ''arbWaveform'' select: ' ...
+                                'unknown submode --> ignore and continue']);
+                    end
+                end
                 
-                
-                
+                if ~foundWave
+                    disp(['FGen: Warning - ''arbWaveform'' select: ' ...
+                        'wavename doesn''t exist --> skip and continue']);
+                    status = 1; % warning, but we can continue
+                end
             end
             
             % -------------------------------------------------------------
