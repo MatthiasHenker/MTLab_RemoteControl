@@ -73,6 +73,13 @@ return
 %    'outputImp'   , inf    );
 
 myFGen.configureOutput(     ...
+    'waveform'    , 'arb' , ...
+    'channel'     , 1:2   , ...
+    'samplerate'  , 300e6 , ...
+    'amplitude'   , 2     , ...
+    'unit'        , 'Vpp' );
+
+myFGen.configureOutput(     ...
     'frequency'   , 1.2e3 , ...
     'amplitude'   , 2     , ...
     'unit'        , 'Vpp' );
@@ -109,7 +116,7 @@ myFGen.configureOutput(     ...
 
 
 myFGen.enableOutput;
-%myFGen.enableOutput('channel', 1);
+%myFGen.enableOutput('channel', 1:2);
 
 % arb waveform commands
 %myFGen.arbWaveform(          ...
@@ -183,6 +190,68 @@ myFGen.configureOutput(      ...
 
 errMsgs = myFGen.ErrorMessages;
 disp(['FGen error messages: ' errMsgs]);
+
+if false
+    % temp test to read in arb data
+    filename = 'SDG6000_PN7_100Sym_QPSK_r05.arb';
+    
+    %fid = fopen(filename, 'wb+');  % open as binary
+    %fwrite(fid, bitMapData(11:end), 'uint8'); %leave out number
+    
+    headerFull = [ ...
+        'FileType,'           'IQ,'           ... %%
+        'Version,'            '2.0,'          ... %%
+        'FileName,'           'wavename.ARB,' ... %%
+        'DataSourceType,'     'PN7,'          ... 
+        'SymbolLength,'       '100,'          ... %% disp only
+        'SymbolRate,'         '250,'          ... %% ==> setting
+        'ModulationType,'     'QPSK,'         ... % disp only
+        'FilterType,'         'RootCosine,'   ... % disp only
+        'FilterBandwidth,'    '0,'            ...
+        'FilterAlpha,'        '0.5,'          ... % disp only
+        'FilterLength,'       '32,'           ...
+        'OverSampling,'       '8,'            ... %% disp & convert Fs - Fsymb
+        'ActualSampleLength,' '100,'          ... 
+        'SampleRate,'         '2000,'         ...
+        'RMS,'                '1.4,'          ...
+        'DataLength,'         '800,'          ... %%
+        'IQData,'             ];                  %%
+    
+    headerMand = [ ...
+        'FileType,'           'IQ,'                  ...
+        'Version,'            '2.0,'                 ...
+        'FileName,'           wavename '.ARB,'       ...
+        'SymbolLength,'       num2str(100, '%d') ',' ...
+        'SymbolRate,'         '250,'           ... %% ==> setting
+        'ModulationType,'     'QPSK,'          ... % disp only
+        'FilterType,'         'RootCosine,'    ... % disp only
+        'FilterAlpha,'        '0.5,'           ... % disp only
+        'OverSampling,'       '8,'             ... %% disp & convert Fs - Fsymb
+        'SampleRate,'         '2000,'          ... %? instead of SymbolRate
+        'DataLength,'         '800,'           ... %%
+        'IQData,'             ];                  %%
+    
+    
+    fid  = fopen(filename, 'rb');  % open as binary for reading
+    %[fdata, fcnt] = fread(fid, inf, 'uint8');
+    [fdata, fcnt] = fread(fid);
+    fclose(fid);
+    
+    header = char(fdata(1:306)')
+    wdata  = uint8(fdata(307:end))';
+    wdata2 = typecast(wdata, 'int16');
+    wdata3 = double(wdata2)/(2^(16-1)-1);
+    
+    wd_I = wdata3(1:2:end);
+    wd_Q = wdata3(2:2:end);
+    time = 1:length(wd_I);
+    figure(1);
+    plot(time, wd_I, '-r*');
+    hold on;
+    plot(time, wd_Q, '-b*');
+    hold off;
+    zoom on;
+end
 
 if false
 

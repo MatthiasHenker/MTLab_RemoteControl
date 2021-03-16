@@ -139,8 +139,8 @@ classdef FGen < VisaIF
     %                       a file extension would be ignored
     %           'wavedata': sample values of arbitrary wave signal, vector
     %                       of real numbers (for all FGen) or
-    %                       complex numbers (for dual channel FGen with
-    %                       IQ-option only), data in range (-1 ... +1)
+    %                       complex numbers (for dual channel FGen),  
+    %                       data has to be in range (-1 ... +1)
     %                       (signal is internally upscaled by
     %                       2^(#numBITSofDAC-1)-1, clipped and rounded)
     %
@@ -244,7 +244,7 @@ classdef FGen < VisaIF
     
     properties(Constant = true)
         FGenVersion    = '1.0.7';      % release version (= class version)
-        FGenDate       = '2021-03-09'; % release date
+        FGenDate       = '2021-03-16'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
