@@ -22,7 +22,7 @@
 % some config
 
 ModuleName = 'Scope'; % name of class file
-VersionID  = '1.2.0'; % should match name of tag in git (version control)
+VersionID  = '1.2.0_refresh'; % should match name of tag in git (version control)
 %VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 

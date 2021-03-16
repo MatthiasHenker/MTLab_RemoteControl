@@ -22,7 +22,7 @@
 % some config
 
 ModuleName = 'VisaIF';  % name of class file
-VersionID  = '2.4.3_refresh'; % should match name of tag in git (version control)
+VersionID  = '2.4.3_refresh2'; % should match name of tag in git (version control)
 %VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
