@@ -204,11 +204,14 @@ classdef Scope < VisaIF
     %     * usage:
     %           status = myScope.makeScreenShot(varargin)
     %       with varargin: pairs of parameters NAME, VALUE
-    %           'filename' : file name as char,
-    %           filename: char array, specifying filename; omit file
-    %                     extension for default
-    %           darkmode: 'off', 0, false (default): white background color
-    %                     'on', 1, true: dark background color
+    %           filename: char array, specifying filename; optional;
+    %                     file will be saved in current directory;
+    %                     when no file extension is given then default is 
+    %                     used; when a unsupported file extension is
+    %                     specified then an error is produced
+    %           darkmode: 'off', 0, false: white background color
+    %                     'on', 1, true  : dark background color
+    %                     optional; default is 'off' (when supported)
     %
     %   - runMeasurement : request measurement value
     %     * usage:
@@ -436,8 +439,8 @@ classdef Scope < VisaIF
     
     
     properties(Constant = true)
-        ScopeVersion    = '1.2.0';      % release version (= class version)
-        ScopeDate       = '2021-02-15'; % release date
+        ScopeVersion    = '1.2.1';      % release version (= class version)
+        ScopeDate       = '2021-03-23'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

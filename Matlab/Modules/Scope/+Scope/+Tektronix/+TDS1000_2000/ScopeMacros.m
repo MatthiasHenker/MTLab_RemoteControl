@@ -10,8 +10,8 @@ classdef ScopeMacros < handle
     % Tektronix TDS1000, TDS 2000 series macros
     
     properties(Constant = true)
-        MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-02-15'; % release date
+        MacrosVersion = '1.2.1';      % release version
+        MacrosDate    = '2021-03-23'; % release date
         %
         % ? num of supported channels and so on ...
     end
@@ -1154,7 +1154,9 @@ classdef ScopeMacros < handle
                 paramValue = varargin{idx+1};
                 switch paramName
                     case 'fileName'
-                        filename = paramValue;
+                        if ~isempty(paramValue)
+                            filename = paramValue;
+                        end
                     case 'darkMode'
                         switch lower(paramValue)
                             case {'on', '1'}

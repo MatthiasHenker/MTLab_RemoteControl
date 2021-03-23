@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
     
     properties(Constant = true)
-        MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-02-15'; % release date
+        MacrosVersion = '1.2.1';      % release version
+        MacrosDate    = '2021-03-23'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1403,7 +1403,9 @@ classdef ScopeMacros < handle
                 paramValue = varargin{idx+1};
                 switch paramName
                     case 'fileName'
-                        filename = paramValue;
+                        if ~isempty(paramValue)
+                            filename = paramValue;
+                        end
                     case 'darkMode'
                         switch lower(paramValue)
                             case {'on', '1'}
