@@ -3,8 +3,8 @@
 % -------------------------------------------------------------------------
 % some config
 
-%ModuleName = 'Scope';    % name of class file
-ModuleName = 'FGen'; 
+ModuleName = 'Scope';    % name of class file
+%ModuleName = 'FGen'; 
 VersionID  = 'part';
 
 % copy released files also to Support directory? 
@@ -27,14 +27,16 @@ cd(ThisDir);
 % -------------------------------------------------------------------------
 %workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+RS', '+RTB2000');
 %workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+RS', '+RTB2000');
-workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Siglent', '+SDG6000X');
-workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Siglent', '+SDG6000X');
+%workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Siglent', '+SDG6000X');
+%workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Siglent', '+SDG6000X');
+workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Rigol', '+DS2072A');
+workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Rigol', '+DS2072A');
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 
 % create p-files out of original m-files
-%pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
-pcode(fullfile(workSourceDir, 'FGenMacros.m'));
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+%pcode(fullfile(workSourceDir, 'FGenMacros.m'));
 
 % -------------------------------------------------------------------------
 % return to original path
