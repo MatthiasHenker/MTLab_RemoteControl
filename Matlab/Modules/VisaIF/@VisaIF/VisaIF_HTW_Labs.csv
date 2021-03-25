@@ -37,10 +37,10 @@ Keysight-DSOX1102A;; Keysight ;; DSOX1000     ;; Scope      ;; visa-usb  ;; USB0
 #
 #
 # Rigol Scope
-# OutBufSize: longest command is unknown ==> define a large default value
-# InBufSize : longest command is unknown ==> define a large default value
+# OutBufSize: longest command is unknown    ==> define a large default value
+# InBufSize : longest command is screenshot image (*.bmp) ==> 1.16e6 Bytes
 #             probably download of waveform data or screenshot (BMP-file?)
-Rigol-DS2072A    ;; Rigol     ;; DS2072A      ;; Scope      ;; visa-usb  ;; USB0::0x1AB1::0x04B0::\w+  ;;      20e3 ;;     2e6
+Rigol-DS2072A    ;; Rigol     ;; DS2072A      ;; Scope      ;; visa-usb  ;; USB0::0x1AB1::0x04B0::\w+  ;;      20e3 ;;   1.2e6
 #
 #
 # Agilent Signal Generator

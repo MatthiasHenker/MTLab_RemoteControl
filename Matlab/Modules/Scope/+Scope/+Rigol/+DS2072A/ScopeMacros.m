@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.1.0';      % release version
-        MacrosDate    = '2021-03-23'; % release date
+        MacrosVersion = '0.1.1';      % release version
+        MacrosDate    = '2021-03-25'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -54,6 +54,19 @@ classdef ScopeMacros < handle
             
             % enable autoscale (see method autoset)
             if obj.VisaIFobj.write(':SYSTem:AUToscale ON')
+                status = -1;
+            end
+            
+            % selects range of samples for download of wavedata
+            % MAXimum: in the run state, read the waveform data displayed 
+            % on the screen; in the stop state, read the waveform data in 
+            % the internal memory. (default after reset is NORMal)
+            if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
+                status = -1;
+            end
+            % set return format of waveform data 
+            % (default after reset is BYTE)
+            if obj.VisaIFobj.write(':WAVeform:FORMat BYTE')
                 status = -1;
             end
             
@@ -107,10 +120,12 @@ classdef ScopeMacros < handle
                 status = -1;
             end
             
-            % XXX
-            %if obj.VisaIFobj.write('XXX')
-            %    status = -1;
-            %end
+            % selects range of samples for download of wavedata
+            if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
+                status = -1;
+            end
+            
+            % ...
             
             % wait for operation complete
             obj.VisaIFobj.opc;
@@ -1874,17 +1889,13 @@ classdef ScopeMacros < handle
                                     channels{cnt} = 'CHANnel1';
                                 case '2'
                                     channels{cnt} = 'CHANnel2';
-                                case '3'
-                                    channels{cnt} = 'CHANnel3';
-                                case '4'
-                                    channels{cnt} = 'CHANnel4';
                                 case ''
                                     % do nothing
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: Warning - ' ...
                                         '''captureWaveForm'' invalid ' ...
-                                        'channel (allowed are 1 .. 4) ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -1898,9 +1909,9 @@ classdef ScopeMacros < handle
             
             % define default when channel parameter is missing
             if isempty(channels)
-                channels = {'CHANnel1', 'CHANnel2', 'CHANnel3', 'CHANnel4'};
+                channels = {'CHANnel1', 'CHANnel2'};
                 if obj.ShowMessages
-                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
+                    disp('  - channel      : 1, 2 (coerced)');
                 end
             end
             
@@ -1911,90 +1922,56 @@ classdef ScopeMacros < handle
             % loop over channels
             for cnt = 1 : length(channels)
                 channel = channels{cnt};
+                % select channel
+                obj.VisaIFobj.write([':WAVeform:SOURce ' channel]);
+                
                 % ---------------------------------------------------------
                 % read data header
-                header = obj.VisaIFobj.query([channel ':DATA:HEADER?']);
+                header = obj.VisaIFobj.query(':WAVeform:PREamble?');
                 header = split(char(header), ',');
-                if length(header) == 4
-                    % response consists of 4 parts separated by commas
-                    %   (1) xstart in s,
-                    %   (2) xstop  in s,
-                    %   (3) record length of the waveform in samples,
-                    %   (4) number of values per sample interval
-                    xstart  = str2double(header{1});
-                    xstop   = str2double(header{2});
-                    xlength = str2double(header{3});
-                    xnovpsi = str2double(header{4});% 1 (norm.) or 2 (envelope)
+                if length(header) == 10
+                    % response consists of 10 parameters separated by commas
+                    % ( 1) <format>,     (should be 0 for BYTE)
+                    % ( 2) <type>,       (should be 1 for MAXimum)
+                    % ( 3) <points>,     (should be 1400 when acq is running
+                    %                     and up to 14e6 when acq is stopped)
+                    % ( 4) <count>,      (averages, not really of interest)
+                    % ( 5) <xincrement>,
+                    % ( 6) <xorigin>,
+                    % ( 7) <xreference>,
+                    % ( 8) <yincrement>,
+                    % ( 9) <yorigin>,
+                    % (10) <yreference>
+                    xlength    = str2double(header{3});
+                    %
+                    xinc       = str2double(header{5});
+                    xorigin    = str2double(header{6});
+                    xref       = str2double(header{7});
+                    %
+                    yinc       = str2double(header{8});
+                    yorigin    = str2double(header{9});
+                    yref       = str2double(header{10});
                 else
                     % logical error or data error
                     waveData.status = -10;
                     return; % exit
                 end
-                % ==> field (3) is zero when channel is disabled
-                % ==> fields (1),(2) and (4) are identical for active ch.
-                if xlength > 0
-                    % fine ==> continue
-                elseif xlength == 0
-                    % 0   when channel is not active ==> next channel
-                    continue;
-                else
-                    % NaN (or negative) when error
-                    waveData.status = -11;
-                    return; % exit
-                end
                 
                 % ---------------------------------------------------------
-                % read resolution in bits
-                yRes = obj.VisaIFobj.query([channel ':DATA:YRESOLUTION?']);
-                % yRes is 10..32 bits ==> set to either uint-16 or uint-32
-                %   UINT,16 is sensible for all acq modes except averaging
-                %   UINT,32 is relevant for average waveforms
-                yRes = str2double(char(yRes));
-                if yRes <= 16
-                    % saves time when downloading longer waveforms
-                    % max 20MSa (40MBytes, uint-16) ==> about 6.8s (47Mbit/s)
-                    obj.VisaIFobj.write('FORMAT:DATA UINT,16');
-                    uint16format = true;
-                elseif yRes <= 32
-                    % max 20MSa (80MBytes, uint-32 or real) ==> about 13.5s
-                    obj.VisaIFobj.write('FORMAT:DATA UINT,32');
-                    uint16format = false;
-                else
-                    % logical error or data error
-                    waveData.status = -12;
-                    return; % exit
-                end
-                
-                % ---------------------------------------------------------
-                % read further common meta information
-                
-                % read time of the first sample (should match xstart)
-                xorigin = obj.VisaIFobj.query([channel ':DATA:XORIGIN?']);
-                xorigin = str2double(char(xorigin));
-                % read time between two adjacent samples
-                xinc    = obj.VisaIFobj.query([channel ':DATA:XINCREMENT?']);
-                xinc    = str2double(char(xinc));
-                
-                % read voltage value for binary value 0
-                yorigin = obj.VisaIFobj.query([channel ':DATA:YORIGIN?']);
-                yorigin = str2double(char(yorigin));
-                % read voltage value per bit
-                yinc    = obj.VisaIFobj.query([channel ':DATA:YINCREMENT?']);
-                yinc    = str2double(char(yinc));
+                % always download waveform data ==> will be all zero when
+                % channel is not active (we don't care)
+                %
+                % resolution of data is always 8-bit (Byte)
                 
                 % ---------------------------------------------------------
                 % check all meta information and initialize output values
-                if ~isnan(xstart) && ~isnan(xstop) && ~isnan(xlength) ...
-                        && ~isnan(xnovpsi) && ~isnan(xorigin) && ...
-                        ~isnan(xinc) && ~isnan(yorigin) && ~isnan(yinc)
-                    if (abs(xstop - (xorigin+(xlength-1)*xinc)) > 0.1 * xinc) ...
-                            || (abs(xstart - xorigin) > 0.1 * xinc)
-                        % logical error or data error
-                        waveData.status = -13;
-                        return; % exit
-                    end
-                    % set sample time (identical for all active channels)
-                    waveData.time       = xorigin + xinc * (0 : xlength-1);
+                if ~isnan(xlength) && ...
+                        ~isnan(xinc) && ~isnan(xorigin) && ~isnan(xref) && ...
+                        ~isnan(yinc) && ~isnan(yorigin) && ~isnan(yref)
+                    
+                    % set sample time (identical for all channels)
+                    waveData.time = xref + xorigin + xinc*(0 : xlength-1);
+                    % sample rate
                     waveData.samplerate = 1/xinc;
                     if isempty(waveData.volt)
                         % initialize result matrix
@@ -2013,62 +1990,75 @@ classdef ScopeMacros < handle
                 % ---------------------------------------------------------
                 % actual download of waveform data
                 
+                
+                
+                
+                %obj.VisaIFobj.write([':WAVeform:STARt ' start]);
+                %obj.VisaIFobj.write([':WAVeform:STOP ' stop]); % max 250e3
+                
+                
+                
                 % read channel data
-                data = obj.VisaIFobj.query([channel ':DATA?']);
+                data = obj.VisaIFobj.query(':WAVeform:DATA?');
                 
-                % check and extract header: e.g. #41000binarydata with 4 =
-                % next 4 chars indicating number of bytes for actual data
-                if length(data) < 4
-                    % logical error or data error
-                    waveData.status = -16;
-                    return; % exit
-                end
-                headchar = char(data(1));
-                headlen  = round(str2double(char(data(2))));
-                if strcmpi(headchar, '#') && headlen >= 1
-                    % fine and go on    (test negative for headlen = NaN)
-                else
-                    % logical error or data error
-                    waveData.status = -17;
-                    return; % exit
-                end
-                datalen = str2double(char(data(2+1 : ...
-                    min(2+headlen,length(data)))));
-                if length(data) ~= 2 + headlen + datalen
-                    % logical error or data error
-                    waveData.status = -18;
-                    return; % exit
-                end
-                % extract binary data (uint8)
-                data = data(2 + headlen + (1:datalen));
-                % convert data, requires setting 'FORMAT:BORDER LSBfirst'
-                % (see 'runAfterOpen' and 'reset' macro)
-                if uint16format
-                    data = double(typecast(data, 'uint16'));
-                else
-                    data = double(typecast(data, 'uint32'));
-                end
-                % check and reformat
-                if length(data) ~= xlength * xnovpsi
-                    % logical error or data error
-                    waveData.status = -19;
-                    return; % exit
-                elseif xnovpsi == 2 && floor(length(data)/2) == ...
-                        ceil(length(data)/2)
-                    %data = reshape(data, 2, []);
-                    % chance to extend code for acq mode = envelope
-                    % replace ':DATA' by ':DATA:ENVELOPE' in commands
-                    % via cmdString with two options
-                    % and store both rows of data
-                    
-                    % logical error or data error
-                    waveData.status = -20;
-                    return; % exit
-                end
                 
+                data = data(12:end);
+                data = double(data);
+                
+                
+                
+%                 % check and extract header: e.g. #41000binarydata with 4 =
+%                 % next 4 chars indicating number of bytes for actual data
+%                 if length(data) < 4
+%                     % logical error or data error
+%                     waveData.status = -16;
+%                     return; % exit
+%                 end
+%                 headchar = char(data(1));
+%                 headlen  = round(str2double(char(data(2))));
+%                 if strcmpi(headchar, '#') && headlen >= 1
+%                     % fine and go on    (test negative for headlen = NaN)
+%                 else
+%                     % logical error or data error
+%                     waveData.status = -17;
+%                     return; % exit
+%                 end
+%                 datalen = str2double(char(data(2+1 : ...
+%                     min(2+headlen,length(data)))));
+%                 if length(data) ~= 2 + headlen + datalen
+%                     % logical error or data error
+%                     waveData.status = -18;
+%                     return; % exit
+%                 end
+%                 % extract binary data (uint8)
+%                 data = data(2 + headlen + (1:datalen));
+%                 % convert data, requires setting 'FORMAT:BORDER LSBfirst'
+%                 % (see 'runAfterOpen' and 'reset' macro)
+%                 if uint16format
+%                     data = double(typecast(data, 'uint16'));
+%                 else
+%                     data = double(typecast(data, 'uint32'));
+%                 end
+%                 % check and reformat
+%                 if length(data) ~= xlength * xnovpsi
+%                     % logical error or data error
+%                     waveData.status = -19;
+%                     return; % exit
+%                 elseif xnovpsi == 2 && floor(length(data)/2) == ...
+%                         ceil(length(data)/2)
+%                     %data = reshape(data, 2, []);
+%                     % chance to extend code for acq mode = envelope
+%                     % replace ':DATA' by ':DATA:ENVELOPE' in commands
+%                     % via cmdString with two options
+%                     % and store both rows of data
+%
+%                     % logical error or data error
+%                     waveData.status = -20;
+%                     return; % exit
+%                 end
+
                 % Sample value: Yn = yOrigin + (yIncrement * byteValuen)
-                waveData.volt(cnt, :) = yorigin + yinc * data(1, :);
-                
+                waveData.volt(cnt, :) = (data - yref - yorigin) * xinc;
                 
             end
             
