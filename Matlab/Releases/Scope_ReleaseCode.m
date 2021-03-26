@@ -92,6 +92,15 @@ cd(workReleaseDir);
 pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
 
 % -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Rigol', '+DS2072A');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Rigol', '+DS2072A');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
 % return to original path
 cd(ThisDir);
 
