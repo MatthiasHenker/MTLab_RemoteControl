@@ -119,6 +119,14 @@ myScope.query('MEASurement2:RESult:ACTual?');
 toc
 
 
+myScope.acqStop;
+tic
+data = myScope.captureWaveForm('channel', 2);
+toc
+myScope.acqRun;
+figure(1);
+plot(data.time, data.volt);
+pwelch(data.volt(1,:))
 
 myScope.AutoscaleHorizontalSignalPeriods = 2;
 myScope.AutoscaleVerticalScalingFactor   = 0.7;
