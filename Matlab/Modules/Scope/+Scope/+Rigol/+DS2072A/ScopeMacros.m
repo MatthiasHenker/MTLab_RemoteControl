@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.2.0';      % release version
-        MacrosDate    = '2021-03-29'; % release date
+        MacrosVersion = '0.3.0';      % release version
+        MacrosDate    = '2021-04-08'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -238,7 +238,6 @@ classdef ScopeMacros < handle
         
         % -----------------------------------------------------------------
         
-        % X (RS RTB 2000 code as template), 361
         function status = configureInput(obj, varargin)
             % configureInput  : configure input of specified channels
             % examples (for valid options see code below)
@@ -419,6 +418,13 @@ classdef ScopeMacros < handle
                                 if obj.ShowMessages
                                     disp('  - skew         : -200e-9 (coerced)');
                                 end
+                            elseif skew ~= round(skew/20e-9)*20e-9
+                                % round to 20ns steps
+                                skew = round(skew/20e-9)*20e-9;
+                                if obj.ShowMessages
+                                    disp(['  - skew         : ' ...
+                                        num2str(skew, '%g') ' (coerced)']);
+                                end
                             end
                         end
                     case 'unit'
@@ -457,15 +463,27 @@ classdef ScopeMacros < handle
             for cnt = 1:length(channels)
                 channel = channels{cnt};
                 
-                % 'impedance' (after vDiv)
-                
+                % 'impedance'
+                if ~isempty(impedance)
+                    % set parameter
+                    obj.VisaIFobj.write([':CHANnel' channel ':IMPedance ' ...
+                        impedance]);
+                    % read and verify
+                    response = obj.VisaIFobj.query([':CHANnel' channel ...
+                        ':IMPedance?']);
+                    if ~strcmpi(impedance, char(response))
+                        disp(['Scope: Warning - ''configureInput'' ' ...
+                            'impedance parameter could not be set correctly.']);
+                        status = -1;
+                    end
+                end
                 
                 % 'coupling'         : 'DC', 'AC', 'GND'
                 if ~isempty(coupling)
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ':COUPling ' coupling]);
+                    obj.VisaIFobj.write([':CHANnel' channel ':COUPling ' coupling]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['CHANnel' channel ':COUPling?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ':COUPling?']);
                     if ~strcmpi(coupling, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'coupling parameter could not be set correctly.']);
@@ -473,14 +491,12 @@ classdef ScopeMacros < handle
                     end
                 end
                 
-                % 'inputDiv', 'probe': 1, 10, 20, 50, 100, 200, 500, 1000
+                % 'inputDiv', 'probe': .. 1, 10, 20, 50, 100, ..
                 if ~isempty(inputDiv)
                     % set parameter
-                    obj.VisaIFobj.write(['PROBe' channel ...
-                        ':SETup:ATTenuation:MANual ' inputDiv]);
+                    obj.VisaIFobj.write([':CHANnel' channel ':PROBe ' inputDiv]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['PROBe' channel ...
-                        ':SETup:ATTenuation:MANual?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ':PROBe?']);
                     if str2double(inputDiv) ~= str2double(char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'inputDiv parameter could not be set correctly.']);
@@ -491,11 +507,9 @@ classdef ScopeMacros < handle
                 % 'unit'             : 'V' or 'A'
                 if ~isempty(unit)
                     % set parameter
-                    obj.VisaIFobj.write(['PROBe' channel ...
-                        ':SETup:ATTenuation:UNIT ' unit]);
+                    obj.VisaIFobj.write([':CHANnel' channel ':UNITs ' unit]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['PROBe' channel ...
-                        ':SETup:ATTenuation:UNIT?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ':UNITs?']);
                     if ~strcmpi(unit, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'unit parameter could not be set correctly.']);
@@ -506,11 +520,11 @@ classdef ScopeMacros < handle
                 % 'bwLimit'          : 'off', 'on'
                 if ~isempty(bwLimit)
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':BANDwidth ' bwLimit]);
+                    obj.VisaIFobj.write([':CHANnel' channel ...
+                        ':BWLimit ' bwLimit]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['CHANnel' channel ...
-                        ':bandwidth?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ...
+                        ':BWLimit?']);
                     if ~strcmpi(bwLimit, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'bwLimit parameter could not be set correctly.']);
@@ -521,11 +535,11 @@ classdef ScopeMacros < handle
                 % 'invert'           : 'off', 'on'
                 if ~isempty(invert)
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':POLarity ' invert]);
+                    obj.VisaIFobj.write([':CHANnel' channel ...
+                        ':INVert ' invert]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['CHANnel' channel ...
-                        ':POLarity?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ...
+                        ':INVert?']);
                     if ~strcmpi(invert, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'invert parameter could not be set correctly.']);
@@ -533,17 +547,17 @@ classdef ScopeMacros < handle
                     end
                 end
                 
-                % 'skew'           : (-500e-9 ... 500e-9 = +/- 500ns)
+                % 'skew'           : (-200e-9 ... 200e-9 = +/- 200ns)
                 if ~isempty(skew)
                     % format (round) numeric value
-                    skewString = num2str(skew, '%1.2e');
+                    skewString = num2str(skew, '%1.1e');
                     skew       = str2double(skewString);
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':SKEW ' skewString]);
+                    obj.VisaIFobj.write([':CHANnel' channel ...
+                        ':TCAL ' skewString]);
                     % read and verify
-                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
-                        ':SKEW?']);
+                    response   = obj.VisaIFobj.query([':CHANnel' channel ...
+                        ':TCAL?']);
                     skewActual = str2double(char(response));
                     if skew ~= skewActual
                         disp(['Scope: Warning - ''configureInput'' ' ...
@@ -555,11 +569,11 @@ classdef ScopeMacros < handle
                 % 'trace'          : 'off', 'on'
                 if ~isempty(trace)
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':STATe ' trace]);
+                    obj.VisaIFobj.write([':CHANnel' channel ...
+                        ':DISPlay ' trace]);
                     % read and verify
-                    response = obj.VisaIFobj.query(['CHANnel' channel ...
-                        ':STATe?']);
+                    response = obj.VisaIFobj.query([':CHANnel' channel ...
+                        ':DISPlay?']);
                     if ~strcmpi(trace, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'trace parameter could not be set correctly.']);
@@ -573,10 +587,10 @@ classdef ScopeMacros < handle
                     vDivString = num2str(vDiv, '%1.2e');
                     vDiv       = str2double(vDivString);
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
+                    obj.VisaIFobj.write([':CHANnel' channel ...
                         ':SCALe ' vDivString]);
                     % read and verify
-                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
+                    response   = obj.VisaIFobj.query([':CHANnel' channel ...
                         ':SCALe?']);
                     vDivActual = str2double(char(response));
                     if vDiv ~= vDivActual
@@ -584,31 +598,26 @@ classdef ScopeMacros < handle
                             'vDiv parameter could not be set correctly. ' ...
                             'Check limits.']);
                     end
-                    % update
-                    vDiv = vDivActual;
                 elseif ~isempty(vOffset)
-                    % read vDiv anyway: required for vOffset scaling
-                    response = obj.VisaIFobj.query(['CHANnel' channel ...
+                    % read vDiv: required for vOffset scaling
+                    response   = obj.VisaIFobj.query([':CHANnel' channel ...
                         ':SCALe?']);
-                    vDiv     = str2double(char(response));
+                    vDivActual = str2double(char(response));
                 end
                 
                 % 'vOffset'        : positive double in V
                 if ~isempty(vOffset)
-                    % set position parameter to zero 
-                    obj.VisaIFobj.write(['CHANnel' channel ...
-                        ':POSition 0']);
                     % format (round) numeric value
                     vOffString = num2str(vOffset, '%1.2e');
                     vOffset    = str2double(vOffString);
                     % set parameter
-                    obj.VisaIFobj.write(['CHANnel' channel ...
+                    obj.VisaIFobj.write([':CHANnel' channel ...
                         ':OFFSet ' vOffString]);
                     % read and verify
-                    response   = obj.VisaIFobj.query(['CHANnel' channel ...
+                    response   = obj.VisaIFobj.query([':CHANnel' channel ...
                         ':OFFSet?']);
                     vOffActual = str2double(char(response));
-                    if abs(vOffset - vOffActual) > vDiv*0.5
+                    if abs(vOffset - vOffActual) > vDivActual*0.5
                         disp(['Scope: Warning - ''configureInput'' ' ...
                             'vOffset parameter could not be set correctly. ' ...
                             'Check limits.']);
