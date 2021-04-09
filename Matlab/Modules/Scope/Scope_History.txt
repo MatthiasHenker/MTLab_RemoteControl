@@ -14,8 +14,8 @@ Release v1.2.1 (same as Scope class) requires VisaIF v2.4.3 or later
   - Scope.RS.RTB2000.ScopeMacros                      v1.2.1   (2021-03-23)
       Bug fix: method makeScreenShot requires no
       filename anymore (default filename is working now)
-  - Scope.Rigol.DS2072A.ScopeMacros                   v0.1.0   (2021-03-23)
-      with template RS-RTB2000 started
+  - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.0   (2021-04-09)
+      initial package, supports all features
   - Scope.Siglent.SDS2000X.ScopeMacros                n/a
       coming soon (hopefully)
 

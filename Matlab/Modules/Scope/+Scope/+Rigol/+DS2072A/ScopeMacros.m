@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.3.0';      % release version
-        MacrosDate    = '2021-04-08'; % release date
+        MacrosVersion = '1.2.0';      % release version
+        MacrosDate    = '2021-04-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -608,7 +608,7 @@ classdef ScopeMacros < handle
                 % 'vOffset'        : positive double in V
                 if ~isempty(vOffset)
                     % format (round) numeric value
-                    vOffString = num2str(vOffset, '%1.2e');
+                    vOffString = num2str(-vOffset, '%1.2e');
                     vOffset    = str2double(vOffString);
                     % set parameter
                     obj.VisaIFobj.write([':CHANnel' channel ...
@@ -1114,13 +1114,12 @@ classdef ScopeMacros < handle
             end
         end
         
-        % X (RS RTB 2000 code as template)
         function status = autoscale(obj, varargin)
             % autoscale       : adjust vertical and/or horizontal scaling
             %                   vDiv, vOffset for vertical and
             %                   tDiv for horizontal
             %   'mode'        : 'hor', 'vert', 'both'
-            %   'channel'     : 1 .. 4
+            %   'channel'     : 1 .. 2
             
             % init output
             status = NaN;
@@ -1141,13 +1140,13 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case {'', '1', '2', '3', '4'}
+                                case {'', '1', '2'}
                                     % do nothing
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: Warning - ' ...
                                         '''autoscale'' invalid ' ...
-                                        'channel (allowed are 1 .. 4) ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -1187,17 +1186,11 @@ classdef ScopeMacros < handle
             numOfSignalPeriods    = obj.AutoscaleHorizontalSignalPeriods;
             %
             % ratio of ADC-fullscale range
-            % > 1  ATTENTION: ADC will be overloaded
-            % 1.00 means full ADC-range and display range (-5 ..+5) vDiv
+            % > 1.25  ATTENTION: ADC will be overloaded: (-5 ..+5) vDiv
+            %     scaling factor up to 1.25 is possible (ADC-full range)
+            % 1.00 means full display-range (-4 ..+4) vDiv
             % sensible range 0.3 .. 0.9
             verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
-            
-            % to get similar behavior as for Tektronix and Keysight scopes
-            % ==> scaling factor of 1 means +/- 4 vDiv display range
-            % scaling factor up to 1.25 is possible (ADC-full range)
-            % ==> theoretically scaling factor should be scaled down by 0.8
-            % ==> compromise: 0.9
-            verticalScalingFactor = 0.9 * verticalScalingFactor;
             
             % -------------------------------------------------------------
             % actual code
@@ -1205,22 +1198,9 @@ classdef ScopeMacros < handle
             
             % define default when channel parameter is missing
             if isempty(channels)
-                channels = {'1', '2', '3', '4'};
+                channels = {'1', '2'};
                 if obj.ShowMessages
-                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
-                end
-            end
-            
-            if ~isempty(mode)
-                obj.VisaIFobj.write('MEASurement:TIMeout:AUTO ON');
-                % get time span for acquisition
-                numPoints = obj.VisaIFobj.query('ACQuire:POINts?');
-                sRate     = obj.VisaIFobj.query('ACQuire:SRATe?');
-                spanTime  = str2double(char(numPoints)) / ...
-                    str2double(char(sRate));
-                if isnan(spanTime)
-                    spanTime = 1;
-                    status   = -2;
+                    disp('  - channel      : 1, 2 (coerced)');
                 end
             end
             
@@ -1229,7 +1209,7 @@ classdef ScopeMacros < handle
                 for cnt = 1:length(channels)
                     % check if trace is on or off
                     traceOn = obj.VisaIFobj.query( ...
-                        ['CHANnel' channels{cnt} ':STATe?']);
+                        [':CHANnel' channels{cnt} ':DISPlay?']);
                     traceOn = abs(str2double(char(traceOn)));
                     if isnan(traceOn)
                         traceOn = false;
@@ -1241,61 +1221,31 @@ classdef ScopeMacros < handle
                         % init
                         loopcnt  = 0;
                         maxcnt   = 9;
-                        % measurement place 3 for vMin
-                        obj.VisaIFobj.write('MEASurement3:ENABle 1');
-                        obj.VisaIFobj.write('MEASurement3:MAIN LPEakvalue');
-                        obj.VisaIFobj.write(['MEASurement3:SOURce CH' ...
-                            channels{cnt}]);
-                        % measurement place 4 for vMax
-                        obj.VisaIFobj.write('MEASurement4:ENABle 1');
-                        obj.VisaIFobj.write('MEASurement4:MAIN UPEakvalue');
-                        obj.VisaIFobj.write(['MEASurement4:SOURce CH' ...
-                            channels{cnt}]);
                         while loopcnt < maxcnt
-                            % a certain settling time is required
-                            pause(0.3 + spanTime);
+                            % time for settlement
+                            pause(0.2);
                             
                             % measure min and max voltage
-                            vMin = obj.VisaIFobj.query( ...
-                                'MEASurement3:RESult:ACTual?');
-                            vMin = str2double(char(vMin));
-                            vMax = obj.VisaIFobj.query( ...
-                                'MEASurement4:RESult:ACTual?');
-                            vMax = str2double(char(vMax));
-                            if isnan(vMin) || isnan(vMax)
-                                status  = -4;
-                                break;
-                            elseif abs(vMin) > 1e36
-                                vMin = NaN;          % invalid measurement
-                            elseif abs(vMax) > 1e36
-                                vMax = NaN;          % invalid measurement
-                            end
-                            % ADC is clipped? RTB manual (10v00, page 573)
-                            adcState = obj.VisaIFobj.query( ...
-                                'STATus:QUEStionable:ADCState:CONDition?');
-                            adcState = abs(str2double(char(adcState)));
-                            if isnan(adcState)
-                                status  = -5;
-                                break;
-                            else
-                                % Bit 1 (LSB): channel 1 positive clipping
-                                % Bit 2      : channel 1 negative clipping
-                                % ...
-                                % Bit 8 (MSB): channel 4 negative clipping
-                                adcState = dec2binvec(adcState, 8);
-                                adcMax   = adcState( ...
-                                    str2double(channels{cnt})*2 -1);
-                                adcMin   = adcState( ...
-                                    str2double(channels{cnt})*2 -0);
-                            end
+                            result = obj.runMeasurement( ...
+                                'channel', channels{cnt}, ...
+                                'parameter', 'minimum');
+                            vMin   = result.value;
+                            result = obj.runMeasurement( ...
+                                'channel', channels{cnt}, ...
+                                'parameter', 'maximum');
+                            vMax   = result.value;
+                            
+                            % ADC is clipped?
+                            adcMax = isnan(vMax);
+                            adcMin = isnan(vMin);
                             
                             % estimate voltage scaling (gain)
-                            % 10 vertical divs at display
-                            vDiv = (vMax - vMin) / 10;
+                            % 8 vertical divs at display
+                            vDiv = (vMax - vMin) / 8;
                             if isnan(vDiv)
                                 % request current vDiv setting
                                 vDiv = obj.VisaIFobj.query( ...
-                                    ['CHANnel' channels{cnt} ':SCALe?']);
+                                    [':CHANnel' channels{cnt} ':SCALe?']);
                                 vDiv = str2double(char(vDiv));
                                 if isnan(vDiv)
                                     status = -6;
@@ -1308,7 +1258,7 @@ classdef ScopeMacros < handle
                             if isnan(vOffset)
                                 % request current vOffset setting
                                 vOffset = obj.VisaIFobj.query( ...
-                                    ['CHANnel' channels{cnt} ':OFFSet?']);
+                                    [':CHANnel' channels{cnt} ':OFFSet?']);
                                 vOffset = str2double(char(vOffset));
                                 if isnan(vOffset)
                                     status = -7;
@@ -1321,11 +1271,11 @@ classdef ScopeMacros < handle
                                 vDiv    = vDiv / 0.34;
                             elseif adcMax
                                 % positive clipping: scale down
-                                vOffset = vOffset + 4* vDiv;
+                                vOffset = vOffset + 3* vDiv;
                                 vDiv    = vDiv / 0.5;
                             elseif adcMin
                                 % negative clipping: scale down
-                                vOffset = vOffset - 4* vDiv;
+                                vOffset = vOffset - 3* vDiv;
                                 vDiv    = vDiv / 0.5;
                             else
                                 % adjust gently
@@ -1361,28 +1311,23 @@ classdef ScopeMacros < handle
             % horizontal scaling: adjust tDiv
             if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
                 % which channel is used for trigger
-                trigSrc = obj.VisaIFobj.query('TRIGger:A:SOURce?');
+                %obj.VisaIFobj.write(':TRIGger:MODE EDGe');
+                trigSrc = obj.VisaIFobj.query(':TRIGger:EDGe:SOURce?');
                 trigSrc = upper(char(trigSrc));
                 switch trigSrc
-                    case {'CH1', 'CH2', 'CH3', 'CH4'}
-                        % measurement place 1 for frequency
-                        obj.VisaIFobj.write('MEASurement1:ENABle 1');
-                        obj.VisaIFobj.write('MEASurement1:MAIN FREQuency');
-                        obj.VisaIFobj.write(['MEASurement1:SOURce ' trigSrc]);
-                        % a certain settling time is required
-                        pause(0.3 + spanTime);
+                    case {'CHAN1', 'CHAN2'}
+                        % additional settling time
+                        pause(0.2);
                         % measure frequency
-                        freq = obj.VisaIFobj.query( ...
-                            'MEASurement1:RESult:ACTual?');
-                        freq = str2double(char(freq));
-                        if abs(freq) > 1e36
-                            freq = NaN;          % invalid measurement
-                        end
+                        result = obj.runMeasurement( ...
+                            'channel', trigSrc(end), ...
+                            'parameter', 'frequency');
+                        freq   = result.value;
                         
                         if ~isnan(freq)
                             % adjust tDiv parameter
-                            % calculate sensible tDiv parameter (12*tDiv@screen)
-                            tDiv = numOfSignalPeriods / (12*freq);
+                            % calculate sensible tDiv parameter (14*tDiv@screen)
+                            tDiv = numOfSignalPeriods / (14*freq);
                             
                             % now send new tDiv parameter to scope
                             %obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
@@ -1534,7 +1479,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % X (RS RTB 2000 code as template)
         function meas = runMeasurement(obj, varargin)
             % runMeasurement  : request measurement value
             %   'channel'
@@ -1569,13 +1513,13 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case {'', '1', '2', '3', '4'}
+                                case {'', '1', '2'}
                                     % do nothing: all fine
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: WARNING - ' ...
                                         '''runMeasurement'' invalid ' ...
-                                        'channel (allowed are 1 .. 4) ' ...
+                                        'channel (allowed are 1 .. 2) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -1597,45 +1541,29 @@ classdef ScopeMacros < handle
                             case {'period', 'peri', 'per'}
                                 parameter = 'PERiod';
                                 unit      = 's';
-                            case {'cycmean', 'cmean'}
-                                parameter = 'CYCMean';
                             case 'mean'
-                                parameter = 'MEAN';
+                                parameter = 'VAVG';
                             case {'cycrms', 'crms'}
-                                parameter = 'CYCRms';
+                                parameter = 'PVRMs';
                             case 'rms'
-                                parameter = 'RMS';
-                            case {'cycstddev', 'cycstd', 'cstddev', 'cstd'}
-                                parameter = 'CYCStddev';
-                            case {'stddev, std'}
-                                parameter = 'STDDev';
+                                parameter = 'VRMS';
                             case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
-                                parameter = 'PEAK';
+                                parameter = 'VPP';
                             case {'maximum', 'max'}
-                                parameter = 'UPEakvalue';
+                                parameter = 'VMAX';
                             case {'minimum', 'min'}
-                                parameter = 'LPEakvalue';
+                                parameter = 'VMIN';
                             case {'high', 'top'}
-                                parameter = 'HIGH';
+                                parameter = 'VTOP';
                             case {'low', 'base'}
-                                parameter = 'LOW';
+                                parameter = 'VBASe';
                             case {'amplitude', 'amp'}
-                                parameter = 'AMPLitude';
+                                parameter = 'VAMP';
                             case {'overshoot', 'over'}
-                                disp(['Scope: WARNING - ' ...
-                                    '''runMeasurement'' coerce ' ...
-                                    'overshoot measurement to positive ' ...
-                                    'edge --> coerce and continue']);
-                                if obj.ShowMessages
-                                    disp('  - parameter    : povershoot (coerced)');
-                                end
-                                parameter = 'POVershoot';
+                                parameter = 'OVERshoot';
                                 unit      = '%';
-                            case {'povershoot', 'posovershoot', 'pover'}
-                                parameter = 'POVershoot';
-                                unit      = '%';
-                            case {'novershoot', 'negovershoot', 'nover'}
-                                parameter = 'NOVershoot';
+                            case {'preshoot', 'pre'}
+                                parameter = 'PREShoot';
                                 unit      = '%';
                             case {'risetime', 'rise'}
                                 parameter = 'RTIMe';
@@ -1643,26 +1571,20 @@ classdef ScopeMacros < handle
                             case {'falltime', 'fall'}
                                 parameter = 'FTIMe';
                                 unit      = 's';
-                            case {'posslewrate', 'possr', 'srrise'}
-                                parameter = 'SRRise';
-                                unit      = 'V/s';
-                            case {'negslewrate', 'negsr', 'srfall'}
-                                parameter = 'SRFall';
-                                unit      = 'V/s';
                             case {'poswidth', 'pwidth'}
-                                parameter = 'PPWidth';
+                                parameter = 'PWIDth';
                                 unit      = 's';
                             case {'negwidth', 'nwidth'}
-                                parameter = 'NPWidth';
+                                parameter = 'NWIDth';
                                 unit      = 's';
                             case {'dutycycle', 'dutycyc', 'dcycle', 'dcyc'}
-                                parameter = 'PDCycle';
+                                parameter = 'PDUTy';
                                 unit      = '%';
                             case 'phase'
-                                parameter = 'PHASe';
+                                parameter = 'RPHase';
                                 unit      = 'deg';
                             case 'delay'
-                                parameter = 'DELay';
+                                parameter = 'RDELay';
                                 unit      = 's';
                             otherwise
                                 disp(['Scope: Warning - ''runMeasurement'' ' ...
@@ -1683,24 +1605,19 @@ classdef ScopeMacros < handle
                         '--> skip and exit']);
                     disp('  ''frequency''');
                     disp('  ''period''');
-                    disp('  ''cycmean''');
                     disp('  ''mean''');
                     disp('  ''cycrms''');
                     disp('  ''rms''');
-                    disp('  ''cycstddev''');
-                    disp('  ''stddev''');
                     disp('  ''pk-pk''');
                     disp('  ''maximum''');
                     disp('  ''minimum''');
                     disp('  ''high''');
                     disp('  ''low''');
                     disp('  ''amplitude''');
-                    disp('  ''povershoot''');
-                    disp('  ''novershoot''');
+                    disp('  ''overshoot''');
+                    disp('  ''preshoot''');
                     disp('  ''risetime''');
                     disp('  ''falltime''');
-                    disp('  ''posslewrate''');
-                    disp('  ''negslewrate''');
                     disp('  ''poswidth''');
                     disp('  ''negwidth''');
                     disp('  ''dutycycle''');
@@ -1708,7 +1625,7 @@ classdef ScopeMacros < handle
                     disp('  ''delay''');
                     meas.status = -1;
                     return
-                case {'phase', 'delay'}
+                case {'rphase', 'rdelay'}
                     if length(channels) ~= 2
                         disp(['Scope: ERROR ''runMeasurement'' ' ...
                             'two source channels have to be specified ' ...
@@ -1717,8 +1634,7 @@ classdef ScopeMacros < handle
                         meas.status = -1;
                         return
                     else
-                        source    = ['CH' channels{1} ',CH' channels{2}];
-                        measPlace = '2';
+                        source    = ['CHAN' channels{1} ',CHAN' channels{2}];
                     end
                 otherwise
                     if length(channels) ~= 1
@@ -1729,14 +1645,7 @@ classdef ScopeMacros < handle
                         meas.status = -1;
                         return
                     else
-                        source    = ['CH' channels{1}];
-                        if strcmpi(parameter, 'LPEakvalue')
-                            measPlace = '3';
-                        elseif strcmpi(parameter, 'UPEakvalue')
-                            measPlace = '4';
-                        else
-                            measPlace = '1';
-                        end
+                        source    = ['CHAN' channels{1}];
                     end
             end
             
@@ -1748,28 +1657,8 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
-            obj.VisaIFobj.write('MEASurement:TIMeout:AUTO ON');
-            % get time span for acquisition
-            numPoints = obj.VisaIFobj.query('ACQuire:POINts?');
-            sRate     = obj.VisaIFobj.query('ACQuire:SRATe?');
-            spanTime  = str2double(char(numPoints)) / ...
-                str2double(char(sRate));
-            if isnan(spanTime)
-                spanTime    = 1;
-                meas.status = -2;
-            end
-            
-            % setup measurement
-            obj.VisaIFobj.write(['MEASurement' measPlace ':ENABle 1']);
-            obj.VisaIFobj.write(['MEASurement' measPlace ':MAIN ' parameter]);
-            obj.VisaIFobj.write(['MEASurement' measPlace ':SOURce ' source]);
-            
-            % a certain settling time is required
-            pause(0.3 + spanTime);
-            
             % request measurement value
-            value = obj.VisaIFobj.query( ...
-                ['MEASurement' measPlace ':RESult:ACTual?']);
+            value = obj.VisaIFobj.query([':MEASure:' parameter '? ' source]);
             value = str2double(char(value));
             if isnan(value)
                 meas.status = -5;     % error   (negative status)
@@ -1779,7 +1668,11 @@ classdef ScopeMacros < handle
             end
             
             % copy to output
-            meas.value = value;
+            if strcmpi(unit, '%')
+                meas.value = 100* value;
+            else
+                meas.value = value;
+            end
             meas.unit  = unit;
             
             % set final status
