@@ -440,7 +440,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.1';      % release version (= class version)
-        ScopeDate       = '2021-03-23'; % release date
+        ScopeDate       = '2021-04-09'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -634,7 +634,7 @@ classdef Scope < VisaIF
             % reset@VisaIF(obj)
             
             % optionally clear buffers (for visa-usb only)
-            obj.clrdevice;
+            %obj.clrdevice;
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);

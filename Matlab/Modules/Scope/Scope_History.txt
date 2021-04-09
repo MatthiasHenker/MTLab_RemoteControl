@@ -3,8 +3,10 @@
 in preparation
 ---------------------------------------------------------------------------
 Release v1.2.1 (same as Scope class) requires VisaIF v2.4.3 or later
-  - Scope                                             v1.2.1   (2021-03-23)
-      add comments in doc for method makeScreenShot
+  - Scope                                             v1.2.1   (2021-04-09)
+      add comments in doc for method makeScreenShot,
+      comment out clrdevice action in reset method 
+      (causes troubles for Rigol Scope)
   - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-03-23)
       Bug fix: method makeScreenShot requires no
       filename anymore (default filename is working now)

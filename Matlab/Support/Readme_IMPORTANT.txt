@@ -27,7 +27,7 @@ VisaIF       : VisaIF             class    v2.4.3   (2021-02-15)
                VisaIF_HTW_Henker.csv                (2021-03-09)
 
 # ----------------------------------------------------------------------------
-Scope        : Scope              class    v1.2.1   (2021-03-23)
+Scope        : Scope              class    v1.2.1   (2021-04-09)
   - packages : Tektronix.TDS1000_2000      v1.2.1   (2021-03-23)
                Keysight.DSOX1000           v1.2.1   (2021-03-23)
                RS.RTB2000                  v1.2.1   (2021-03-23)
