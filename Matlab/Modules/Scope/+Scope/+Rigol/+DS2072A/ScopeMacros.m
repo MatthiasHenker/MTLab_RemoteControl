@@ -716,13 +716,13 @@ classdef ScopeMacros < handle
                         switch lower(mode)
                             case ''
                                 mode = '';
-                            case 'sample'
+                            case {'sample', 'normal', 'norm'}
                                 mode = 'NORM';  % NORMal
-                            case 'peakdetect'
+                            case {'peakdetect', 'peak'}
                                 mode = 'PEAK';  % PEAK
-                            case 'average'
+                            case {'average', 'aver'}
                                 mode = 'AVER';  % AVERages
-                            case {'hres', 'highres', 'hresolution'}
+                            case {'highres', 'hres', 'highresolution'}
                                 mode = 'HRES';  % HRESolution
                             otherwise
                                 mode = '';

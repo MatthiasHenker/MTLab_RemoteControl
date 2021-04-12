@@ -96,7 +96,22 @@ classdef Scope < VisaIF
     %                       affects tDiv and numOfSamples
     %           'maxLength' : positive numeric value, specifies the maximum
     %                       number of samples for waveforms
-    %           'mode'    : 'sample', 'peakdetect', average, ...
+    %           'mode'    : acquisition mode
+    %                       'sample': aquisitions are displayed as they are
+    %                                 done (best choice in most cases)
+    %                       'peakdetect': displays the maximum and minimum
+    %                                 values of the signal within the sample
+    %                                 interval to acquire the envelop of the
+    %                                 signal and narrow pulses that might be
+    %                                 lost ==> helpful for work at scope but
+    %                                 senseless when downloading all data to
+    %                                 host
+    %                       'average': aquisitions are averaged (requires a
+    %                                 period signal with stable trigger)
+    %                       'highres': averages the neighbouring points of
+    %                                 the sampled waveform (requires a
+    %                                 highly oversampled signal)
+    %                                 ==> decimates sample rate
     %           'numAverage' : positive numeric value, specifies the number
     %                       of waveform acquisitions that make up an
     %                       averaged waveform (only of interest when
@@ -206,7 +221,7 @@ classdef Scope < VisaIF
     %       with varargin: pairs of parameters NAME, VALUE
     %           filename: char array, specifying filename; optional;
     %                     file will be saved in current directory;
-    %                     when no file extension is given then default is 
+    %                     when no file extension is given then default is
     %                     used; when a unsupported file extension is
     %                     specified then an error is produced
     %           darkmode: 'off', 0, false: white background color
@@ -359,12 +374,12 @@ classdef Scope < VisaIF
     %   - with read/write access
     %     * AutoscaleHorizontalSignalPeriods : config parameter for
     %       autoscale method, specifies number of signal periods in display,
-    %       sensible range is 2 .. 50 with default value 5 
+    %       sensible range is 2 .. 50 with default value 5
     %       setting range is 1 .. 1000
     %     * AutoscaleVerticalScalingFactor : config parameter for
     %       autoscale method, specifies amplitude range in display,
     %       1.00 means full display@scope range (-4 ..+4) vDiv,
-    %       sensible range is 0.3 .. 1.0 with default value 0.95 
+    %       sensible range is 0.3 .. 1.0 with default value 0.95
     %       setting range is 0.1 ... 1.25
     %       values larger than 1 are possible for some scopes, but ADC
     %       overloading can occure and trigger stage will possibly fail
@@ -440,7 +455,7 @@ classdef Scope < VisaIF
     
     properties(Constant = true)
         ScopeVersion    = '1.2.1';      % release version (= class version)
-        ScopeDate       = '2021-04-09'; % release date
+        ScopeDate       = '2021-04-12'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

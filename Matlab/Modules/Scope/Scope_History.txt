@@ -1,29 +1,52 @@
 % Scope support package (from newest to older versions)
 
+
 in preparation
 ---------------------------------------------------------------------------
+Release v1.2.2 (same as Scope class) requires VisaIF v2.4.3 or later
+  - Scope                                             v1.2.2   (2021-xx-xx)
+      no changes
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.2   (2021-xx-xx)
+      no changes
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.2   (2021-xx-xx)
+      no changes
+  - Scope.RS.RTB2000.ScopeMacros                      v1.2.2   (2021-xx-xx)
+      no changes
+  - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.2   (2021-xx-xx)
+      no changes
+  - Scope.Siglent.SDS2000X.ScopeMacros                v0.0.0   (2021-xx-xx)
+      work in progress
+
+
+
+
+
+
+---------------------------------------------------------------------------
 Release v1.2.1 (same as Scope class) requires VisaIF v2.4.3 or later
-  - Scope                                             v1.2.1   (2021-04-09)
+  - Scope                                             v1.2.1   (2021-04-12)
       add comments in doc for method makeScreenShot,
       comment out clrdevice action in reset method 
-      (causes troubles for Rigol Scope)
-  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-03-23)
+      (causes troubles for Rigol Scope),
+      add highres mode (configureAcquisition method) 
+      in documentation and support parameter in all 
+      Scope packages
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-04-12)
       Bug fix: method makeScreenShot requires no
-      filename anymore (default filename is working now)
-  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.1   (2021-03-23)
+      filename anymore (default filename is working now),
+      support highres mode (see Scope class)
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.1   (2021-04-12)
       Bug fix: method makeScreenShot requires no
-      filename anymore (default filename is working now)
-  - Scope.RS.RTB2000.ScopeMacros                      v1.2.1   (2021-03-23)
+      filename anymore (default filename is working now),
+      support highres mode (see Scope class)
+  - Scope.RS.RTB2000.ScopeMacros                      v1.2.1   (2021-04-12)
       Bug fix: method makeScreenShot requires no
-      filename anymore (default filename is working now)
+      filename anymore (default filename is working now),
+      support highres mode (see Scope class)
   - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.1   (2021-04-12)
       initial package, supports all features
   - Scope.Siglent.SDS2000X.ScopeMacros                n/a
       coming soon (hopefully)
-
-
-
-
 
 ---------------------------------------------------------------------------
 Release v1.2.0 (same as Scope class) requires VisaIF v2.4.3 or later

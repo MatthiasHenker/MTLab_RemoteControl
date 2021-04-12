@@ -11,7 +11,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-03-23'; % release date
+        MacrosDate    = '2021-04-12'; % release date
         %
         % ? num of supported channels and so on ...
     end
@@ -558,7 +558,7 @@ classdef ScopeMacros < handle
                     case 'maxLength'
                         if obj.ShowMessages && ~isempty(paramValue)
                             disp(['Scope: Warning - ''maxLength'' ' ...
-                                    'parameter cannot be set --> ' ...
+                                    'parameter cannot be changed --> ' ...
                                     ' maxLength = 2500']);
                         end
                     case 'mode'
@@ -566,12 +566,19 @@ classdef ScopeMacros < handle
                         switch lower(mode)
                             case ''
                                 mode = '';
-                            case 'sample'
+                            case {'sample', 'normal', 'norm'}
                                 mode = 'sample';
-                            case 'peakdetect'
+                            case {'peakdetect', 'peak'}
                                 mode = 'peakdetect';
-                            case 'average'
+                            case {'average', 'aver'}
                                 mode = 'average';
+                            case {'highres', 'hres', 'highresolution'}
+                                mode = 'sample';
+                                disp(['Scope: Warning - ''mode''' ...
+                                    'parameter cannot be set to highres']);
+                                if obj.ShowMessages
+                                    disp('  - mode         : highres (coerced)');
+                                end
                             otherwise
                                 mode = '';
                                 disp(['Scope: Warning - ''configureAcquisition'' ' ...

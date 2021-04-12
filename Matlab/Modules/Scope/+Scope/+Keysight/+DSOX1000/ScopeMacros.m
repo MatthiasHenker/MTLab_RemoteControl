@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-03-23'; % release date
+        MacrosDate    = '2021-04-12'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -578,12 +578,14 @@ classdef ScopeMacros < handle
                         switch lower(mode)
                             case ''
                                 mode = '';
-                            case 'sample'
+                            case {'sample', 'normal', 'norm'}
                                 mode = 'NORM';
-                            case 'peakdetect'
+                            case {'peakdetect', 'peak'}
                                 mode = 'PEAK';
-                            case 'average'
+                            case {'average', 'aver'}
                                 mode = 'AVER';
+                            case {'highres', 'hres', 'highresolution'}
+                                mode = 'HRES';  % HRESolution
                             otherwise
                                 mode = '';
                                 disp(['Scope: WARNING - ''configureAcquisition'' ' ...
@@ -631,7 +633,7 @@ classdef ScopeMacros < handle
                 end
             end
             
-            % mode : average, peakdetect, sample
+            % mode : average, peakdetect, sample, highresolution
             if ~isempty(mode)
                 % set parameter
                 obj.VisaIFobj.write([':ACQuire:TYPE ' mode]);

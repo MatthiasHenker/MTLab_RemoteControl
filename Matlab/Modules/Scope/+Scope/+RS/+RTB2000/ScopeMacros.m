@@ -7,7 +7,7 @@ classdef ScopeMacros < handle
     
     properties(Constant = true)
         MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-03-21'; % release date
+        MacrosDate    = '2021-04-12'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -722,12 +722,14 @@ classdef ScopeMacros < handle
                         switch lower(mode)
                             case ''
                                 mode = '';
-                            case 'sample'
+                            case {'sample', 'normal', 'norm'}
                                 mode = 'sample';
-                            case 'peakdetect'
+                            case {'peakdetect', 'peak'}
                                 mode = 'peakdetect';
-                            case 'average'
+                            case {'average', 'aver'}
                                 mode = 'average';
+                            case {'highres', 'hres', 'highresolution'}
+                                mode = 'highres';
                             otherwise
                                 mode = '';
                                 disp(['Scope: Warning - ''configureAcquisition'' ' ...
@@ -819,25 +821,27 @@ classdef ScopeMacros < handle
             
             % mode     : 'sample', 'peakdetect', 'average'
             if ~isempty(mode)
-                % disable high resolution mode first
-                obj.VisaIFobj.write('ACQuire:HRESolution OFF');
-                
                 switch mode
                     case 'sample'
                         typeParam = 'REFResh';
                         typeResp  = 'REFR';
-                        peakParam = 'OFF';
-                        peakResp  = 'OFF';
+                        peakParam = 'OFF';   % off, 0
+                        hresParam = 'OFF';   % off, 0
                     case 'peakdetect'
                         typeParam = 'REFResh';
                         typeResp  = 'REFR';
-                        peakParam = 'AUTO';
-                        peakResp  = 'AUTO';
+                        peakParam = 'AUTO';  % on,  1
+                        hresParam = 'OFF';   % off, 0
                     case 'average'
                         typeParam = 'AVERage';
                         typeResp  = 'AVER';
-                        peakParam = 'OFF';
-                        peakResp  = 'OFF';
+                        peakParam = 'OFF';   % off, 0
+                        hresParam = 'OFF';   % off, 0
+                    case 'highres'
+                        typeParam = 'REFResh';
+                        typeResp  = 'REFR';
+                        peakParam = 'OFF';   % off, 0
+                        hresParam = 'AUTO';  % on,  1
                     otherwise
                 end
                 
@@ -851,15 +855,26 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
                 
-                % set parameter (2)
+                % set parameter (2a)
                 obj.VisaIFobj.write(['ACQuire:PEAKdetect ' peakParam]);
                 % read and verify
                 response = obj.VisaIFobj.query('ACQuire:PEAKdetect?');
-                if ~strcmpi(peakResp, char(response))
+                if ~strcmpi(peakParam, char(response))
                     disp(['Scope: ERROR - ''configureAcquisition'' ' ...
                         'mode parameter could not be set correctly.']);
                     status = -1;
                 end
+                
+                % set parameter (2b)
+                obj.VisaIFobj.write(['ACQuire:HRESolution ' hresParam]);
+                % read and verify
+                response = obj.VisaIFobj.query('ACQuire:HRESolution?');
+                if ~strcmpi(hresParam, char(response))
+                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                        'mode parameter could not be set correctly.']);
+                    status = -1;
+                end
+                
             end
             
             % numAverage  : 2 .. 100e3
