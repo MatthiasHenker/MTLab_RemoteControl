@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '1.2.0';      % release version
-        MacrosDate    = '2021-04-09'; % release date
+        MacrosVersion = '1.2.1';      % release version
+        MacrosDate    = '2021-04-12'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1223,7 +1223,7 @@ classdef ScopeMacros < handle
                         maxcnt   = 9;
                         while loopcnt < maxcnt
                             % time for settlement
-                            pause(0.2);
+                            pause(0.4);
                             
                             % measure min and max voltage
                             result = obj.runMeasurement( ...
@@ -1527,7 +1527,7 @@ classdef ScopeMacros < handle
                         channels     = ...
                             channels(~cellfun(@isempty, channels));
                     case 'parameter'
-                        % default for most measurements (Attention: should 
+                        % default for most measurements (Attention: should
                         % change when unit of channel is set to 'A', see
                         % method configureInput('unit', 'A'))
                         unit = 'V';
@@ -1656,6 +1656,9 @@ classdef ScopeMacros < handle
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
+            
+            % additional settling time
+            pause(0.2);
             
             % request measurement value
             value = obj.VisaIFobj.query([':MEASure:' parameter '? ' source]);
