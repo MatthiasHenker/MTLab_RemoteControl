@@ -5,8 +5,9 @@ close all;
 clc;
 
 %ScopeName = 'TDS';      % Tektronix Scope
-ScopeName = 'DSO';      % Keysight scope
+%ScopeName = 'DSO';      % Keysight scope
 %ScopeName = 'RTB';      % R&S Scope
+ScopeName = 'SDS';      % Siglent Scope
 ScopeID   = '';         % don't care ==> connect to first found scope
 %ScopeID   = 'C011107';  % a specific scope
 %ScopeID   = 'C011127';  % (when more than one scope is connected)
@@ -14,7 +15,8 @@ ScopeID   = '';         % don't care ==> connect to first found scope
 
 % demo mode or with real hardware?
 %interface = 'demo';
-interface = 'visa-usb';
+%interface = 'visa-usb';
+interface = 'visa-tcpip';
 
 showmsg   = 'all';
 %showmsg   = 'few';
@@ -58,7 +60,7 @@ myScope.open;
 %myScope.write('wgenerator:output:enable on');
 
 
-myScope.ErrorMessages;
+%myScope.ErrorMessages;
 myScope.clear;
 
 return

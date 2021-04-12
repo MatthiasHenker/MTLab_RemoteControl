@@ -49,33 +49,33 @@ classdef ScopeMacros < handle
             % add some device specific commands:
             %
             % set language
-            if obj.VisaIFobj.write(':SYSTem:LANGuage ENGLish')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':SYSTem:LANGuage ENGLish')
+            %    status = -1;
+            %end
             
             % enable autoscale (see method autoset)
-            if obj.VisaIFobj.write(':SYSTem:AUToscale ON')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':SYSTem:AUToscale ON')
+            %    status = -1;
+            %end
             
             % selects range of samples for download of wavedata
             % MAXimum: in the run state, read the waveform data displayed
             % on the screen; in the stop state, read the waveform data in
             % the internal memory. (default after reset is NORMal)
-            if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
+            %    status = -1;
+            %end
             % set return format of waveform data
             % (default after reset is BYTE)
-            if obj.VisaIFobj.write(':WAVeform:FORMat BYTE')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':WAVeform:FORMat BYTE')
+            %    status = -1;
+            %end
             
             % disable the antialiasing function of the oscilloscope
             % (default after reset is off)
-            if obj.VisaIFobj.write(':ACQuire:AALias OFF')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':ACQuire:AALias OFF')
+            %    status = -1;
+            %end
             
             % ...
             
@@ -130,9 +130,9 @@ classdef ScopeMacros < handle
             end
             
             % selects range of samples for download of wavedata
-            if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
-                status = -1;
-            end
+            %if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
+            %    status = -1;
+            %end
             
             % ...
             
