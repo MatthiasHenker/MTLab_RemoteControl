@@ -22,8 +22,8 @@
 % some config
 
 ModuleName = 'Scope'; % name of class file
-VersionID  = '1.2.1_2021-04-12'; % should match name of tag in git (version control)
-%VersionID  = 'x.y.z';
+%VersionID  = '1.2.1_2021-04-12'; % should match name of tag in git (version control)
+VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)
@@ -94,6 +94,15 @@ pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
 % -------------------------------------------------------------------------
 workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Rigol', '+DS2072A');
 workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Rigol', '+DS2072A');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Siglent', '+SDS2000X');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Siglent', '+SDS2000X');
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 

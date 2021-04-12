@@ -29,8 +29,10 @@ cd(ThisDir);
 %workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+RS', '+RTB2000');
 %workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Siglent', '+SDG6000X');
 %workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Siglent', '+SDG6000X');
-workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Rigol', '+DS2072A');
-workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Rigol', '+DS2072A');
+%workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Rigol', '+DS2072A');
+%workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Rigol', '+DS2072A');
+workSourceDir  = fullfile(SourceDir,  ['+' ModuleName], '+Siglent', '+SDS2000X');
+workReleaseDir = fullfile(ReleaseDir, ['+' ModuleName], '+Siglent', '+SDS2000X');
 mkdir(workReleaseDir);
 cd(workReleaseDir);
 
