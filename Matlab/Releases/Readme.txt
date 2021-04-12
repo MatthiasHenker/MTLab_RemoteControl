@@ -5,8 +5,10 @@
 
 - save all code with git (git add FILES, git commit -m "MESSAGE")
 - create release with Matlab script 
-- create a tag (git tag -a XXX_vx.y.z -m "Release of XXX version x.y.z")
-- sync with remote repo (git push origin --tags)
+- create a tag 
+    git tag -a XXX_vx.y.z -m "Release of XXX version x.y.z"
+- sync with remote repo
+    git push --tags      oder git push origin --tags
 
 - Rename a git tag old to new:
     git tag new old
