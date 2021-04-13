@@ -3,18 +3,18 @@
 
 in preparation
 ---------------------------------------------------------------------------
-Release v1.2.2 (same as Scope class) requires VisaIF v2.4.3 or later
-  - Scope                                             v1.2.2   (2021-xx-xx)
+Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
+  - Scope                                             v1.2.1   (2021-04-12)
       no changes
-  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.2   (2021-xx-xx)
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-04-12)
       no changes
-  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.2   (2021-xx-xx)
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.1   (2021-04-12)
       no changes
-  - Scope.RS.RTB2000.ScopeMacros                      v1.2.2   (2021-xx-xx)
+  - Scope.RS.RTB2000.ScopeMacros                      v1.2.1   (2021-04-12)
       no changes
-  - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.2   (2021-xx-xx)
+  - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.1   (2021-04-12)
       no changes
-  - Scope.Siglent.SDS2000X.ScopeMacros                v0.0.0   (2021-xx-xx)
+  - Scope.Siglent.SDS2000X.ScopeMacros                v0.1.0   (2021-04-13)
       work in progress
 
 

@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.0.1';      % release version
-        MacrosDate    = '2021-04-12'; % release date
+        MacrosVersion = '0.1.0';      % release version
+        MacrosDate    = '2021-04-13'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -40,7 +40,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = runAfterOpen(obj)
             
             % init output
@@ -48,34 +47,21 @@ classdef ScopeMacros < handle
             
             % add some device specific commands:
             %
-            % set language
-            %if obj.VisaIFobj.write(':SYSTem:LANGuage ENGLish')
-            %    status = -1;
-            %end
+            % defines the way the scope formats response to queries
+            % off: header is omitted from the response and units in numbers
+            % are suppressed ==> shortest feedback
+            if obj.VisaIFobj.write('COMM_HEADER OFF')
+                status = -1;
+            end
             
-            % enable autoscale (see method autoset)
-            %if obj.VisaIFobj.write(':SYSTem:AUToscale ON')
-            %    status = -1;
-            %end
-            
-            % selects range of samples for download of wavedata
-            % MAXimum: in the run state, read the waveform data displayed
-            % on the screen; in the stop state, read the waveform data in
-            % the internal memory. (default after reset is NORMal)
-            %if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
-            %    status = -1;
-            %end
-            % set return format of waveform data
-            % (default after reset is BYTE)
-            %if obj.VisaIFobj.write(':WAVeform:FORMat BYTE')
-            %    status = -1;
-            %end
-            
-            % disable the antialiasing function of the oscilloscope
-            % (default after reset is off)
-            %if obj.VisaIFobj.write(':ACQuire:AALias OFF')
-            %    status = -1;
-            %end
+            % set the intensity level of the grid and trace
+            TraceValue = 95; % 1 ... 100
+            GridValue  = 60; % 0 ... 100
+            if obj.VisaIFobj.write( ...
+                    ['INTENSITY TRACE,' num2str(TraceValue, '%g') ...
+                    ',GRID,' num2str(GridValue, '%g')])
+                status = -1;
+            end
             
             % ...
             
@@ -90,7 +76,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = runBeforeClose(obj)
             
             % init output
@@ -113,7 +98,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = reset(obj)
             
             % init output
@@ -125,14 +109,26 @@ classdef ScopeMacros < handle
             end
             
             % clear status (event registers and error queue)
-            if obj.VisaIFobj.write('*CLS')
+            % ==> not supported by SDS2000X
+            %if obj.VisaIFobj.write('*CLS')
+            %    status = -1;
+            %end
+            
+            % defines the way the scope formats response to queries
+            % off: header is omitted from the response and units in numbers
+            % are suppressed ==> shortest feedback
+            if obj.VisaIFobj.write('COMM_HEADER OFF')
                 status = -1;
             end
             
-            % selects range of samples for download of wavedata
-            %if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
-            %    status = -1;
-            %end
+            % set the intensity level of the grid and trace
+            TraceValue = 95; % 1 ... 100
+            GridValue  = 60; % 0 ... 100
+            if obj.VisaIFobj.write( ...
+                    ['INTENSITY TRACE,' num2str(TraceValue, '%g') ...
+                    ',GRID,' num2str(GridValue, '%g')])
+                status = -1;
+            end
             
             % ...
             
@@ -151,33 +147,23 @@ classdef ScopeMacros < handle
     % ------- main scope macros -------------------------------------------
     methods
         
-        % code copied from Rigol-DS2072A
         function status = clear(obj)
-            % init output
-            status = NaN;
+            % clear buffers and registers
             
-            % clear status at scope
-            if obj.VisaIFobj.write('*CLS')
-                status = -1;
-            end
+            status = 0; 
             
-            % clear also all the waveforms on the screen
-            if obj.VisaIFobj.write(':CLEar')
-                status = -1;
-            end
-            
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
+            if obj.ShowMessages
+                disp(['Scope WARNING - Method ''clear'' is not ' ...
+                    'supported for ']);
+                disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                    obj.VisaIFobj.Product ...
+                    ' --> nothing to clear']);
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = lock(obj)
             % lock all buttons at scope
             
-            %status = obj.VisaIFobj.write('SYSTEM:REMOTE'); % not available
             status = 0; 
             
             if obj.ShowMessages
@@ -190,11 +176,9 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = unlock(obj)
             % unlock all buttons at scope
             
-            %status = obj.VisaIFobj.write('SYSTEM:LOCAL'); % not available
             status = 0;
             
             disp(['Scope WARNING - Method ''unlock'' is not ' ...
@@ -205,31 +189,29 @@ classdef ScopeMacros < handle
                     'by remote access']);
         end
         
-        % code copied from Rigol-DS2072A
         function status = acqRun(obj)
             % start data acquisitions at scope
             
-            status = obj.VisaIFobj.write(':RUN');
+            status = obj.VisaIFobj.write('RUN');
         end
         
-        % code copied from Rigol-DS2072A
         function status = acqStop(obj)
             % stop data acquisitions at scope
             
-            status = obj.VisaIFobj.write(':STOP');
+            status = obj.VisaIFobj.write('STOP');
         end
         
-        % code copied from Rigol-DS2072A
         function status = autoset(obj)
-            % performs an autoset process for analog channels: analyzes the
-            % enabled analog channel signals, and adjusts the horizontal,
-            % vertical, and trigger settings to display stable waveforms
+            % the oscilloscope will automatically adjust the vertical
+            % position, the horizontal time base and the trigger mode
+            % according to the input signal to make the waveform display
+            % to the best state
             
             % init output
             status = NaN;
             
             % actual autoset command
-            if obj.VisaIFobj.write(':AUToscale')
+            if obj.VisaIFobj.write('AUTO_SETUP')
                 status = -1;
             end
             % wait for operation complete
@@ -291,13 +273,13 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case {'', '1', '2'}
+                                case {'', '1', '2', '3', '4'}
                                     % do nothing
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: Warning - ' ...
                                         '''configureInput'' invalid ' ...
-                                        'channel (allowed are 1 .. 2) ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -334,9 +316,9 @@ classdef ScopeMacros < handle
                                     num2str(impedance, '%g') ' (coerced)']);
                             end
                             if impedance < 1e3
-                                impedance = 'FIFT';  % FIFTy = 50 Ohm
+                                impedance = '50';  % 50 Ohm
                             else
-                                impedance = 'OMEG';  % 1 MOhm
+                                impedance = '1M';  % 1 MOhm
                             end
                         end
                     case 'vDiv'
@@ -357,9 +339,9 @@ classdef ScopeMacros < handle
                         if ~isempty(paramValue)
                             switch lower(paramValue)
                                 case 'ac'
-                                    coupling = 'AC';
+                                    coupling = 'A';
                                 case 'dc'
-                                    coupling = 'DC';
+                                    coupling = 'D';
                                 case 'gnd'
                                     coupling = 'GND';
                                 otherwise
@@ -372,11 +354,12 @@ classdef ScopeMacros < handle
                     case 'inputDiv'
                         if ~isempty(paramValue)
                             switch lower(paramValue)
-                                case {'0.01', '0.02', '0.05', ...
-                                        '0.1', '0.2', '0.5', ...
+                                case {'0.1', '0.2', '0.5', ...
                                         '1', '2', '5', ...
                                         '10', '20', '50', ...
-                                        '100', '200', '500', '1000'}
+                                        '100', '200', '500', ...
+                                        '1000', '2000', '5000', ...
+                                        '10000'}
                                     inputDiv = paramValue;
                                 otherwise
                                     inputDiv = '';
@@ -391,7 +374,7 @@ classdef ScopeMacros < handle
                                 case {'off', '0'}
                                     bwLimit = 'OFF';
                                 case {'on',  '1'}
-                                    bwLimit = '20M';
+                                    bwLimit = 'ON';
                                 otherwise
                                     bwLimit = '';
                                     disp(['Scope: Warning - ''configureInput'' ' ...
@@ -403,9 +386,9 @@ classdef ScopeMacros < handle
                         if ~isempty(paramValue)
                             switch lower(paramValue)
                                 case {'off', '0'}
-                                    invert = '0';
+                                    invert = 'OFF';
                                 case {'on',  '1'}
-                                    invert = '1';
+                                    invert = 'ON';
                                 otherwise
                                     invert = '';
                                     disp(['Scope: Warning - ''configureInput'' ' ...
@@ -415,35 +398,17 @@ classdef ScopeMacros < handle
                         end
                     case 'skew'
                         if ~isempty(paramValue)
-                            skew = str2double(paramValue);
-                            if isnan(skew) || isinf(skew)
-                                skew = [];
-                            elseif skew > 200e-9
-                                skew = 200e-9;   % max.  200 ns
-                                if obj.ShowMessages
-                                    disp('  - skew         : 200e-9 (coerced)');
-                                end
-                            elseif skew < -200e-9
-                                skew = -200e-9;  % min. -500 ns
-                                if obj.ShowMessages
-                                    disp('  - skew         : -200e-9 (coerced)');
-                                end
-                            elseif skew ~= round(skew/20e-9)*20e-9
-                                % round to 20ns steps
-                                skew = round(skew/20e-9)*20e-9;
-                                if obj.ShowMessages
-                                    disp(['  - skew         : ' ...
-                                        num2str(skew, '%g') ' (coerced)']);
-                                end
-                            end
+                            disp(['Scope: Warning - ''configureInput'' ' ...
+                                'skew parameter cannot be set remotely ' ...
+                                '(BUG in firmware@Scope']);
                         end
                     case 'unit'
                         if ~isempty(paramValue)
                             switch upper(paramValue)
                                 case 'V'
-                                    unit = 'VOLT';
+                                    unit = 'V';
                                 case 'A'
-                                    unit = 'AMP';
+                                    unit = 'A';
                                 otherwise
                                     unit = '';
                                     disp(['Scope: Warning - ''configureInput'' ' ...
@@ -473,30 +438,55 @@ classdef ScopeMacros < handle
             for cnt = 1:length(channels)
                 channel = channels{cnt};
                 
-                % 'impedance'
-                if ~isempty(impedance)
-                    % set parameter
-                    obj.VisaIFobj.write([':CHANnel' channel ':IMPedance ' ...
-                        impedance]);
-                    % read and verify
-                    response = obj.VisaIFobj.query([':CHANnel' channel ...
-                        ':IMPedance?']);
-                    if ~strcmpi(impedance, char(response))
-                        disp(['Scope: Warning - ''configureInput'' ' ...
-                            'impedance parameter could not be set correctly.']);
-                        status = -1;
+                % 'impedance' ('50', '1M') & 'coupling' ('DC', 'AC', 'GND')
+                if ~isempty(impedance) || ~isempty(coupling)
+                    if ~isempty(impedance) && ~isempty(coupling)
+                        % both parts are defined
+                        if strcmpi(coupling, 'GND')
+                            cpl = 'GND';
+                        else
+                            % A50, A1M, D50, D1M
+                            cpl = [coupling impedance];
+                        end
+                    else
+                        % request current settings
+                        response = obj.VisaIFobj.query(['C' channel ...
+                            ':COUPLING?']);
+                        response = char(response);
+                        % merge
+                        if ~isempty(impedance)
+                            if strcmpi(response, 'GND')
+                                disp(['Scope: Warning - ''configureInput'' ' ...
+                                    'impedance parameter will be ignored ' ...
+                                    'as long as coupling = GND.']);
+                                cpl = 'GND';
+                            else
+                                cpl = [cpl(1) impedance];
+                            end
+                        else
+                            if strcmpi(coupling, 'GND')
+                                cpl = 'GND';
+                            elseif strcmpi(response, 'GND')
+                                cpl = [coupling '1M'];
+                                if obj.ShowMessages
+                                    disp(['  - impedance    : ' ...
+                                        '1e6 (coerced)']);
+                                end
+                            else
+                                cpl = [coupling response(2:3)];
+                            end
+                        end
                     end
-                end
-                
-                % 'coupling'         : 'DC', 'AC', 'GND'
-                if ~isempty(coupling)
+                    
                     % set parameter
-                    obj.VisaIFobj.write([':CHANnel' channel ':COUPling ' coupling]);
+                    obj.VisaIFobj.write(['C' channel ':COUPLING ' cpl]);
                     % read and verify
-                    response = obj.VisaIFobj.query([':CHANnel' channel ':COUPling?']);
-                    if ~strcmpi(coupling, char(response))
+                    response = obj.VisaIFobj.query(['C' channel ...
+                        ':COUPLING?']);
+                    if ~strcmpi(cpl, char(response))
                         disp(['Scope: Warning - ''configureInput'' ' ...
-                            'coupling parameter could not be set correctly.']);
+                            'impedance and/or coupling parameter could ' ...
+                            'not be set correctly.']);
                         status = -1;
                     end
                 end
@@ -1112,18 +1102,107 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = configureZoom(obj, varargin)
             % configureZoom   : configure zoom window
             
-            status = 0;
+            % init output
+            status = NaN;
             
-            if obj.ShowMessages
-                disp(['Scope WARNING - Method ''configureZoom'' is ' ...
-                    'not supported for ']);
-                disp(['      ' obj.VisaIFobj.Vendor '/' ...
-                    obj.VisaIFobj.Product ...
-                    ' -->  Zoom can only be configured manually']);
+            % initialize all supported parameters
+            zoomFactor      = [];
+            zoomPosition    = [];
+            
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'zoomFactor'
+                        if ~isempty(paramValue)
+                            zoomFactor = abs(real(str2double(paramValue)));
+                            coerced    = false;
+                            if zoomFactor <= 1 || isnan(zoomFactor)
+                                zoomFactor = 1; % deactivates zoom
+                                coerced    = true;
+                            end
+                            if obj.ShowMessages && coerced
+                                disp(['  - zoomFactor   : ' ...
+                                    num2str(zoomFactor, '%g') ...
+                                    ' (coerced)']);
+                            end
+                        end
+                    case 'zoomPosition'
+                        if ~isempty(paramValue)
+                            zoomPosition = real(str2double(paramValue));
+                            if isnan(zoomPosition)
+                                zoomPosition = 0; % center
+                                if obj.ShowMessages
+                                    disp('  - zoomPosition : 0 (coerced)');
+                                end
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['  WARNING - parameter ''' ...
+                                paramName ''' is unknown --> ignore']);
+                        end
+                end
+            end
+            
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            
+            % request current timebase
+            tdiv = obj.VisaIFobj.query('TIME_DIV?');
+            tdiv = str2double(char(tdiv));
+            if isnan(tdiv)
+                disp(['Scope: ERROR - ''configureZoom'' ' ...
+                    'unexpected response ' ...
+                    '--> abort and continue']);
+                status = -1;
+                return
+            end
+            
+            skipHPOS = false;
+            if ~isempty(zoomFactor)
+                % zoomFactor will be rounded by Scope to nearest value
+                                
+                if zoomFactor == 1
+                    % disable zoom window (indirectly)
+                    obj.VisaIFobj.write(['TIME_DIV ' num2str(tdiv, '%g')]);
+                    skipHPOS = true;
+                else
+                    % enable zoom window
+                    obj.VisaIFobj.write(['HOR_MAGNIFY ' ...
+                        num2str(zoomFactor, '%1.1e')]);
+                    % no readback and verify
+                end
+            end
+            
+            if ~isempty(zoomPosition) && ~skipHPOS
+                % request zoom timebase
+                hmag = obj.VisaIFobj.query('HOR_MAGNIFY?');
+                hmag = str2double(char(hmag));
+                tdiv = tdiv / hmag;
+                if isnan(tdiv)
+                    disp(['Scope: ERROR - ''configureZoom'' ' ...
+                        'unexpected response ' ...
+                        '--> abort and continue']);
+                    status = -2;
+                    return
+                end
+                % convert time offset (in s) to tdiv scaling
+                zoomPosition = zoomPosition / tdiv;
+                
+                obj.VisaIFobj.write(['HOR_POSITION ' ...
+                    num2str(zoomPosition, '%1.1e')]);
+                % no readback and verify
+            end
+            
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
             end
         end
         
@@ -1373,11 +1452,10 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = makeScreenShot(obj, varargin)
             % make a screenshot of scope display (BMP-file)
             %   'fileName' : file name with optional extension
-            %                optional, default is './Rigol_Scope_DS2072A.bmp'
+            %                optional, default is './Siglent_Scope_SDS2000X.bmp'
             %   'darkMode' : on/off, dark or white background color
             %                optional, default is 'off', 0, false,
             %                unsupported parameter
@@ -1387,7 +1465,7 @@ classdef ScopeMacros < handle
             
             % configuration and default values
             listOfSupportedFormats = {'.bmp'};
-            filename = './Rigol_Scope_DS2072A.bmp';
+            filename = './Siglent_Scope_SDS2000X.bmp';
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -1401,6 +1479,9 @@ classdef ScopeMacros < handle
                             case {'off', '0'}
                                 disp(['Scope: WARNING - ''makeScreenShot'' ' ...
                                     'darkMode = off is not supported.']);
+                                if obj.ShowMessages
+                                    disp('  - darkMode     : 1 (coerced)');
+                                end
                             otherwise
                                 % fine
                         end
@@ -1445,41 +1526,56 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
-            % request actual binary screen shot data
-            bitMapData = obj.VisaIFobj.query(':DISPlay:DATA?');
+            % save display settings
+            % 1st step: save current intensity settings of display
+            dispSettings = obj.VisaIFobj.query('INTENSITY?');
+            dispSettings = char(dispSettings);
             
-            % check data header
-            headerChar = char(bitMapData(1));
-            if ~strcmpi(headerChar, '#') || length(bitMapData) < 20
-                disp(['Scope: WARNING - ''makeScreenShot'' missing ' ...
-                    'data header. Check screenshot file.']);
-                status = -1;
+            % response has form
+            % 'TRACE,xx,GRID,yy'           for COMM_HEADER = OFF
+            % 'INTS TRACE,xx,GRID,yy'                      = SHORT
+            % 'INTENSITY TRACE,xx,GRID,yy'                 = LONG
+            % with xx, yy - integer values 0 or 1 .. 100
+            % separate parameters
+            ParamList     = strtrim(split(dispSettings,','));
+            if length(ParamList) == 4
+                % save values
+                TraceValue = str2double(ParamList{2});
+                GridValue  = str2double(ParamList{4});
             else
-                HeaderLen  = str2double(char(bitMapData(2)));
-                if isnan(HeaderLen)
-                    bitMapSize = 0;
-                else
-                    bitMapSize = str2double(char(bitMapData(3:HeaderLen+2)));
-                end
-                
-                if bitMapSize > 0
-                    bitMapData = bitMapData(HeaderLen+3:end);
-                    if length(bitMapData) ~= bitMapSize
-                        disp(['Scope: WARNING - ''makeScreenShot'' ' ...
-                            'incorrect size of data. Check screenshot file.']);
-                        status = -1;
-                    end
-                else
-                    disp(['Scope: WARNING - ''makeScreenShot'' incorrect ' ...
-                        'data header. Check screenshot file.']);
-                    status = -1;
-                end
+                TraceValue = NaN;
+                GridValue  = NaN;
+            end
+            % set highest contrast for screenshot
+            if ~isnan(TraceValue) && ~isnan(GridValue)
+                obj.VisaIFobj.write('INTENSITY TRACE,100,GRID,100');
             end
             
-            % save data to file
-            fid = fopen(filename, 'wb+');  % open as binary
-            fwrite(fid, bitMapData, 'uint8');
-            fclose(fid);
+            % -------------------------------------------------------------
+            % request actual binary screen shot data
+            bitMapData = obj.VisaIFobj.query('SCREEN_DUMP');
+            
+            % response is always 1152056 bytes for plain bitmap data
+            % without any additional header
+            if length(bitMapData) ~= 1152056
+                disp(['Scope: ERROR - ''makeScreenShot'' unexpected ' ...
+                    'resonse. Abort function.']);
+                % error (incorrect number of bytes)
+                status = -1;
+            else
+                % save data to file
+                fid = fopen(filename, 'wb+');  % open as binary
+                fwrite(fid, bitMapData, 'uint8');
+                fclose(fid);
+            end
+            
+            % -------------------------------------------------------------
+            % restore Display settings
+            if ~isnan(TraceValue) && ~isnan(GridValue)
+                obj.VisaIFobj.write(['INTENSITY ' ...
+                    'TRACE,' num2str(TraceValue, '%g') ...
+                    ',GRID,' num2str(GridValue, '%g')]);
+            end
             
             % wait for operation complete
             [~, status_query] = obj.VisaIFobj.opc;
@@ -1907,24 +2003,23 @@ classdef ScopeMacros < handle
         % actual scope methods: get methods (dependent)
         % -----------------------------------------------------------------
         
-        % code copied from Rigol-DS2072A
         function acqState = get.AcquisitionState(obj)
             % get acquisition state
             % 'running' or 'stopped',   '' when invalid/unknown response
             
-            % there is only one command for trigger and acquisition state
-            [acqState, status] = obj.VisaIFobj.query(':TRIGger:STATus?');
+            % there is no dedicated command for acquisition state 
+            [acqState, status] = obj.VisaIFobj.query('SAMPLE_STATUS?');
             %
             if status ~= 0
                 % failure
                 acqState = 'visa error. couldn''t read acquisition state';
             else
-                % remap trigger state
+                % remap acquisition (trigger) state
                 acqState = lower(char(acqState));
                 switch acqState
                     case 'stop'
                         acqState = 'stopped';
-                    case {'wait', 'run', 'td', 'auto'}
+                    case {'arm', 'ready', 'trig''d', 'auto'}
                         acqState = 'running';
                     otherwise
                         acqState = '';
@@ -1932,13 +2027,11 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function trigState = get.TriggerState(obj)
             % get trigger state
             % 'waitfortrigger' or 'triggered', '' when unknown response
             
-            % there is only one command for trigger and acquisition state
-            [trigState, status] = obj.VisaIFobj.query(':TRIGger:STATus?');
+            [trigState, status] = obj.VisaIFobj.query('SAMPLE_STATUS?');
             %
             if status ~= 0
                 % failure
@@ -1947,58 +2040,28 @@ classdef ScopeMacros < handle
                 % remap trigger state
                 trigState = lower(char(trigState));
                 switch trigState
-                    case {'stop', 'td', 'auto'}
-                        trigState = 'triggered';
-                    case {'wait', 'run'}
-                        trigState = 'waitfortrigger';
-                    otherwise
-                        trigState = '';
+                    case 'stop'   , trigState = 'triggered (stop)';
+                    case 'trig''d', trigState = 'triggered';
+                    case 'auto'   , trigState = 'triggered (auto)';
+                    case 'ready'  , trigState = 'waitfortrigger';
+                    case 'arm'    , trigState = 'waitfortrigger (arm)';
+                    otherwise     , trigState = 'device error. unknown state';
                 end
             end
         end
         
-        % code copied from Rigol-DS2072A
         function errMsg = get.ErrorMessages(obj)
             % read error list from the scope’s error buffer
             
-            % config
-            maxErrCnt = 16;  % size of error stack
-            errCell   = cell(1, maxErrCnt);
-            cnt       = 0;
-            done      = false;
-            
-            % read error from buffer until done
-            while ~done && cnt < maxErrCnt
-                cnt = cnt + 1;
-                % read error and convert to characters
-                errMsg = obj.VisaIFobj.query(':SYSTem:ERRor?');
-                errMsg = char(errMsg);
-                % no errors anymore?
-                if startsWith(errMsg, '0,')
-                    done = true;
-                else
-                    errCell{cnt} = errMsg;
-                end
-            end
-            
-            % remove empty cell elements
-            errCell = errCell(~cellfun(@isempty, errCell));
-            
-            % optionally display results
             if obj.ShowMessages
-                if ~isempty(errCell)
-                    disp('Scope error list:');
-                    for cnt = 1:length(errCell)
-                        disp(['  (' num2str(cnt,'%02i') ') ' ...
-                            errCell{cnt} ]);
-                    end
-                else
-                    disp('Scope error list is empty');
-                end
+                disp(['Scope WARNING - Method ''ErrorMessages'' is not ' ...
+                    'supported for ']);
+                disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                    obj.VisaIFobj.Product ]);
             end
             
             % copy result to output
-            errMsg = strjoin(errCell, '; ');
+            errMsg = '0, no error buffer at Scope';
             
         end
         
