@@ -612,29 +612,32 @@ classdef ScopeMacros < handle
                     if isempty(inputDiv)
                         response = obj.VisaIFobj.query(['C' channel ...
                             ':ATTENUATION?']);
-                        inputDiv = str2double(char(response));
+                        probe = str2double(char(response));
+                    else
+                        probe = str2double(inputDiv);
                     end
-                    if isnan(inputDiv)
+                    if isnan(probe)
                         disp(['Scope: ERROR - ''configureInput'' ' ...
                             'unexpected response while setting vDiv ' ...
                             'parameter --> Abort and continue.']);
                         status = -1;
-                    end
-                    % scale VDiv value before use (in set command)
-                    vDiv_temp = num2str(vDiv / inputDiv, '%1.1e');
-                    vDiv      = str2double(vDiv_temp) * inputDiv;
-                    
-                    % set parameter (use scaled value)
-                    obj.VisaIFobj.write(['C' channel ...
-                        ':VDIV ' vDiv_temp]);
-                    % read and verify
-                    response   = obj.VisaIFobj.query(['C' channel ...
-                        ':VDIV?']);
-                    vDivActual = str2double(char(response));
-                    if abs(vDiv - vDivActual) / vDiv > 0.1
-                        disp(['Scope: Warning - ''configureInput'' ' ...
-                            'vDiv parameter could not be set correctly. ' ...
-                            'Check limits.']);
+                    else
+                        % scale VDiv value before use (in set command)
+                        vDiv_temp = num2str(vDiv / probe, '%1.1e');
+                        vDiv      = str2double(vDiv_temp) * probe;
+                        
+                        % set parameter (use scaled value)
+                        obj.VisaIFobj.write(['C' channel ...
+                            ':VDIV ' vDiv_temp]);
+                        % read and verify
+                        response   = obj.VisaIFobj.query(['C' channel ...
+                            ':VDIV?']);
+                        vDivActual = str2double(char(response));
+                        if abs(vDiv - vDivActual) / vDiv > 0.1
+                            disp(['Scope: Warning - ''configureInput'' ' ...
+                                'vDiv parameter could not be set correctly. ' ...
+                                'Check limits.']);
+                        end
                     end
                 elseif ~isempty(vOffset)
                     % required for verfication of voffset
@@ -1064,6 +1067,7 @@ classdef ScopeMacros < handle
                                 disp(['Scope: Warning - ''configureTrigger'' ' ...
                                     'NoiseReject cannot be set remotely ' ...
                                     '--> has to be set manually at Scope']);
+                                coupling = '';
                                 if obj.ShowMessages
                                     disp(['  - coupling     : ' ...
                                         '<empty> (coerced)']);
