@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.2.0';      % release version
-        MacrosDate    = '2021-04-16'; % release date
+        MacrosVersion = '0.3.0';      % release version
+        MacrosDate    = '2021-04-19'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -397,9 +397,14 @@ classdef ScopeMacros < handle
                         end
                     case 'skew'
                         if ~isempty(paramValue)
+                            if obj.ShowMessages
+                                disp(['  - skew         : ' ...
+                                    '<empty> (coerced)']);
+                            end
                             disp(['Scope: Warning - ''configureInput'' ' ...
-                                'skew parameter cannot be set remotely ' ...
-                                '(BUG in firmware@Scope']);
+                                'Skew parameter cannot be set remotely ' ...
+                                '(BUG in firmware@Scope) ' ...
+                                '--> has to be set manually at Scope']);
                             status = 1; % Warning
                         end
                     case 'unit'
@@ -604,7 +609,6 @@ classdef ScopeMacros < handle
                 %
                 % workaround: read attenuation value, scale VDiv before set
                 if ~isempty(vDiv)
-                    
                     if isempty(inputDiv)
                         response = obj.VisaIFobj.query(['C' channel ...
                             ':ATTENUATION?']);
@@ -616,7 +620,6 @@ classdef ScopeMacros < handle
                             'parameter --> Abort and continue.']);
                         status = -1;
                     end
-                    
                     % scale VDiv value before use (in set command)
                     vDiv_temp = num2str(vDiv / inputDiv, '%1.1e');
                     vDiv      = str2double(vDiv_temp) * inputDiv;
@@ -667,7 +670,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = configureAcquisition(obj, varargin)
             % configureAcquisition : configure acquisition parameters
             %   'tDiv'        : real > 0
@@ -700,7 +702,27 @@ classdef ScopeMacros < handle
                                     'coerce and continue']);
                                 status  = 1; % warning
                                 coerced = true;
-                                tDiv    = 0.5e-3;   % 500us
+                                tDiv    = 5e-4; % 0.5ms as default
+                            else
+                                % okay ==> round to allowed values in s
+                                % 1e-9, 2e-9, 5e-9, ... , 10, 20, 50
+                                tmp  = tDiv;
+                                tDiv = min(tDiv, 50);
+                                tDiv = max(tDiv, 1e-9);
+                                Mantissa = 10^(log10(tDiv)-floor(log10(tDiv)));
+                                if Mantissa < 1.4
+                                    Mantissa = 1;
+                                elseif Mantissa < 3
+                                    Mantissa = 2;
+                                elseif Mantissa < 7
+                                    Mantissa = 5;
+                                else
+                                    Mantissa = 10;
+                                end
+                                tDiv = Mantissa * 10^floor(log10(tDiv));
+                                if tDiv ~= tmp
+                                    coerced = true;
+                                end
                             end
                             if obj.ShowMessages && coerced
                                 disp(['  - tDiv         : ' ...
@@ -709,42 +731,46 @@ classdef ScopeMacros < handle
                         end
                     case 'sampleRate'
                         if ~isempty(paramValue)
-                            disp(['Scope: WARNING - sampleRate parameter ' ...
+                           disp(['Scope: WARNING - sampleRate parameter ' ...
                                 ' is not supported. Please specify tDiv ' ...
                                 'and maxLength instead.']);
                             status  = 1; % warning
+                            if obj.ShowMessages
+                                disp('  - samplerate   : <empty> (coerced)');
+                            end
                         end
                     case 'maxLength'
                         if ~isempty(paramValue)
-                            maxLength = round(abs(str2double(paramValue)));
+                            maxLength = abs(str2double(paramValue)) /2;
                             coerced   = false;
                             if isnan(maxLength) || isinf(maxLength)
                                 disp(['Scope: Warning - ''configureAcquisition'' ' ...
                                     'maxLength parameter value is invalid ' ...
                                     '--> coerce and continue']);
-                                maxLength = 70e3;
+                                maxLength = 140e3;
                                 coerced   = true;
                             end
-                            switch maxLength
-                                case {7e3, 70e3, 700e3, 7e6}
-                                    % do nothing (for dual-channel)
-                                otherwise
-                                    coerced   = true;
-                                    if maxLength < 1
-                                        maxLength = 0;    % AUTO
-                                    elseif maxLength < 7e3
-                                        maxLength = 7e3;
-                                    elseif maxLength < 70e3
-                                        maxLength = 70e3;
-                                    elseif maxLength < 700e3
-                                        maxLength = 700e3;
-                                    else
-                                        maxLength = 7e6;
-                                    end
+                            % okay ==> round to allowed values 7e3, 1.4e4,
+                            % 7e4, 1.4e5, 7e5, 1.4e6, 7e6, 1.4e7, 7e7
+                            % (interleaved mode)
+                            tmp       = maxLength;
+                            maxLength = min(maxLength, 7e7);
+                            maxLength = max(maxLength, 7e3);
+                            Mantissa = 10^(log10(maxLength) - ...
+                                floor(log10(maxLength)));
+                            if Mantissa < 3
+                                Mantissa = 1.4;
+                            else
+                                Mantissa = 7;
+                            end
+                            maxLength = Mantissa * 10^floor(log10(maxLength));
+                            if maxLength ~= tmp
+                                coerced = true;
                             end
                             if obj.ShowMessages && coerced
                                 disp(['  - maxLength    : ' ...
-                                    num2str(maxLength, '%g') ' (coerced)']);
+                                    num2str(2* maxLength, '%g') ...
+                                    ' (coerced)']);
                             end
                         end
                     case 'mode'
@@ -753,13 +779,13 @@ classdef ScopeMacros < handle
                             case ''
                                 mode = '';
                             case {'sample', 'normal', 'norm'}
-                                mode = 'NORM';  % NORMal
+                                mode = 'SAMPLING';
                             case {'peakdetect', 'peak'}
-                                mode = 'PEAK';  % PEAK
+                                mode = 'PEAK_DETECT';
                             case {'average', 'aver'}
-                                mode = 'AVER';  % AVERages
+                                mode = 'AVERAGE';
                             case {'highres', 'hres', 'highresolution'}
-                                mode = 'HRES';  % HRESolution
+                                mode = 'HIGH_RES';
                             otherwise
                                 mode = '';
                                 disp(['Scope: Warning - ''configureAcquisition'' ' ...
@@ -768,7 +794,7 @@ classdef ScopeMacros < handle
                         end
                     case 'numAverage'
                         if ~isempty(paramValue)
-                            numAverage = round(abs(str2double(paramValue)));
+                            numAverage = abs(str2double(paramValue));
                             coerced    = false;
                             if isnan(numAverage) || isinf(numAverage)
                                 disp(['Scope: Warning - ''configureAcquisition'' ' ...
@@ -777,14 +803,28 @@ classdef ScopeMacros < handle
                                 numAverage = 4;
                                 coerced    = true;
                             end
-                            switch numAverage
-                                case {2, 4, 8, 16, 32, 64, 128, 256, ...
-                                        512, 1024, 2048, 4096, 8192}
-                                    % fine
-                                otherwise
-                                    numAverage = 2^min(13, max(1, ...
-                                        round(log2(numAverage))));
-                                    coerced    = true;
+                            tmp        = numAverage;
+                            numAverage = min(numAverage, 1024);
+                            numAverage = max(numAverage, 4);
+                            if     numAverage <= 8
+                                numAverage = 4;
+                            elseif numAverage <= 16
+                                numAverage = 16;
+                            elseif numAverage <= 32
+                                numAverage = 32;
+                            elseif numAverage <= 64
+                                numAverage = 16;
+                            elseif numAverage <= 128
+                                numAverage = 128;
+                            elseif numAverage <= 256
+                                numAverage = 256;
+                            elseif numAverage <= 512
+                                numAverage = 512;
+                            elseif numAverage <= 1024
+                                numAverage = 1024;
+                            end
+                            if numAverage ~= tmp
+                                coerced = true;
                             end
                             if obj.ShowMessages && coerced
                                 disp(['  - numAverage   : ' ...
@@ -804,59 +844,43 @@ classdef ScopeMacros < handle
             % -------------------------------------------------------------
             
             % tDiv        : numeric value in s
-            %               [5e-9 ... 1e3]
+            %               [1e-9 ... 5e1]
             if ~isempty(tDiv)
                 % format (round) numeric value
-                tDivString = num2str(tDiv, '%1.2e');
+                tDivString = num2str(tDiv, '%1.1e');
                 tDiv       = str2double(tDivString);
                 % set parameter
-                obj.VisaIFobj.write([':TIMebase:SCALe ' tDivString]);
+                obj.VisaIFobj.write(['TIME_DIV ' tDivString]);
                 % read and verify
-                response = obj.VisaIFobj.query('TIMebase:SCALe?');
+                response = obj.VisaIFobj.query('TIME_DIV?');
                 tDivActual = str2double(char(response));
-                if (tDiv/tDivActual) < 0.95 || (tDiv/tDivActual) > 1.05
+                if tDiv ~= tDivActual
                     disp(['Scope: WARNING - ''configureAcquisition'' ' ...
                         'tDiv parameter could not be set correctly. ' ...
                         'Check limits. ']);
                 end
             end
             
-            % maxLength : 0 for AUTO
-            %             7k, 70k, 700k, 7M for dual channel
-            %             value*2           for single channel 
-            if ~isempty(maxLength)
-                % check if dual or single channel
-                response = obj.VisaIFobj.query(':CHANnel1:DISPlay?');
-                if strcmpi(char(response), '0')
-                    maxLength = maxLength *2;
-                elseif strcmpi(char(response), '1')
-                    % fine
-                else
-                    status = -5;
-                    disp(['Scope: ERROR - ''configureAcquisition'' ' ...
-                        'unexpected response. --> exit and continue']);
-                    return;
-                end
-                
-                % set parameter
-                if maxLength == 0
-                    obj.VisaIFobj.write(':ACQuire:MDEPth AUTO');
-                else
-                    obj.VisaIFobj.write([':ACQuire:MDEPth ' ...
-                        num2str(maxLength, '%d')]);
-                end
-                % read and verify is not really possible
-                % ==> actual acquisition length is reported which can be
-                % smaller
-            end
-            
-            % mode     : 'sample', 'peakdetect', 'average'
-            %            and additionally also 'highres'
+            % mode     : 'sample', 'peakdetect', 'average', 'highres'
             if ~isempty(mode)
+                if strcmpi(mode, 'average')
+                    if ~isempty(numAverage)
+                        mode = [mode ',' num2str(numAverage, '%d')];
+                    else
+                        mode = [mode ',4'];
+                        if obj.ShowMessages
+                            disp('  - numAverage   : 4 (coerced)');
+                        end
+                    end
+                elseif ~isempty(numAverage)
+                    if obj.ShowMessages
+                        disp('  - numAverage   : <empty> (coerced)');
+                    end
+                end
                 % set parameter
-                obj.VisaIFobj.write([':ACQuire:TYPE ' mode]);
+                obj.VisaIFobj.write(['ACQUIRE_WAY ' mode]);
                 % read and verify
-                response = obj.VisaIFobj.query(':ACQuire:TYPE?');
+                response = obj.VisaIFobj.query('ACQUIRE_WAY?');
                 if ~strcmpi(mode, char(response))
                     disp(['Scope: ERROR - ''configureAcquisition'' ' ...
                         'mode parameter could not be set correctly.']);
@@ -864,18 +888,75 @@ classdef ScopeMacros < handle
                 end
             end
             
-            % numAverage  : 2 .. 8192
-            if ~isempty(numAverage)
+            % numAverage  : 4 .. 1024
+            if ~isempty(numAverage) && isempty(mode)
+                mode = ['AVERAGE,' num2str(numAverage, '%d')];
                 % set parameter
-                obj.VisaIFobj.write([':ACQuire:AVERages ' ...
-                    num2str(numAverage, '%d')]);
+                obj.VisaIFobj.write(['ACQUIRE_WAY ' mode]);
                 % read and verify
-                response  = obj.VisaIFobj.query(':ACQuire:AVERages?');
-                actualVal = str2double(char(response));
-                if numAverage ~= actualVal
+                response = obj.VisaIFobj.query('ACQUIRE_WAY?');
+                if ~strcmpi(mode, char(response))
                     disp(['Scope: ERROR - ''configureAcquisition'' ' ...
-                        'numAverage parameter could not be set correctly.']);
+                        'mode parameter could not be set correctly.']);
                     status = -1;
+                end
+            end
+            
+            % maxLength : 7k, 14k, 70k, .. 70M for interleaved channels
+            %             value*2              for single channel
+            if ~isempty(maxLength)
+                % finally convert to string
+                switch maxLength
+                    case 7000
+                        MaxMemSize = '7k';
+                    case 14000
+                        MaxMemSize = '14k';
+                    case 70000
+                        MaxMemSize = '70k';
+                    case 140000
+                        MaxMemSize = '140k';
+                    case 700000
+                        MaxMemSize = '700k';
+                    case 1400000
+                        MaxMemSize = '1.4M';
+                    case 7000000
+                        MaxMemSize = '7M';
+                    case 14000000
+                        MaxMemSize = '14M';
+                    case 70000000
+                        %MaxMemSize = '70M';
+                        MaxMemSize = '14M';
+                        status = 1;
+                        disp(['Scope: Warning - ''configureAcquisition'' ' ...
+                            'maxLength = 140e6 cannot be set remotely ' ...
+                            '(BUG in firmware@Scope) ' ...
+                            '--> has to be set manually at Scope']);
+                        if obj.ShowMessages
+                            disp('  - maxLength    : 28e6 (coerced)');
+                        end
+                    otherwise
+                        warning('Should be an impossible internal state');
+                        status = -1;
+                        return
+                end
+                % set parameter
+                obj.VisaIFobj.write(['MEMORY_SIZE ' MaxMemSize]);
+                % read and verify
+                response = obj.VisaIFobj.query('MEMORY_SIZE?');
+                if ~strcmpi(MaxMemSize, char(response))
+                    if strcmpi(char(response), '7k')
+                        disp(['Scope: WARNING - ''configureAcquisition'' ' ...
+                            'maxLength parameter can only be configured ' ...
+                            ' when mode = sample or peakdetect.']);
+                        if obj.ShowMessages
+                            disp('  - maxLength    : 14e3 (coerced)');
+                        end
+                        status = 1;
+                    else
+                        disp(['Scope: ERROR - ''configureAcquisition'' ' ...
+                            'maxLength parameter could not be set correctly.']);
+                        status = -1;
+                    end
                 end
             end
             
@@ -886,7 +967,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = configureTrigger(obj, varargin)
             % configureTrigger : configure trigger parameters
             %   'mode'        : 'single', 'normal', 'auto'
@@ -917,11 +997,11 @@ classdef ScopeMacros < handle
                             case ''
                                 mode = '';
                             case 'single'
-                                mode = 'SING'; % SINGle
+                                mode = 'SINGLE';
                             case 'normal'
-                                mode = 'NORM'; % NORMal
+                                mode = 'NORM';
                             case 'auto'
-                                mode = 'AUTO'; % AUTO
+                                mode = 'AUTO';
                             otherwise
                                 mode = '';
                                 disp(['Scope: Warning - ''configureTrigger'' ' ...
@@ -949,18 +1029,19 @@ classdef ScopeMacros < handle
                             case ''
                                 % all fine
                             case 'ch1'
-                                source = 'CHAN1';  % CHANel1
+                                source = 'C1';
                             case 'ch2'
-                                source = 'CHAN2';  % CHANel2
+                                source = 'C2';
+                            case 'ch3'
+                                source = 'C3';
+                            case 'ch4'
+                                source = 'C4';
                             case 'ext'
-                                source = 'EXT';
+                                source = 'EX';
                             case 'ext5'
-                                source = 'EXT';
-                                if obj.ShowMessages
-                                    disp('  - source       : ext (coerced)');
-                                end
+                                source = 'EX5';
                             case 'ac-line'
-                                source = 'ACL';    % ACLine
+                                source = 'LINE';
                             otherwise
                                 source = '';
                                 disp(['Scope: Warning - ''configureTrigger'' ' ...
@@ -975,11 +1056,18 @@ classdef ScopeMacros < handle
                             case {'ac', 'dc'}
                                 coupling = upper(coupling);
                             case {'lfreject', 'lfrej'}
-                                coupling = 'LFR'; % 75 kHz high pass
+                                coupling = 'LFREJ'; % with high pass
                             case {'hfreject', 'hfrej'}
-                                coupling = 'HFR'; % 75 kHz low pass
+                                coupling = 'HFREJ'; % with low pass
                             case {'noisereject', 'noiserej'}
-                                coupling = 'addLPNoiseFilter';
+                                status = 1;
+                                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                                    'NoiseReject cannot be set remotely ' ...
+                                    '--> has to be set manually at Scope']);
+                                if obj.ShowMessages
+                                    disp(['  - coupling     : ' ...
+                                        '<empty> (coerced)']);
+                                end
                             otherwise
                                 coupling = '';
                                 disp(['Scope: Warning - ''configureTrigger'' ' ...
@@ -1015,24 +1103,45 @@ classdef ScopeMacros < handle
             % mode     : 'single', 'normal', 'auto'
             if ~isempty(mode)
                 % set parameter
-                obj.VisaIFobj.write([':TRIGger:SWEep ' mode]);
+                obj.VisaIFobj.write(['TRIG_MODE ' mode]);
                 % read and verify
-                response = obj.VisaIFobj.query('TRIGger:SWEep?');
+                response = obj.VisaIFobj.query('TRIG_MODE?');
                 if ~strcmpi(mode, char(response))
-                    disp(['Scope: Error - ''configureTrigger'' ' ...
-                        'mode parameter could not be set correctly.']);
-                    status = -1;
+                    % when TriggerMode = single then response can be stop
+                    % as well
+                    if ~strcmpi(mode, 'single') || ...
+                            ~strcmpi('STOP', char(response))
+                        disp(['Scope: Error - ''configureTrigger'' ' ...
+                            'mode parameter could not be set correctly.']);
+                        status = -1;
+                    end
                 end
             end
             
-            % source   : 'CHAN1..2', 'EXT', 'ACL'
+            % source   : 'C1..4', 'EX', 'EX5', 'LINE'
+            if isempty(source) && (~isempty(type) || ~isempty(coupling) ...
+                    || (~isempty(level) && ~isnan(level)))
+                % request current trigger source setting
+                response = obj.VisaIFobj.query('TRIG_SELECT?');
+                response = split(char(response), ',');
+                idx      = find(strcmpi(response, 'SR'));
+                if ~isempty(idx) && idx+1 <= length(response)
+                    source = response{idx+1};
+                else
+                    source = 'C1';  % default
+                    if obj.ShowMessages
+                        disp(['  - source       : ' ...
+                            'CH1 (coerced)']);
+                    end
+                end
+            end
             if ~isempty(source)
-                obj.VisaIFobj.write(':TRIGger:MODE EDGE');
                 % set parameter
-                obj.VisaIFobj.write([':TRIGger:EDGe:SOURce ' source]);
+                cmdString = ['EDGE,SR,' source ',HT,OFF'];
+                obj.VisaIFobj.write(['TRIG_SELECT ' cmdString]);
                 % read and verify
-                response = obj.VisaIFobj.query(':TRIGger:EDGe:SOURce?');
-                if ~strcmpi(source, char(response))
+                response = obj.VisaIFobj.query('TRIG_SELECT?');
+                if ~strcmpi(cmdString, char(response))
                     disp(['Scope: Error - ''configureTrigger'' ' ...
                         'source parameter could not be set correctly.']);
                     status = -1;
@@ -1041,11 +1150,10 @@ classdef ScopeMacros < handle
             
             % type      : rising or falling edge
             if ~isempty(type)
-                obj.VisaIFobj.write(':TRIGger:MODE EDGE');
                 % set parameter
-                obj.VisaIFobj.write([':TRIGger:EDGe:SLOPe ' type]);
+                obj.VisaIFobj.write([source ':TRIG_SLOPE ' type]);
                 % read and verify
-                response = obj.VisaIFobj.query(':TRIGger:EDGe:SLOPe?');
+                response = obj.VisaIFobj.query('TRIG_SLOPE?');
                 if ~strcmpi(type, char(response))
                     disp(['Scope: Error - ''configureTrigger'' ' ...
                         'type parameter could not be set correctly.']);
@@ -1053,62 +1161,58 @@ classdef ScopeMacros < handle
                 end
             end
             
-            % coupling
+            % coupling  : 'AC', DC, ...
             if ~isempty(coupling)
-                obj.VisaIFobj.write(':TRIGger:MODE EDGE');
-                switch coupling
-                    case {'DC', 'AC', 'LFR', 'HFR'}
-                        % set parameter
-                        obj.VisaIFobj.write([':TRIGger:COUPling ' ...
-                            coupling]);
-                        % read and verify
-                        response = obj.VisaIFobj.query( ...
-                            ':TRIGger:COUPling?');
-                        if ~strcmpi(coupling, char(response))
-                            disp(['Scope: Error - ''configureTrigger'' ' ...
-                                'coupling parameter could not be set ' ...
-                                'correctly.']);
-                            status = -1;
-                        end
-                        % disable noise rejection
-                        obj.VisaIFobj.write(':TRIGger:NREJect 0');
-                    case 'addLPNoiseFilter'
-                        % when LFReject then change to AC
-                        response = obj.VisaIFobj.query( ...
-                            ':TRIGger:COUPling?');
-                        if strcmpi('LFR', char(response))
-                            obj.VisaIFobj.write( ...
-                                ':TRIGger:COUPling AC');
-                        end
-                        % enable additional noise rejection filter
-                        obj.VisaIFobj.write(':TRIGger:NREJect 1');
-                    otherwise
+                if strcmpi(source, 'LINE')
+                    if obj.ShowMessages
+                        disp(['  - coupling     : ' ...
+                            '<empty> (coerced)']);
+                    end
+                else
+                    % set parameter
+                    obj.VisaIFobj.write([source ':TRIG_COUPLING ' coupling]);
+                    % read and verify
+                    response = obj.VisaIFobj.query([source ':TRIG_COUPLING?']);
+                    if ~strcmpi(coupling, char(response))
                         disp(['Scope: Error - ''configureTrigger'' ' ...
-                        'invalid state ==> ignore and continue.']);
-                    status = -1;
+                            'coupling parameter could not be set correctly.']);
+                        status = -1;
+                    end
                 end
             end
             
             % level    : double, in V; NaN for set level to 50%
             if isnan(level)
                 % set trigger level to 50% of input signal
-                obj.VisaIFobj.write(':TLHAlf');
+                obj.VisaIFobj.write('SET50');
                 obj.VisaIFobj.opc;
+                % BUG in firmware@Scope
+                status = 1;
+                disp(['Scope: Warning - ''configureTrigger'' ' ...
+                    'set level to center of the trigger source ' ...
+                    'waveform does not work --> BUG@Scope']);
             elseif ~isempty(level)
-                obj.VisaIFobj.write(':TRIGger:MODE EDGE');
-                % format (round) numeric value
-                levelString = num2str(level, '%1.1e');
-                level       = str2double(levelString);
-                % set parameter
-                obj.VisaIFobj.write([':TRIGger:EDGe:LEVel ' levelString]);
-                % read and verify
-                response    = obj.VisaIFobj.query(':TRIGger:EDGe:LEVel?');
-                levelActual = str2double(char(response));
-                if abs(level - levelActual) > 1 % !!!
-                    % sensible threshold depends on vDiv of trigger source
-                    disp(['Scope: Warning - ''configureTrigger'' ' ...
-                        'level parameter could not be set correctly. ' ...
-                        'Check limits.']);
+                if strcmpi(source, 'LINE')
+                    if obj.ShowMessages
+                        disp(['  - level        : ' ...
+                            '<empty> (coerced)']);
+                    end
+                else
+                    % format (round) numeric value
+                    levelString = num2str(level, '%1.1e');
+                    level       = str2double(levelString);
+                    % set parameter
+                    obj.VisaIFobj.write([source ':TRIG_LEVEL ' levelString]);
+                    % read and verify
+                    response    = obj.VisaIFobj.query([source ...
+                        ':TRIG_LEVEL?']);
+                    levelActual = str2double(char(response));
+                    if abs(level - levelActual) > 1 % !!!
+                        % sensible threshold depends on vDiv of trigger source
+                        disp(['Scope: Warning - ''configureTrigger'' ' ...
+                            'level parameter could not be set correctly. ' ...
+                            'Check limits.']);
+                    end
                 end
             end
             
@@ -1118,10 +1222,32 @@ classdef ScopeMacros < handle
                 delayString = num2str(delay, '%1.2e');
                 delay       = str2double(delayString);
                 % set parameter
-                obj.VisaIFobj.write([':TIMebase:OFFSet ' delayString]);
+                obj.VisaIFobj.write(['TRIG_DELAY ' delayString]);
                 % read and verify
-                response    = obj.VisaIFobj.query(':TIMebase:OFFSet?');
-                delayActual = str2double(char(response));
+                response    = obj.VisaIFobj.query('TRIG_DELAY?');
+                response    = char(response); % delay with unit
+                % conversion: e.g. 20.0ns to 2e-8
+                idx = regexp(response, '\-?\d+\.?\d*\e?\-?\d*', 'end');
+                if ~isempty(idx)
+                    delayActual = str2double(response(1:idx));
+                    if length(response) > idx
+                        unit  = response(idx+1:end);
+                        switch lower(unit)
+                            case {'ns'}
+                                delayActual = delayActual * 1e-9;
+                            case {'us'}
+                                delayActual = delayActual * 1e-6;
+                            case {'ms'}
+                                delayActual = delayActual * 1e-3;
+                            case {'s'}
+                                delayActual = delayActual * 1e-0;
+                            otherwise
+                                delayActual = delayActual * 1; %???
+                        end
+                    end
+                else
+                    delayActual = NaN;
+                end
                 if abs(delay - delayActual) > 1e-2 % !!!
                     % sensible threshold depends on tDiv
                     disp(['Scope: Warning - ''configureTrigger'' ' ...
