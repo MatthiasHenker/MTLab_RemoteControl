@@ -1,12 +1,19 @@
 classdef ScopeMacros < handle
     % ToDo documentation
-    %
+    % 
+    % known severe issues: 
+    %   - trigger level can be set temporary only (will not be updated in 
+    %     trigger menu at scope display and get lost at next vDiv of
+    %     vOffset update
+    %   - measurement cannot be disabled again (first phase or delay
+    %     measurement enables measurement mode ==> captureWaveform become
+    %     much slower then
     %
     % for Scope: Siglent SDS2304X series
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.3.0';      % release version
+        MacrosVersion = '0.4.0';      % release version
         MacrosDate    = '2021-04-19'; % release date
     end
     
@@ -1755,7 +1762,6 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function meas = runMeasurement(obj, varargin)
             % runMeasurement  : request measurement value
             %   'channel'
@@ -1790,13 +1796,13 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case {'', '1', '2'}
+                                case {'', '1', '2', '3', '4'}
                                     % do nothing: all fine
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: WARNING - ' ...
                                         '''runMeasurement'' invalid ' ...
-                                        'channel (allowed are 1 .. 2) ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -1813,55 +1819,80 @@ classdef ScopeMacros < handle
                                 % do nothing (skip measurement)
                                 unit      = '';
                             case {'frequency', 'freq'}
-                                parameter = 'FREQuency';
+                                parameter = 'FREQ';
                                 unit      = 'Hz';
                             case {'period', 'peri', 'per'}
-                                parameter = 'PERiod';
+                                parameter = 'PER';
                                 unit      = 's';
+                            case {'cycmean', 'cmean'}
+                                parameter = 'CMEAN';
                             case 'mean'
-                                parameter = 'VAVG';
+                                parameter = 'MEAN';
                             case {'cycrms', 'crms'}
-                                parameter = 'PVRMs';
+                                parameter = 'CRMS';
                             case 'rms'
-                                parameter = 'VRMS';
+                                parameter = 'RMS';
                             case {'pk-pk', 'pkpk', 'pk2pk', 'peak'}
-                                parameter = 'VPP';
+                                parameter = 'PKPK';
                             case {'maximum', 'max'}
-                                parameter = 'VMAX';
+                                parameter = 'MAX';
                             case {'minimum', 'min'}
-                                parameter = 'VMIN';
+                                parameter = 'MIN';
                             case {'high', 'top'}
-                                parameter = 'VTOP';
+                                parameter = 'TOP';
                             case {'low', 'base'}
-                                parameter = 'VBASe';
+                                parameter = 'BASE';
                             case {'amplitude', 'amp'}
-                                parameter = 'VAMP';
+                                parameter = 'AMPL';
+                            case {'povershoot', 'pover'}
+                                parameter = 'OVSP';
+                                unit      = '%';
+                            case {'novershoot', 'nover'}
+                                parameter = 'OVSN';
+                                unit      = '%';
                             case {'overshoot', 'over'}
-                                parameter = 'OVERshoot';
+                                parameter = 'OVSP';
+                                unit      = '%';
+                                if obj.ShowMessages
+                                    disp(['  - parameter    : ' ...
+                                        'povershoot (coerced)']);
+                                end
+                            case {'ppreshoot', 'ppre'}
+                                parameter = 'RPRE';
+                                unit      = '%';
+                            case {'npreshoot', 'npre'}
+                                parameter = 'FPRE';
                                 unit      = '%';
                             case {'preshoot', 'pre'}
-                                parameter = 'PREShoot';
+                                parameter = 'RPRE';
                                 unit      = '%';
+                                if obj.ShowMessages
+                                    disp(['  - parameter    : ' ...
+                                        'ppreshoot (coerced)']);
+                                end
                             case {'risetime', 'rise'}
-                                parameter = 'RTIMe';
+                                parameter = 'RISE';
                                 unit      = 's';
                             case {'falltime', 'fall'}
-                                parameter = 'FTIMe';
+                                parameter = 'FALL';
                                 unit      = 's';
                             case {'poswidth', 'pwidth'}
-                                parameter = 'PWIDth';
+                                parameter = 'PWID';
                                 unit      = 's';
                             case {'negwidth', 'nwidth'}
-                                parameter = 'NWIDth';
+                                parameter = 'NWID';
+                                unit      = 's';
+                            case {'burstwidth', 'bwidth'}
+                                parameter = 'WID';
                                 unit      = 's';
                             case {'dutycycle', 'dutycyc', 'dcycle', 'dcyc'}
-                                parameter = 'PDUTy';
+                                parameter = 'DUTY';
                                 unit      = '%';
                             case 'phase'
-                                parameter = 'RPHase';
+                                parameter = 'PHA';
                                 unit      = 'deg';
                             case 'delay'
-                                parameter = 'RDELay';
+                                parameter = 'SKEW';
                                 unit      = 's';
                             otherwise
                                 disp(['Scope: Warning - ''runMeasurement'' ' ...
@@ -1882,6 +1913,7 @@ classdef ScopeMacros < handle
                         '--> skip and exit']);
                     disp('  ''frequency''');
                     disp('  ''period''');
+                    disp('  ''cycmean''');
                     disp('  ''mean''');
                     disp('  ''cycrms''');
                     disp('  ''rms''');
@@ -1891,18 +1923,21 @@ classdef ScopeMacros < handle
                     disp('  ''high''');
                     disp('  ''low''');
                     disp('  ''amplitude''');
-                    disp('  ''overshoot''');
-                    disp('  ''preshoot''');
+                    disp('  ''povershoot''');
+                    disp('  ''novershoot''');
+                    disp('  ''ppreshoot''');
+                    disp('  ''npreshoot''');
                     disp('  ''risetime''');
                     disp('  ''falltime''');
                     disp('  ''poswidth''');
                     disp('  ''negwidth''');
+                    disp('  ''burstwidth''');
                     disp('  ''dutycycle''');
                     disp('  ''phase''');
                     disp('  ''delay''');
                     meas.status = -1;
                     return
-                case {'rphase', 'rdelay'}
+                case {'pha', 'skew'}
                     if length(channels) ~= 2
                         disp(['Scope: ERROR ''runMeasurement'' ' ...
                             'two source channels have to be specified ' ...
@@ -1911,7 +1946,7 @@ classdef ScopeMacros < handle
                         meas.status = -1;
                         return
                     else
-                        source    = ['CHAN' channels{1} ',CHAN' channels{2}];
+                        source    = ['C' channels{1} '-C' channels{2}];
                     end
                 otherwise
                     if length(channels) ~= 1
@@ -1922,7 +1957,7 @@ classdef ScopeMacros < handle
                         meas.status = -1;
                         return
                     else
-                        source    = ['CHAN' channels{1}];
+                        source    = ['C' channels{1}];
                     end
             end
             
@@ -1934,25 +1969,51 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
-            % additional settling time
-            pause(0.2);
+            if strcmpi(parameter, 'pha') || strcmpi(parameter, 'skew')
+                % install delay measurement
+                obj.VisaIFobj.write(['MEASURE_DELAY ' parameter ',' source]);
+                % additional settling time
+                pause(0.2);
+                % request measurement value
+                value = obj.VisaIFobj.query([source ...
+                    ':MEASURE_DELY? ' parameter]);
+                value = char(value);
+            else
+                % direct request without installing a measurement
+                value = obj.VisaIFobj.query([source ...
+                    ':PARAMETER_VALUE? ' parameter]);
+                value = char(value);
+            end
+            % convert result
+            value = split(value, ',');
+            if length(value) ~= 2
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'unexpected response (number of elements) ' ...
+                    '--> skip and exit']);
+                meas.status = -1;
+                return
+            elseif ~strcmpi(value{1}, parameter)
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'unexpected response (parameter name) ' ...
+                    '--> skip and exit']);
+                meas.status = -1;
+                return
+            elseif isnan(str2double(value{2}))
+                disp(['Scope: ERROR ''runMeasurement'' ' ...
+                    'unexpected response (parameter value) ' ...
+                    '--> skip and exit']);
+                meas.status = -5;
+                return
+            end
+            value = str2double(value{2});
             
-            % request measurement value
-            value = obj.VisaIFobj.query([':MEASure:' parameter '? ' source]);
-            value = str2double(char(value));
-            if isnan(value)
-                meas.status = -5;     % error   (negative status)
-            elseif abs(value) > 1e36
+            if abs(value) > 1e36
                 meas.status = 1;      % warning (positive status)
                 value = NaN;          % invalid measurement
             end
             
             % copy to output
-            if strcmpi(unit, '%')
-                meas.value = 100* value;
-            else
-                meas.value = value;
-            end
+            meas.value = value;
             meas.unit  = unit;
             
             % set final status
