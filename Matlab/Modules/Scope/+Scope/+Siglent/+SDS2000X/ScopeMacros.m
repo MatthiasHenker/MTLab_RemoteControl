@@ -1,20 +1,26 @@
 classdef ScopeMacros < handle
     % ToDo documentation
-    % 
-    % known severe issues: 
-    %   - trigger level can be set temporary only (will not be updated in 
-    %     trigger menu at scope display and get lost at next vDiv of
-    %     vOffset update
+    %
+    % known severe issues:
+    %   - trigger level can be set temporarily only (will not be updated in
+    %     trigger menu at scope display and get lost at next vDiv or
+    %     vOffset update) ==> can be a big problem
     %   - measurement cannot be disabled again (first phase or delay
     %     measurement enables measurement mode ==> captureWaveform become
-    %     much slower then
+    %     much slower then) ==> reduces download speed, avoid phase
+    %     measurements to overcome this problem
+    %   - largest parameter value for maxLength of waveform (140MSa or 70
+    %     MSa (interleaved)) cannot be set remotely ==> not nice, but not a
+    %     big deal
+    %   - skew cannot be set remotely ==> not a big deal
+    %
     %
     % for Scope: Siglent SDS2304X series
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.4.0';      % release version
-        MacrosDate    = '2021-04-19'; % release date
+        MacrosVersion = '0.5.0';      % release version
+        MacrosDate    = '2021-04-20'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1238,7 +1244,7 @@ classdef ScopeMacros < handle
                 response    = obj.VisaIFobj.query('TRIG_DELAY?');
                 response    = char(response); % delay with unit
                 % conversion: e.g. 20.0ns to 2e-8
-                idx = regexp(response, '\-?\d+\.?\d*\e?\-?\d*', 'end');
+                idx = regexp(response, '^\-?\d+\.?\d*\e?\-?\d*', 'end');
                 if ~isempty(idx)
                     delayActual = str2double(response(1:idx));
                     if length(response) > idx
@@ -2023,12 +2029,11 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function waveData = captureWaveForm(obj, varargin)
             % captureWaveForm: download waveform data
             %   'channel' : one or more channels
             % outputs:
-            %   waveData.status     : 0 for okay
+            %   waveData.status     : 0 for okay, -1 for error, 1 for warning
             %   waveData.volt       : waveform data in Volt
             %   waveData.time       : corresponding time vector in s
             %   waveData.samplerate : sample rate in Sa/s (Hz)
@@ -2053,17 +2058,15 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case '1'
-                                    channels{cnt} = 'CHANnel1';
-                                case '2'
-                                    channels{cnt} = 'CHANnel2';
+                                case {'1', '2', '3', '4'}
+                                    channels{cnt} = ['C' channels{cnt}];
                                 case ''
                                     % do nothing
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: Warning - ' ...
                                         '''captureWaveForm'' invalid ' ...
-                                        'channel (allowed are 1 .. 2) ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -2076,10 +2079,11 @@ classdef ScopeMacros < handle
             end
             
             % define default when channel parameter is missing
+            % ==> channels contain at least one element
             if isempty(channels)
-                channels = {'CHANnel1', 'CHANnel2'};
+                channels = {'C1', 'C2', 'C3', 'C4'};
                 if obj.ShowMessages
-                    disp('  - channel      : 1, 2 (coerced)');
+                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
                 end
             end
             
@@ -2087,135 +2091,219 @@ classdef ScopeMacros < handle
             % actual code
             % -------------------------------------------------------------
             
-            % loop over channels
+            % -------------------------------------------------------------
+            % 1st step: request settings which are equal for all channels
+            %
+            % sample rate in Sa/s
+            response = obj.VisaIFobj.query('SAMPLE_RATE?');
+            % format of response is xxxUnit with Unit
+            [value, unit] = regexpi(char(response), '^\d+\.?\d*', ...
+                'match', 'split');
+            switch lower(unit{end})
+                case 'gsa/s'
+                    srate  = str2double(value) *1e9;
+                case 'msa/s'
+                    srate  = str2double(value) *1e6;
+                case 'ksa/s'
+                    srate  = str2double(value) *1e3;
+                case 'sa/s'
+                    srate  = str2double(value) *1e0;
+                otherwise
+                    waveData.status = -5; % error
+                    return
+            end
+            if ~isnan(srate) && length(srate) == 1 && srate > 0
+                % fine
+            else
+                waveData.status = -6; % error
+                return
+            end
+            % copy result to output
+            waveData.samplerate = srate;
+            
+            
+            % number of available samples
+            response = obj.VisaIFobj.query(['SAMPLE_NUM? ' channels{1}]);
+            % format of response is xxxUnit with Unit
+            [value, unit] = regexpi(char(response), '^\d+\.?\d*', ...
+                'match', 'split');
+            switch lower(unit{end})
+                case 'mpts'
+                    xlength = str2double(value) *1e6;
+                case 'kpts'
+                    xlength = str2double(value) *1e3;
+                case 'pts'
+                    xlength = str2double(value) *1e0;
+                otherwise
+                    waveData.status = -7; % error
+                    return
+            end
+            if xlength == round(xlength) && length(xlength) == 1
+                % fine
+            else
+                waveData.status = -8; % error
+                return
+            end
+            % initialize result matrix (acquired voltages = 0)
+            waveData.volt = zeros(length(channels), xlength);
+            
+            
+            % parameter trigger delay (offset) in s
+            response = obj.VisaIFobj.query('TRIG_DELAY?');
+            % format of response is xxxUnit with Unit
+            [value, unit] = regexpi(char(response), '^\d+\.?\d*', ...
+                'match', 'split');
+            switch lower(unit{end})
+                case 's'
+                    tDelay = str2double(value) *1e0;
+                case 'ms'
+                    tDelay = str2double(value) *1e-3;
+                case 'us'
+                    tDelay = str2double(value) *1e-6;
+                case 'ns'
+                    tDelay = str2double(value) *1e-9;
+                otherwise
+                    waveData.status = -9; % error
+                    return
+            end
+            if ~isnan(tDelay) && length(tDelay) == 1
+                % fine
+            else
+                waveData.status = -10; % error
+                return
+            end
+            % parameter time divider in s
+            value = obj.VisaIFobj.query('TIME_DIV?');
+            % format of response is x.xxEyyy in s (for comm_header = off)
+            tDiv = str2double(char(value));
+            if ~isnan(tDiv)
+                % fine
+            else
+                waveData.status = -12; % error
+                return
+            end
+            %
+            % display (horizontal = time) is divided into 14 segments (grid)
+            % displayed time range is tDelay-7*tDiv .. tDelay+7*tDiv
+            numGrid    = 14;
+            % copy result to output
+            waveData.time = (0:xlength-1)/srate +tDelay -tDiv *numGrid/2;
+            
+            
+            % -------------------------------------------------------------
+            % 2nd step: configure data segments to download data in chunks
+            
+            % data chunks must be smaller than obj.VisaIFobj.InputBufferSize
+            % 1.4MSa will divide all possible larger NumSamples without rest
+            NSampleMax  = 1.4e6;
+            % calculate size of data chunks and number of data chunks
+            NumSegments = ceil(xlength / NSampleMax);  % >= 1
+            NSamplesSeg =      xlength / NumSegments;  % >= 1
+            if mod(xlength, NumSegments) ~= 0
+                waveData.status = -15; % error
+                return
+            end
+            
+            % -------------------------------------------------------------
+            % 3rd step: run loop over all channels
             for cnt = 1 : length(channels)
                 channel = channels{cnt};
-                % select channel
-                obj.VisaIFobj.write([':WAVeform:SOURce ' channel]);
                 
-                % ---------------------------------------------------------
-                % read data header
-                header = obj.VisaIFobj.query(':WAVeform:PREamble?');
-                header = split(char(header), ',');
-                if length(header) == 10
-                    % response consists of 10 parameters separated by commas
-                    % ( 1) <format>,     (should be 0 for BYTE)
-                    % ( 2) <type>,       (should be 1 for MAXimum)
-                    % ( 3) <points>,     (should be 1400 when acq is running
-                    %                     and up to 14e6 when acq is stopped)
-                    % ( 4) <count>,      (averages, not really of interest)
-                    % ( 5) <xincrement>,
-                    % ( 6) <xorigin>,
-                    % ( 7) <xreference>,
-                    % ( 8) <yincrement>,
-                    % ( 9) <yorigin>,
-                    % (10) <yreference>
-                    xlength    = str2double(header{3});
-                    %
-                    xinc       = str2double(header{5});
-                    xorigin    = str2double(header{6});
-                    xref       = str2double(header{7});
-                    %
-                    yinc       = str2double(header{8});
-                    yorigin    = str2double(header{9});
-                    yref       = str2double(header{10});
-                else
-                    % logical error or data error
-                    waveData.status = -10;
-                    return; % exit
+                % check if channel is active
+                response = obj.VisaIFobj.query([channel ':TRACE?']);
+                if ~strcmpi('ON', char(response))
+                    % break loop ==> try next channel
+                    continue;
                 end
                 
                 % ---------------------------------------------------------
-                % always download waveform data ==> will be all zero when
-                % channel is not active (we don't care)
-                %
-                % resolution of data is always 8-bit (Byte)
-                
-                % ---------------------------------------------------------
-                % check all meta information and initialize output values
-                if ~isnan(xlength) && ...
-                        ~isnan(xinc) && ~isnan(xorigin) && ~isnan(xref) && ...
-                        ~isnan(yinc) && ~isnan(yorigin) && ~isnan(yref)
+                % now run a loop to download all waveform data in chunks
+                % initialize start address
+                NSamplesIdx = 0;
+                for cnt2 = 0 : NumSegments-1
+                    % specify start address and number of samples
+                    obj.VisaIFobj.write(['WAVEFORM_SETUP SP,1,NP,' ...
+                        num2str(NSamplesSeg) ',FP,' num2str(NSamplesIdx)]);
                     
-                    % set sample time (identical for all channels)
-                    waveData.time = xref + xorigin + xinc*(0 : xlength-1);
-                    % sample rate
-                    waveData.samplerate = 1/xinc;
-                    if isempty(waveData.volt)
-                        % initialize result matrix
-                        waveData.volt   = zeros(length(channels), xlength);
-                    elseif size(waveData.volt, 2) ~= xlength
-                        % logical error or data error
-                        waveData.status = -14;
+                    % run actual waveform download
+                    if obj.ShowMessages
+                        disp(['  - Channel ' channel ': ' ...
+                            'download waveform data ' ...
+                            num2str(cnt2 +1, '%d') '/' ...
+                            num2str(NumSegments, '%d')]);
+                    end
+                    RawData  = obj.VisaIFobj.query([channel ':WF? DAT2']);
+                    
+                    % check and extract header: 
+                    % e.g. DAT2,#9001400000binarydata with 9 chars
+                    % indicating number of bytes for actual data
+                    if length(RawData) <= 8
+                        waveData.status = -20;  % error
                         return; % exit
                     end
-                else
-                    % logical error or data error
-                    waveData.status = -15;
-                    return; % exit
-                end
-                
-                % ---------------------------------------------------------
-                % actual download of waveform data
-                %
-                % wavedata must downloaded in chunks with max. 2.5e5
-                % samples (when format is BYTE)
-                xstart = 1;
-                xstop  = min(xstart + 250e3 - 1, xlength);
-                
-                
-                while xstop <= xlength && xstart < xstop
-                    % set addresses for data block to be read
-                    obj.VisaIFobj.write([':WAVeform:STARt ' ...
-                        num2str(xstart, '%d')]);
-                    obj.VisaIFobj.write([':WAVeform:STOP ' ...
-                        num2str(xstop, '%d')]);
-                    
-                    % read data block
-                    data = obj.VisaIFobj.query(':WAVeform:DATA?');
-                    % check and extract header: e.g. #41000binarydata with
-                    % next 4 chars indicating number of bytes for actual data
-                    if length(data) < 4
-                        % logical error or data error
-                        waveData.status = -16;
-                        return; % exit
-                    end
-                    headchar = char(data(1));
-                    headlen  = round(str2double(char(data(2))));
-                    if strcmpi(headchar, '#') && headlen >= 1
+                    headchar = char(RawData(1:6));
+                    headlen  = round(str2double(char(RawData(7))));
+                    if strcmpi(headchar, 'DAT2,#') && headlen >= 1
                         % fine and go on  (test negative for headlen = NaN)
                     else
-                        % logical error or data error
-                        waveData.status = -17;
+                        waveData.status = -21; % error
                         return; % exit
                     end
-                    datalen = str2double(char(data(2+1 : ...
-                        min(2+headlen,length(data)))));
-                    if length(data) ~= 2 + headlen + datalen
-                        % logical error or data error
-                        waveData.status = -18;
+                    datalen = str2double(char(RawData(7+1 : ...
+                        min(7+headlen,length(RawData)))));
+                    if length(RawData) ~= 7 + headlen + datalen + 1
+                        waveData.status = -22; % error
                         return; % exit
                     end
-                    % extract binary data (uint8)
-                    data = data(2 + headlen + (1:datalen));
-                    % convert data
-                    data = double(data);
+                    if datalen ~= NSamplesSeg
+                        waveData.status = -23; % error
+                        return; % exit
+                    end
+                    % extract binary data (uint8): remove header to get raw
+                    % waveform data and also remove last byte which is
+                    % always '0A' (LF as end of message indicator)
+                    RawData = RawData(7 + headlen + (1:datalen));
+                    % cast data from uint8 to correct data format
+                    RawData = typecast(RawData, 'int8');
+                    % finally convert data and copy to output variable
+                    waveData.volt(cnt, (1:datalen)+cnt2*NSamplesSeg) = ...
+                        double(RawData); % unscaled voltage
                     
-                    % check and reformat
-                    if length(data) ~= xstop - xstart + 1
-                        % logical error or data error
-                        waveData.status = -19;
-                        return; % exit
-                    end
-                    % convert byte values to sample values in V
-                    waveData.volt(cnt, xstart : xstop) = ...
-                        (data - yref - yorigin) * yinc;
-                    
-                    % updates addresses for next loop run
-                    xstart = xstop + 1;
-                    xstop  = min(xstart + 250e3 - 1, xlength);
+                    % update start address for next download
+                    NSamplesIdx = NSamplesIdx + NSamplesSeg;
+                end
+                clear RawData;
+                
+                % ---------------------------------------------------------
+                % request parameter voltage divider in V for this channel
+                response = obj.VisaIFobj.query([channel ':VOLT_DIV?']);
+                % format of response is x.xxEyyy in V (for comm_header = off)
+                vDiv = str2double(char(response));
+                if isnan(vDiv)
+                    vDiv = 1;
+                    waveData.status = 1; % warning
                 end
                 
+                % request parameter voltage offset in V for this channel
+                response = obj.VisaIFobj.query([channel ':OFFSET?']);
+                % format of response is x.xxEyyy in V (for comm_header = off)
+                vOffset = str2double(char(response));
+                if isnan(vOffset)
+                    vOffset = 0;
+                    waveData.status = 1; % warning
+                end
+                
+                % scale waveform data (in V)
+                % formulas are given in SDS2304X programming guide
+                %
+                % display (vertical=voltage) is divided into 8 segments (grid)
+                % voltage range is
+                %   -vOffset-4*vDiv .. -vOffset+4*vDiv @ display of Scope
+                %   -vOffset-5*vDiv .. -vOffset+5*vDiv @ ADConverter
+                % all received integer values are in range [-125 .. +124]
+                % => then clipping occures
+                waveData.volt(cnt, :) = waveData.volt(cnt, :) ...
+                    * vDiv/25 - vOffset;
             end
             
             % set final status
