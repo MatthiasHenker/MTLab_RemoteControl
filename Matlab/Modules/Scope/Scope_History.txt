@@ -1,6 +1,5 @@
 % Scope support package (from newest to older versions)
 
-
 in preparation
 ---------------------------------------------------------------------------
 Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
@@ -14,13 +13,28 @@ Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
       no changes
   - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.1   (2021-04-12)
       no changes
-  - Scope.Siglent.SDS2000X.ScopeMacros                v0.1.0   (2021-04-13)
-      work in progress
+  - Scope.Siglent.SDS2000X.ScopeMacros                v1.2.1   (2021-04-22)
+      no changes
 
 
 
 
 
+---------------------------------------------------------------------------
+Release v1.2.1_refresh (same as Scope class) requires VisaIF v2.4.3 or later
+  - Scope                                             v1.2.1   (2021-04-12)
+      no changes
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-04-12)
+      no changes
+  - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.1   (2021-04-12)
+      no changes
+  - Scope.RS.RTB2000.ScopeMacros                      v1.2.1   (2021-04-12)
+      no changes
+  - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.1   (2021-04-12)
+      no changes
+  - Scope.Siglent.SDS2000X.ScopeMacros                v1.2.1   (2021-04-22)
+      NEW: initial package, supports all features
+      (issue in FW@Scope: trigger level get lost)
 
 ---------------------------------------------------------------------------
 Release v1.2.1 (same as Scope class) requires VisaIF v2.4.3 or later
