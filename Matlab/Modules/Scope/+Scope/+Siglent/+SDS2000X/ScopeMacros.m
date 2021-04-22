@@ -19,7 +19,7 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
+        MacrosVersion = '1.2.1';      % release version
         MacrosDate    = '2021-04-22'; % release date
     end
     
@@ -679,6 +679,9 @@ classdef ScopeMacros < handle
                 end
             end
             
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+            
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
@@ -980,6 +983,9 @@ classdef ScopeMacros < handle
                 end
             end
             
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+            
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
@@ -1277,6 +1283,9 @@ classdef ScopeMacros < handle
                 end
             end
             
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+            
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
@@ -1508,8 +1517,6 @@ classdef ScopeMacros < handle
                     if statConf
                         status = -5;
                     end
-                    % wait for completion
-                    obj.VisaIFobj.opc;
                 else
                     disp(['Scope: Warning - ''autoscale'': ' ...
                         'invalid frequency measurement results. ' ...
@@ -1518,6 +1525,9 @@ classdef ScopeMacros < handle
                     return
                 end
             end
+            
+            % wait for operation complete
+            obj.VisaIFobj.opc;
             
             % vertical scaling: adjust vDiv, vOffset
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
@@ -1618,6 +1628,9 @@ classdef ScopeMacros < handle
                     end
                 end
             end
+            
+            % wait for operation complete
+            obj.VisaIFobj.opc;
             
             % set final status
             if isnan(status)
@@ -1785,6 +1798,10 @@ classdef ScopeMacros < handle
             channels  = {};
             parameter = '';
             unit      = '';
+            
+            % was this method called internally
+            myStack = dbstack(1, '-completenames');
+            internalCall = startsWith(myStack(1).name, 'ScopeMacros');
             
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
@@ -1973,9 +1990,9 @@ classdef ScopeMacros < handle
             
             if strcmpi(parameter, 'pha') || strcmpi(parameter, 'skew')
                 % install delay measurement
-                obj.VisaIFobj.write(['MEASURE_DELAY ' parameter ',' source]);
+                obj.VisaIFobj.write(['MEASURE_DELY ' parameter ',' source]);
                 % additional settling time
-                pause(0.2);
+                pause(0.5);
                 % request measurement value
                 value = obj.VisaIFobj.query([source ...
                     ':MEASURE_DELY? ' parameter]);
@@ -1998,14 +2015,12 @@ classdef ScopeMacros < handle
                 disp(['Scope: ERROR ''runMeasurement'' ' ...
                     'unexpected response (parameter name) ' ...
                     '--> skip and exit']);
-                meas.status = -1;
+                meas.status = -2;
                 return
             elseif isnan(str2double(value{2}))
-                disp(['Scope: ERROR ''runMeasurement'' ' ...
-                    'unexpected response (parameter value) ' ...
-                    '--> skip and exit']);
-                meas.status = -5;
-                return
+                disp(['Scope: Warning ''runMeasurement'' ' ...
+                    'unexpected response (parameter value) ']);
+                meas.status = 1;
             end
             value = str2double(value{2});
             
@@ -2013,6 +2028,9 @@ classdef ScopeMacros < handle
                 meas.status = 1;      % warning (positive status)
                 value = NaN;          % invalid measurement
             end
+            
+            % wait for operation complete
+            obj.VisaIFobj.opc;
             
             % copy to output
             meas.value = value;
@@ -2022,6 +2040,17 @@ classdef ScopeMacros < handle
             if isnan(meas.status)
                 % no error so far ==> set to 0 (fine)
                 meas.status = 0;
+                statusFlag = 'okay';
+            else
+                statusFlag = 'not okay';
+            end
+            
+            % optionally display results
+            if obj.ShowMessages && ~internalCall
+                disp(['  - meas. result : ' ...
+                    pad(num2str(meas.value, '%g'), 6, 'left') ...
+                    ' ' meas.unit ' ' ...
+                    '(status = ' statusFlag ')']);
             end
         end
         
@@ -2301,6 +2330,9 @@ classdef ScopeMacros < handle
                 waveData.volt(cnt, :) = waveData.volt(cnt, :) ...
                     * vDiv/25 - vOffset;
             end
+            
+            % wait for operation complete
+            obj.VisaIFobj.opc;
             
             % set final status
             if isnan(waveData.status)
