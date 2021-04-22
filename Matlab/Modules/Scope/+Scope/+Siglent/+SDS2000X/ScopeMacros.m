@@ -19,8 +19,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.5.0';      % release version
-        MacrosDate    = '2021-04-20'; % release date
+        MacrosVersion = '1.0.0';      % release version
+        MacrosDate    = '2021-04-22'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -163,7 +163,7 @@ classdef ScopeMacros < handle
         function status = clear(obj)
             % clear buffers and registers
             
-            status = 0; 
+            status = 0;
             
             if obj.ShowMessages
                 disp(['Scope WARNING - Method ''clear'' is not ' ...
@@ -177,7 +177,7 @@ classdef ScopeMacros < handle
         function status = lock(obj)
             % lock all buttons at scope
             
-            status = 0; 
+            status = 0;
             
             if obj.ShowMessages
                 disp(['Scope WARNING - Method ''lock'' is not ' ...
@@ -199,7 +199,7 @@ classdef ScopeMacros < handle
             disp(['      ' obj.VisaIFobj.Vendor '/' ...
                 obj.VisaIFobj.Product ...
                 ' -->  Scope will never be locked ' ...
-                    'by remote access']);
+                'by remote access']);
         end
         
         function status = acqRun(obj)
@@ -576,7 +576,7 @@ classdef ScopeMacros < handle
                 
                 % 'skew'           : (-100e-9 ... 100e-9 = +/- 100ns)
                 % ATTENTION: Bug ('SIGLENT, SDS2304X, 1.2.2.2 R19')
-                % set skew will end up in totally frozen scope 
+                % set skew will end up in totally frozen scope
                 % ==> power off/on required
                 % ==> skew cannot be set remotely at the moment
                 % ==> can be set manually at scope only
@@ -704,6 +704,10 @@ classdef ScopeMacros < handle
             mode        = '';
             numAverage  = [];
             
+            % was this method called internally
+            myStack = dbstack(1, '-completenames');
+            internalCall = startsWith(myStack(1).name, 'ScopeMacros');
+            
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -740,14 +744,14 @@ classdef ScopeMacros < handle
                                     coerced = true;
                                 end
                             end
-                            if obj.ShowMessages && coerced
+                            if obj.ShowMessages && coerced && ~internalCall
                                 disp(['  - tDiv         : ' ...
                                     num2str(tDiv, '%g') ' (coerced)']);
                             end
                         end
                     case 'sampleRate'
                         if ~isempty(paramValue)
-                           disp(['Scope: WARNING - sampleRate parameter ' ...
+                            disp(['Scope: WARNING - sampleRate parameter ' ...
                                 ' is not supported. Please specify tDiv ' ...
                                 'and maxLength instead.']);
                             status  = 1; % warning
@@ -1344,7 +1348,7 @@ classdef ScopeMacros < handle
             skipHPOS = false;
             if ~isempty(zoomFactor)
                 % zoomFactor will be rounded by Scope to nearest value
-                                
+                
                 if zoomFactor == 1
                     % disable zoom window (indirectly)
                     obj.VisaIFobj.write(['TIME_DIV ' num2str(tdiv, '%g')]);
@@ -1384,13 +1388,12 @@ classdef ScopeMacros < handle
             end
         end
         
-        % code copied from Rigol-DS2072A
         function status = autoscale(obj, varargin)
             % autoscale       : adjust vertical and/or horizontal scaling
             %                   vDiv, vOffset for vertical and
             %                   tDiv for horizontal
             %   'mode'        : 'hor', 'vert', 'both'
-            %   'channel'     : 1 .. 2
+            %   'channel'     : 1 .. 4
             
             % init output
             status = NaN;
@@ -1411,13 +1414,13 @@ classdef ScopeMacros < handle
                         % loop
                         for cnt = 1 : length(channels)
                             switch channels{cnt}
-                                case {'', '1', '2'}
+                                case {'', '1', '2', '3', '4'}
                                     % do nothing
                                 otherwise
                                     channels{cnt} = '';
                                     disp(['Scope: Warning - ' ...
                                         '''autoscale'' invalid ' ...
-                                        'channel (allowed are 1 .. 2) ' ...
+                                        'channel (allowed are 1 .. 4) ' ...
                                         '--> ignore and continue']);
                             end
                         end
@@ -1469,157 +1472,150 @@ classdef ScopeMacros < handle
             
             % define default when channel parameter is missing
             if isempty(channels)
-                channels = {'1', '2'};
+                channels = {'1', '2', '3', '4'};
                 if obj.ShowMessages
-                    disp('  - channel      : 1, 2 (coerced)');
+                    disp('  - channel      : 1, 2, 3, 4 (coerced)');
+                end
+            end
+            
+            % horizontal scaling: adjust tDiv
+            if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
+                % request trigger frequency
+                response = obj.VisaIFobj.query('CYMOMETER?');
+                % format of response is xxxUnit with Unit
+                [value, unit] = regexpi(char(response), '^\d+\.?\d*', ...
+                    'match', 'split');
+                switch lower(unit{end})
+                    case 'hz'
+                        freq  = str2double(value) *1;
+                    case 'khz'
+                        freq  = str2double(value) *1e3;
+                    case 'mhz'
+                        freq  = str2double(value) *1e6;
+                    otherwise
+                        status = -4; % error
+                        return
+                end
+                if ~isnan(freq)
+                    % adjust tDiv parameter
+                    % calculate sensible tDiv parameter (14*tDiv@screen)
+                    tDiv = numOfSignalPeriods / (14*freq);
+                    % now send new tDiv parameter to scope
+                    %obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
+                    % low level command to avoid display messages
+                    statConf = obj.configureAcquisition( ...
+                        'tDiv', num2str(tDiv, '%1.1e'));
+                    if statConf
+                        status = -5;
+                    end
+                    % wait for completion
+                    obj.VisaIFobj.opc;
+                else
+                    disp(['Scope: Warning - ''autoscale'': ' ...
+                        'invalid frequency measurement results. ' ...
+                        'Skip horizontal scaling.']);
+                    status = 1; % warning
+                    return
                 end
             end
             
             % vertical scaling: adjust vDiv, vOffset
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
                 for cnt = 1:length(channels)
-                    % check if trace is on or off
-                    traceOn = obj.VisaIFobj.query( ...
-                        [':CHANnel' channels{cnt} ':DISPlay?']);
-                    traceOn = abs(str2double(char(traceOn)));
-                    if isnan(traceOn)
-                        traceOn = false;
-                        status  = -3;
-                    else
-                        traceOn = logical(traceOn);
+                    % check if channel is active
+                    response = obj.VisaIFobj.query(['C' channels{cnt} ...
+                        ':TRACE?']);
+                    if ~strcmpi('ON', char(response))
+                        % break loop ==> try next channel
+                        continue;
                     end
-                    if traceOn
-                        % init
-                        loopcnt  = 0;
-                        maxcnt   = 9;
-                        while loopcnt < maxcnt
-                            % time for settlement
-                            pause(0.4);
-                            
-                            % measure min and max voltage
-                            result = obj.runMeasurement( ...
-                                'channel', channels{cnt}, ...
-                                'parameter', 'minimum');
-                            vMin   = result.value;
-                            result = obj.runMeasurement( ...
-                                'channel', channels{cnt}, ...
-                                'parameter', 'maximum');
-                            vMax   = result.value;
-                            
-                            % ADC is clipped?
-                            adcMax = isnan(vMax);
-                            adcMin = isnan(vMin);
-                            
-                            % estimate voltage scaling (gain)
-                            % 8 vertical divs at display
-                            vDiv = (vMax - vMin) / 8;
-                            if isnan(vDiv)
-                                % request current vDiv setting
-                                vDiv = obj.VisaIFobj.query( ...
-                                    [':CHANnel' channels{cnt} ':SCALe?']);
-                                vDiv = str2double(char(vDiv));
-                                if isnan(vDiv)
-                                    status = -6;
-                                    break;
-                                end
-                            end
-                            
-                            % estimate voltage offset
-                            vOffset = (vMax + vMin)/2;
-                            if isnan(vOffset)
-                                % request current vOffset setting
-                                vOffset = obj.VisaIFobj.query( ...
-                                    [':CHANnel' channels{cnt} ':OFFSet?']);
-                                vOffset = str2double(char(vOffset));
-                                if isnan(vOffset)
-                                    status = -7;
-                                    break;
-                                end
-                            end
-                            
-                            if adcMax && adcMin
-                                % pos. and neg. clipping: scale down
-                                vDiv    = vDiv / 0.34;
-                            elseif adcMax
-                                % positive clipping: scale down
-                                vOffset = vOffset + 3* vDiv;
-                                vDiv    = vDiv / 0.5;
-                            elseif adcMin
-                                % negative clipping: scale down
-                                vOffset = vOffset - 3* vDiv;
-                                vDiv    = vDiv / 0.5;
-                            else
-                                % adjust gently
-                                vDiv    = vDiv / verticalScalingFactor;
-                            end
-                            
-                            % send new vDiv, vOffset parameters to scope
-                            statConf = obj.configureInput(...
-                                'channel' , channels{cnt}, ...
-                                'vDiv'    , num2str(vDiv   , '%1.1e'),  ...
-                                'vOffset' , num2str(vOffset, '%1.1e'));
-                            
-                            if statConf
-                                status = -8;
-                            end
-                            
-                            % wait for completion
-                            obj.VisaIFobj.opc;
-                            
-                            % update loop counter
-                            loopcnt = loopcnt + 1;
-                            
-                            if ~adcMax && ~adcMin && loopcnt ~= maxcnt
-                                % shorten loop when no clipping ==> do a
-                                % final loop run to ensure proper scaling
-                                loopcnt = maxcnt - 1;
-                            end
-                        end
-                    end
-                end
-            end
-            
-            % horizontal scaling: adjust tDiv
-            if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
-                % which channel is used for trigger
-                %obj.VisaIFobj.write(':TRIGger:MODE EDGe');
-                trigSrc = obj.VisaIFobj.query(':TRIGger:EDGe:SOURce?');
-                trigSrc = upper(char(trigSrc));
-                switch trigSrc
-                    case {'CHAN1', 'CHAN2'}
-                        % additional settling time
-                        pause(0.2);
-                        % measure frequency
+                    % init
+                    loopcnt  = 0;
+                    maxcnt   = 9;
+                    while loopcnt < maxcnt
+                        % time for settlement
+                        pause(0.1);
+                        
+                        % request current vDiv setting
+                        vDiv = obj.VisaIFobj.query( ...
+                            ['C' channels{cnt} ':VOLT_DIV?']);
+                        vDiv = str2double(char(vDiv));
+                        % request current vOffset setting
+                        vOffset = obj.VisaIFobj.query( ...
+                            ['C' channels{cnt} ':OFFSET?']);
+                        vOffset = str2double(char(vOffset));
+                        
+                        % measure min and max voltage
                         result = obj.runMeasurement( ...
-                            'channel', trigSrc(end), ...
-                            'parameter', 'frequency');
-                        freq   = result.value;
+                            'channel', channels{cnt}, ...
+                            'parameter', 'minimum');
+                        vMin   = result.value;
+                        result = obj.runMeasurement( ...
+                            'channel', channels{cnt}, ...
+                            'parameter', 'maximum');
+                        vMax   = result.value;
                         
-                        if ~isnan(freq)
-                            % adjust tDiv parameter
-                            % calculate sensible tDiv parameter (14*tDiv@screen)
-                            tDiv = numOfSignalPeriods / (14*freq);
-                            
-                            % now send new tDiv parameter to scope
-                            %obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
-                            statConf = obj.configureAcquisition( ...
-                                'tDiv', num2str(tDiv, '%1.1e'));
-                            if statConf
-                                status = -10;
-                            end
-                            
-                            % wait for completion
-                            obj.VisaIFobj.opc;
-                        else
+                        % check values
+                        if isnan(vDiv) || isnan(vOffset) || ...
+                                isnan(vMin) || isnan(vMax)
+                            status = -10;
                             disp(['Scope: Warning - ''autoscale'': ' ...
-                                'invalid frequency measurement results. ' ...
-                                'Skip horizontal scaling.']);
+                                'invalid measurement results. ' ...
+                                'Skip vertical scaling.']);
+                            break;
                         end
                         
-                    otherwise
-                        disp(['Scope: Warning - ''autoscale'': ' ...
-                            'invalid trigger channel. ' ...
-                            'Skip horizontal scaling.']);
+                        % ADC is clipped?
+                        % (when vMax ==  5*vDiv - vOffset)
+                        % (when vMin == -5*vDiv - vOffset)
+                        adcMax = (vMax + vOffset >=  4.9*vDiv);
+                        adcMin = (vMin + vOffset <= -4.9*vDiv);
+                        
+                        % estimate voltage scaling (gain)
+                        % 8 vertical divs at display
+                        vDiv = (vMax - vMin) / 8;
+                        % estimate voltage offset
+                        vOffset = (vMax + vMin)/2;
+                        
+                        
+                        if adcMax && adcMin
+                            % pos. and neg. clipping: scale down
+                            vDiv    = vDiv / 0.34;
+                        elseif adcMax
+                            % positive clipping: scale down
+                            vOffset = vOffset + 3* vDiv;
+                            vDiv    = vDiv / 0.5;
+                        elseif adcMin
+                            % negative clipping: scale down
+                            vOffset = vOffset - 3* vDiv;
+                            vDiv    = vDiv / 0.5;
+                        else
+                            % adjust gently
+                            vDiv    = vDiv / verticalScalingFactor;
+                        end
+                        
+                        % send new vDiv, vOffset parameters to scope
+                        statConf = obj.configureInput(...
+                            'channel' , channels{cnt}, ...
+                            'vDiv'    , num2str(vDiv   , '%1.1e'),  ...
+                            'vOffset' , num2str(vOffset, '%1.1e'));
+                        
+                        if statConf
+                            status = -11;
+                        end
+                        
+                        % wait for completion
+                        obj.VisaIFobj.opc;
+                        
+                        % update loop counter
+                        loopcnt = loopcnt + 1;
+                        
+                        if ~adcMax && ~adcMin && loopcnt ~= maxcnt
+                            % shorten loop when no clipping ==> do a
+                            % final loop run to ensure proper scaling
+                            loopcnt = maxcnt - 1;
+                        end
+                    end
                 end
             end
             
@@ -2112,7 +2108,7 @@ classdef ScopeMacros < handle
                     waveData.status = -5; % error
                     return
             end
-            if ~isnan(srate) && length(srate) == 1 && srate > 0
+            if ~isnan(srate) && srate > 0
                 % fine
             else
                 waveData.status = -6; % error
@@ -2138,7 +2134,7 @@ classdef ScopeMacros < handle
                     waveData.status = -7; % error
                     return
             end
-            if xlength == round(xlength) && length(xlength) == 1
+            if xlength == round(xlength)
                 % fine
             else
                 waveData.status = -8; % error
@@ -2166,7 +2162,7 @@ classdef ScopeMacros < handle
                     waveData.status = -9; % error
                     return
             end
-            if ~isnan(tDelay) && length(tDelay) == 1
+            if ~isnan(tDelay)
                 % fine
             else
                 waveData.status = -10; % error
@@ -2234,7 +2230,7 @@ classdef ScopeMacros < handle
                     end
                     RawData  = obj.VisaIFobj.query([channel ':WF? DAT2']);
                     
-                    % check and extract header: 
+                    % check and extract header:
                     % e.g. DAT2,#9001400000binarydata with 9 chars
                     % indicating number of bytes for actual data
                     if length(RawData) <= 8
@@ -2321,7 +2317,7 @@ classdef ScopeMacros < handle
             % get acquisition state
             % 'running' or 'stopped',   '' when invalid/unknown response
             
-            % there is no dedicated command for acquisition state 
+            % there is no dedicated command for acquisition state
             [acqState, status] = obj.VisaIFobj.query('SAMPLE_STATUS?');
             %
             if status ~= 0
