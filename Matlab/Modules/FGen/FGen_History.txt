@@ -1,5 +1,13 @@
 % FGen support package (from newest to older versions)
 
+Feature Requests:
+---------------------------------------------------------------------------
+  - introduce new method to get current settings (in variable and
+    optionally as display messages)
+  - test all packages and fix bugs ==> reliable behavior is most important
+
+
+
 in preparation
 ---------------------------------------------------------------------------
 Release v1.0.x (same as FGen class) requires VisaIF v2.4.3 or later

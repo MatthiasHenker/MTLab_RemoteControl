@@ -1,5 +1,18 @@
 % Scope support package (from newest to older versions)
 
+Feature Requests:
+---------------------------------------------------------------------------
+  - introduce new method to get current settings (in variable and
+    optionally as display messages)
+  - improve (more stable) behavior of autoscale method in Rigol package
+  - add optional display method in runMeasurement method to optionally
+    display measurement result (value unit) like in Siglent package
+  - add force trigger method ('*TRG')
+  - test all packages and fix bugs ==> reliable behavior is most important
+
+
+
+
 in preparation
 ---------------------------------------------------------------------------
 Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
