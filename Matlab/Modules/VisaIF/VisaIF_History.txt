@@ -1,5 +1,12 @@
 % VisaIF support package
 
+Feature Requests:
+---------------------------------------------------------------------------
+  - VisaIFLogger: filter (SPCI regexp) should include write (request/set)
+    and read (response) ==> search for request keyword does currently not
+    list response value
+
+
 in preparation
 ---------------------------------------------------------------------------
 Release vx.x.x
