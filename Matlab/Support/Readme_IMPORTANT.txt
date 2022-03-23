@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# 2021-04-22
+# 2022-03-23
 # Prof. Matthias Henker (HTW Dresden, Germany)
 # ----------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ VisaIF       : VisaIF             class    v2.4.3   (2021-02-15)
   - addons   : VisaDemo           class    v1.0.2   (2021-01-09)
                VisaIFLogger       class    v2.0.2   (2021-02-15)
                VisaIFLogEventData class    v2.0.1   (2021-01-09)
-  - configs  : VisaIF_HTW_Labs.csv                  (2021-03-26)
+  - configs  : VisaIF_HTW_Labs.csv                  (2022-03-23)
                VisaIF_HTW_Henker.csv                (2021-03-09)
 
 # ----------------------------------------------------------------------------
