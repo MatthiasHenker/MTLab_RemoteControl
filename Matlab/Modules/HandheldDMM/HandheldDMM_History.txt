@@ -1,0 +1,35 @@
+% HandheldDMM support package (from newest to older versions)
+
+Feature Requests:
+---------------------------------------------------------------------------
+  - add UT161E package
+  - add VC920 package
+
+
+in preparation
+---------------------------------------------------------------------------
+Release v2.0.1 (same as HandheldDMM class)
+
+
+
+
+
+
+---------------------------------------------------------------------------
+Release v2.0.0 (same as HandheldDMM class, 2022-08-04)
+  - HandheldDMM                                       v2.0.0   (2022-08-04)
+      initial version, first tests positive,
+      ready for further tests,
+      not intended for public yet,
+      last version of previous simple HandheldDMM class
+      was 1.1.2  (2019-10-01)
+  - HandheldDMM.UT61E.HandheldDMMMacros               v1.0.0   (2022-08-04)
+      initial version, first tests positive,
+      ready for further tests
+  - HandheldDMM.VC820.HandheldDMMMacros               v1.0.0   (2022-08-04)
+      initial version, first tests positive,
+      ready for further tests
+  - HandheldDMM.VC830.HandheldDMMMacros               v0.9.0   (2022-08-04)
+      initial version, completely untested,
+      ready for tests
+---------------------------------------------------------------------------
