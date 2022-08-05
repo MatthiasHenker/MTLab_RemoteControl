@@ -12,9 +12,9 @@ ATTENTION: You will have to extend the Matlab path to
 the top folder holding these files to use these classes.
 
 ACTIONS:
-  - save the files in a dir (e.g. with name 'Support_Files')
+  - save the files in a dir (e.g. with name 'Support')
   - type 'pathtool' in Matlab
-  - add your folder 'Support_Files' (without subfolders!)
+  - add your folder 'Support' only (without subfolders!)
   - press save or close button and exit pathtool
   ==> Matlab will find these files now
 
