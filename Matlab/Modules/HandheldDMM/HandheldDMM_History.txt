@@ -23,6 +23,7 @@ Release v2.0.0 (same as HandheldDMM class, 2022-08-04)
       not intended for public yet,
       last version of previous simple HandheldDMM class
       was 1.1.2  (2019-10-01)
+  - serialportDemo                                    v1.0.0   (2022-08-05)
   - HandheldDMM.UT61E.HandheldDMMMacros               v1.0.0   (2022-08-04)
       initial version, first tests positive,
       ready for further tests

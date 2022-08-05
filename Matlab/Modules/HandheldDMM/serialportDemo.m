@@ -2,7 +2,7 @@ classdef serialportDemo < handle
     
     properties(Constant = true)
         SerialportDemoVersion = '1.0.0';      % current version
-        SerialportDemoDate    = '2022-08-04'; % release date
+        SerialportDemoDate    = '2022-08-05'; % release date
         % 
         NumBytesAvailable     = 0;            % empty buffer
     end
@@ -26,13 +26,14 @@ classdef serialportDemo < handle
         end
         
         function data = readline(obj)            %#ok<MANU>
-            % do nothing, but response empty string
-            
+            % do nothing, but respond a string with no content
+            % Note: isempty("") will get false
+                        
             data = "";
         end
         
         function data = read(obj, count, type)   %#ok<INUSL>
-            % do nothing, but response zero data of requested sze and
+            % do nothing, but respond zero data of requested size and
             % format
             %
             % count has to be a scalar positive integer
