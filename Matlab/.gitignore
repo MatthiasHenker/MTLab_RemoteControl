@@ -6,3 +6,5 @@ Testbenches/*.bmp
 Testbenches/*.png
 Testbenches/*.tiff
 Temp/*
+*.zip
+
