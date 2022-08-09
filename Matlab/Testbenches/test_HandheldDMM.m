@@ -3,7 +3,7 @@
 clear variables;
 close all;
 clc;
-
+%return
 if isempty(which('HandheldDMM'))
     addpath('..\Modules\HandheldDMM');
 end
@@ -15,8 +15,9 @@ disp(['Version of HandheldDMM       : ' ...
 disp(' ');
 
 % -------------------------------------------------------------------------
-HandheldDMMName = 'VC820';       % Voltcraft
-%HandheldDMMName = 'VC830';       % Voltcraft
+%HandheldDMMName = 'VC820';       % Voltcraft
+HandheldDMMName = 'VC830';       % Voltcraft
+%HandheldDMMName = 'VC920';       % Voltcraft
 %HandheldDMMName = 'UT61E';        % Uni-T
 
 % demo mode or with real hardware?
@@ -45,9 +46,11 @@ myDMM.read;       % read new data (old data were removed by flush)
 numValues = 30;
 time      = (0:numValues-1) * myDMM.SamplePeriod;
 values    = zeros(size(time));
-
+tic
+T = zeros(1, length(time));
 for cnt = 1:length(time)
     [values(cnt), mode, status] = myDMM.read;
+    T(cnt) = toc;
     if status
         break
     end
@@ -57,6 +60,9 @@ figure(1);
 plot(time, values, '*b-');
 title(['DMM mode: ' mode]);
 grid on;
+
+figure(2);
+plot(time(1:end-1), T(2:end)-T(1:end-1), '*g-');
 
 % ...
 myDMM.disconnect;

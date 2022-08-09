@@ -5,8 +5,8 @@ classdef HandheldDMMMacros < handle
     % Uni-T, UT61E series macros
     
     properties(Constant = true)
-        MacrosVersion = '0.9.0';      % release version
-        MacrosDate    = '2022-08-04'; % release date
+        MacrosVersion = '1.0.0';      % release version
+        MacrosDate    = '2022-08-09'; % release date
         MacrosName    = 'VC830';      % DMM type
         %
         NumBytes      = 14;  % number of bytes to read (for one DMM value)
