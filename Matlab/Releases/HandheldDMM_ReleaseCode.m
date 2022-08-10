@@ -22,7 +22,7 @@
 % some config
 
 ModuleName = 'HandheldDMM';  % name of class file
-%VersionID  = '2.0.0_2022-08-04'; % should match name of tag in git (version control)
+%VersionID  = '2.1.0_2022-08-10'; % should match name of tag in git (version control)
 VersionID  = 'x.y.z';
 
 % copy released files also to Support directory?
@@ -83,13 +83,13 @@ cd(workReleaseDir);
 pcode(fullfile(workSourceDir, 'HandheldDMMMacros.m'));
 
 % -------------------------------------------------------------------------
-%workSourceDir  = fullfile(SourceDir,  PackageDirName, '+UT161E');
-%workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+UT161E');
-%mkdir(workReleaseDir);
-%cd(workReleaseDir);
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+UT161E');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+UT161E');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
 
 % create p-files out of original m-files
-%pcode(fullfile(workSourceDir, 'HandheldDMMMacros.m'));
+pcode(fullfile(workSourceDir, 'HandheldDMMMacros.m'));
 
 % -------------------------------------------------------------------------
 workSourceDir  = fullfile(SourceDir,  PackageDirName, '+VC820');
@@ -110,6 +110,15 @@ cd(workReleaseDir);
 pcode(fullfile(workSourceDir, 'HandheldDMMMacros.m'));
 
 % -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+VC920');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+VC920');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'HandheldDMMMacros.m'));
+
+% -------------------------------------------------------------------------
 % return to original path
 cd(ThisDir);
 
@@ -117,7 +126,7 @@ cd(ThisDir);
 % finally optionally copy released files to Support directory
 % (dir which is added to Matlab search path using 'pathtool')
 if copyFilesToSupportDir
-    SupportDir  = fullfile(ThisDir, '..', 'Support'); %#ok<UNRCH>
+    SupportDir  = fullfile(ThisDir, '..', 'Support');
     copyfile(ReleaseDir, SupportDir);
 end
 

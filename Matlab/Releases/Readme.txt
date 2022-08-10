@@ -20,11 +20,5 @@
 # ----------------------------------------------------------------------------
 # for current versions see Matlab/Support/Readme_IMPORTANT.txt
   
-# ----------------------------------------------------------------------------
-not in git yet
-
-HandheldDMM & DemoHandheldDMM   => Rework planned: merge into one class file
-  - Version  : 1.1.2
-  - Date     : 2019-10-01
 
 # ----------------------------------------------------------------------------
