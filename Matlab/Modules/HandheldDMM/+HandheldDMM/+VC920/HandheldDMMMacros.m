@@ -5,8 +5,8 @@ classdef HandheldDMMMacros < handle
     % Uni-T, UT61E series macros
     
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2022-08-09'; % release date
+        MacrosVersion = '1.1.0';      % release version
+        MacrosDate    = '2022-08-10'; % release date
         MacrosName    = 'VC920';      % DMM type
         %
         NumBytes      = 11;  % number of bytes to read (for one DMM value)
@@ -23,6 +23,7 @@ classdef HandheldDMMMacros < handle
         % DMM sends ASCII (7-bit) with CR/LF at the end
         Terminator       = "CR/LF";
         BinaryTerminator = {}; % has to be empty when Terminator is set
+        RequestPacket    = {}; % uni-directional connection
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

@@ -47,7 +47,7 @@ classdef HandheldDMM < handle
     %                    myDMM.SupportedDmmTypes (optional input: default
     %                    value is myDMM.SupportedDmmTypes{1})
     %                    use [] or '' for default
-    %           port   : name of serial port (char), optional input 
+    %           port   : name of serial port (char), optional input
     %                   (default is []),
     %                    use [] or '' for default,
     %                    use 'demo' for virtual DMM (no DMM needed),
@@ -219,8 +219,8 @@ classdef HandheldDMM < handle
     % ---------------------------------------------------------------------
     
     properties (Constant = true)
-        Version = '2.0.0';
-        Date    = '2022-08-04';
+        Version = '2.1.0';
+        Date    = '2022-08-10';
     end
     
     properties (SetAccess = private, GetAccess = public)
@@ -509,8 +509,6 @@ classdef HandheldDMM < handle
         
         function status = flush(obj)
             % method to clear input buffer and resync to data stream
-            %
-            % ToDo also output buffer??? see UT161E
             
             % init output variables
             status = NaN;
@@ -525,68 +523,81 @@ classdef HandheldDMM < handle
             
             % clear all data from input buffer (old measurement data)
             try
-                obj.SerialObj.flush("input"); % input only?
+                obj.SerialObj.flush; % input and output buffer
             catch ME
                 disp(['Method ''flush'' failed. ' ME.identifier]);
                 status = -1;
                 return
             end
             
-            % -------------------------------------------------------------
-            % now resync to data stream
-            % good case: first received new data byte is also first byte
-            %            of a data packet
-            % bad  case: first received new data byte is not the first byte
-            %            of a data packet
-            % but we are not sure to have the good case
-            % Solution:
-            %   read one (possibly fragmentary) data packet until
-            %   terminator is reached and drop this data packet
-            try
-                % there are two options:
-                %   a) either data packets are separated by a 'Terminator'
-                %   b) or we have to search for magic bytes
-                foundTerminator = false; % init
-                if isempty(obj.MacrosObj.BinaryTerminator)
-                    % option a) readline detects regular 'Terminator'
-                    for cnt = 1:2
-                        if ~isempty(obj.SerialObj.readline)
-                            foundTerminator = true;
-                            break;
+            if isempty(hex2dec(obj.MacrosObj.RequestPacket))
+                % regular case: DMM is sending values periodically
+                % ---------------------------------------------------------
+                % now resync to data stream
+                % good case: first received new data byte is also first 
+                %            byte of a data packet
+                % bad  case: first received new data byte is not the first 
+                %            byte of a data packet
+                % but we are not sure to have the good case
+                % Solution:
+                %   read one (possibly fragmentary) data packet until
+                %   terminator is reached and drop this data packet
+                try
+                    % there are two options:
+                    %   a) either data packets are separated by a 'Terminator'
+                    %   b) or we have to search for magic bytes
+                    foundTerminator = false; % init
+                    if isempty(obj.MacrosObj.BinaryTerminator)
+                        % option a) readline detects regular 'Terminator'
+                        for cnt = 1:2
+                            if ~isempty(obj.SerialObj.readline)
+                                foundTerminator = true;
+                                break;
+                            end
                         end
-                    end
-                else
-                    % option b) read data bytes (one by one) until last
-                    % data bytes is detected
-                    count            = 1;
-                    % wait for new data, fetch a single byte
-                    % ==> there has to be a last byte every NumBytes
-                    while ~foundTerminator
-                        % check if received byte is last byte of packet
-                        foundTerminator = any(obj.SerialObj.read( ...
-                            obj.MacrosObj.NumBytes, 'uint8') == ...
-                            obj.MacrosObj.BinaryTerminator);
-                        if count == obj.MacrosObj.NumBytes
-                            % something went wrong ==> no last byte found
-                            status = -1;
-                            break
+                    else
+                        % option b) read data bytes (one by one) until last
+                        % data bytes is detected
+                        count            = 1;
+                        % wait for new data, fetch a single byte
+                        % ==> there has to be a last byte every NumBytes
+                        while ~foundTerminator
+                            % check if received byte is last byte of packet
+                            foundTerminator = any(obj.SerialObj.read( ...
+                                obj.MacrosObj.NumBytes, 'uint8') == ...
+                                obj.MacrosObj.BinaryTerminator);
+                            if count == obj.MacrosObj.NumBytes
+                                % error ==> no last byte found
+                                status = -1;
+                                break
+                            end
+                            count = count + 1;
                         end
-                        count = count + 1;
+                        % next byte in input buffer is first data byte
+                        % of a new data packet ==> we are synchronized now
                     end
-                    % next byte in input buffer is first data byte
-                    % of a new data packet ==> we are synchronized now
+                catch ME
+                    disp(['Connected to serial port but cannot read data ' ...
+                        'from DMM. ' ME.identifier]);
+                    status = -1;
+                    return
                 end
-            catch ME
-                disp(['Connected to serial port but cannot read data ' ...
-                    'from DMM. ' ME.identifier]);
-                status = -1;
-                return
-            end
-            if ~foundTerminator
-                disp(['Connected to serial port but cannot receive ' ...
-                    'any data from DMM.']);
-                status = -1;
-                return
+                if ~foundTerminator
+                    disp(['Connected to serial port but cannot receive ' ...
+                        'any data from DMM.']);
+                    status = -1;
+                    return
+                end
+            else
+                % bidirectionally connection: DMM is responding on
+                % requests only
+                % ---------------------------------------------------------
+                % Rx and Tx buffer should be empty
+                % send a Request to DMM and check Response
+                [~, ~, readStat] = obj.read;
+                if readStat
+                    status = -1;
+                end
             end
             
             % now all following data should be complete data packets
@@ -625,6 +636,13 @@ classdef HandheldDMM < handle
                 end
                 status = -1;
                 return
+            end
+            
+            % uni-directional connection: just wait for data
+            % bi-directional connection : send Request and wait for response
+            if ~isempty(hex2dec(obj.MacrosObj.RequestPacket))
+                RQST = uint8(hex2dec(obj.MacrosObj.RequestPacket));
+                obj.SerialObj.write(RQST, 'uint8');
             end
             
             % read one data packet (NumBytes)

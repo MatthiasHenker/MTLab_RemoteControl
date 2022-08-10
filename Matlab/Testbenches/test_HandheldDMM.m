@@ -16,14 +16,16 @@ disp(' ');
 
 % -------------------------------------------------------------------------
 %HandheldDMMName = 'VC820';       % Voltcraft
-HandheldDMMName = 'VC830';       % Voltcraft
+%HandheldDMMName = 'VC830';       % Voltcraft
 %HandheldDMMName = 'VC920';       % Voltcraft
-%HandheldDMMName = 'UT61E';        % Uni-T
+%HandheldDMMName = 'UT61E';       % Uni-T
+HandheldDMMName = 'UT161E';      % Uni-T
 
 % demo mode or with real hardware?
 %port = 'demo';
-port = 'COM5';
+%port = 'COM5';
 %port = 'COM7';
+port = 'COM8';
 %port = '';
 
 showmsg   = true;
@@ -43,7 +45,7 @@ myDMM.flush;      % empty queue
 myDMM.read;       % read new data (old data were removed by flush)
 
 % define range
-numValues = 30;
+numValues = 20;
 time      = (0:numValues-1) * myDMM.SamplePeriod;
 values    = zeros(size(time));
 tic

@@ -5,8 +5,8 @@ classdef HandheldDMMMacros < handle
     % Voltcraft, VC820 series macros
     
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2022-08-04'; % release date
+        MacrosVersion = '1.1.0';      % release version
+        MacrosDate    = '2022-08-10'; % release date
         MacrosName    = 'VC820';      % DMM type
         %
         NumBytes      = 14;  % number of bytes to read (for one DMM value)
@@ -27,6 +27,7 @@ classdef HandheldDMMMacros < handle
         %     nibble 'E' is unique in each data packet
         BinaryTerminator = hex2dec({'E0', 'E1', 'E2', 'E3', 'E4', 'E5', ...
             'E6', 'E7', 'E8', 'E9', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF'});
+        RequestPacket    = {}; % uni-directional connection
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)

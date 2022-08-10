@@ -1,9 +1,9 @@
 classdef serialportDemo < handle
     
     properties(Constant = true)
-        SerialportDemoVersion = '1.0.0';      % current version
-        SerialportDemoDate    = '2022-08-05'; % release date
-        % 
+        SerialportDemoVersion = '1.1.0';      % current version
+        SerialportDemoDate    = '2022-08-10'; % release date
+        %
         NumBytesAvailable     = 0;            % empty buffer
     end
     
@@ -28,7 +28,7 @@ classdef serialportDemo < handle
         function data = readline(obj)            %#ok<MANU>
             % do nothing, but respond a string with no content
             % Note: isempty("") will get false
-                        
+            
             data = "";
         end
         
@@ -41,6 +41,10 @@ classdef serialportDemo < handle
             
             typeHandle = str2func(type);
             data       = typeHandle(zeros(1, count));
+        end
+        
+        function data = write(obj, data, type)   %#ok<INUSL,INUSD>
+            % do nothing
         end
         
     end
