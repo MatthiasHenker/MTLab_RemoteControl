@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------------------------------------
-// 2021-03-09
-// config file listing all available Visa measurement devices in room/lab Z433
+// 2022-08-10
+// config file listing all available Visa measurement devices in room/lab Z441
 // required columns
 //   Device     : char array as unique identifier
 //   Instrument : one of the following classes: Scope, DMM, FGen, DCPwr, ACPwr, Swtch, PwrMeter, SpecAn, 
@@ -22,13 +22,19 @@
 // -------------------- config table starts in next line -----------------------------------------------------
 Device           ;; Vendor   ;; Product  ;; Instrument ;; Type      ;; RsrcName                  ;; OutBufSize;; InBufSize;; ExtraWait
 #
-# Siglent Spectrum Analyzer        (SID = SSA3XLBX2R0290)
+# Siglent Spectrum Analyzer         (SID = SSA3XLBX2R0290)
 # OutBufSize: longest command is still unclear (nothing special  detected), default should be okay
 # InBufSize : longest command is query screenshot data (command HCOPY:SDUMP) with 1.8MBytes
 Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-tcpip;; TCPIP0::192.168.178.13    ;;       512 ;;      2e6 ;; 0
 Siglent-SSA3032X ;; Siglent  ;; SSA3000X ;; SpecAn     ;; visa-usb  ;; USB0::0xF4EC::0x1300::\w+ ;;       512 ;;      2e6 ;; 0
+#
+# Rohde & Schwarz Spectrum Analyzer (SID = 204037)
+# OutBufSize: longest command is still unclear (nothing special  detected), default should be okay
+# InBufSize : longest command is still unclear (screenshot data, command DISP:FETCH?) with 100kBytes
+RS-FPC1500       ;; RS       ;; FPC1500  ;; SpecAn     ;; visa-tcpip;; TCPIP0::192.168.178.14    ;;       512 ;;      1e6 ;; 0
+RS-FPC1500       ;; RS       ;; FPC1500  ;; SpecAn     ;; visa-usb  ;; USB0::0x0AAD::0x01BB::\w+ ;;       512 ;;      1e6 ;; 0
 # 
-# R&S Scope                        (SID = 112328)
+# R&S Scope                         (SID = 112328)
 # OutBufSize: longest command is download data as UINT32 (80 MB + 10 Bytes)
 # InBufSize : longest command is unknown ==> define a large default value
 #             probably download of waveform data or screenshot (BMP-file?)
@@ -36,7 +42,7 @@ RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-tcpip;; TCPIP0::1
 RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-usb  ;; USB0::0x0AAD::0x01D6::\w+ ;;       1e6 ;; 80000100 ;; 0
 RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; demo      ;; USB0::0x0AAD::0x01D6::demo;;       1e6 ;; 80000100 ;; 0
 #
-# Siglent Scope                    (SID = SDS2XKCC2R0177)
+# Siglent Scope                     (SID = SDS2XKCC2R0177)
 # OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
 # InBufSize : longest command is waveform download (command WF?) with max. 140MSamples = 140e6 Bytes + 
 #             some overhead, (screenshot data is about 1.1MBytes)
@@ -57,14 +63,14 @@ RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; demo      ;; USB0::0x0
 Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.9     ;;       512 ;;    1.5e6 ;; 0
 Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-usb  ;; USB0::0xF4EC::0xEE3A::\w+ ;;       512 ;;    1.5e6 ;; 0
 # 
-# Siglent DC Power Supply          (SID = SPD3XHBX2R0912)
+# Siglent DC Power Supply           (SID = SPD3XHBX2R0912)
 # OutBufSize: longest command is roughly about 30 characters, 512 bytes (default) is fine
 # InBufSize : longest command is about 60 characters (*IDN? response), 512 bytes (default) is fine
 # AddWait   : controller at DCPwr is slow, add a short pause between write & read
 Siglent-SPD3303X ;; Siglent  ;; SPD3300X ;; DCPwr      ;; visa-tcpip;; TCPIP0::192.168.178.5     ;;       512 ;;      512 ;; 0.5
 Siglent-SPD3303X ;; Siglent  ;; SPD3300X ;; DCPwr      ;; visa-usb  ;; USB0::0x0483::0x7540::\w+ ;;       512 ;;      512 ;; 0.5
 # 
-# Siglent Arbitrary Wave Generator (SID = SDG6XBAC2R0003)
+# Siglent Arbitrary Wave Generator  (SID = SDG6XBAC2R0003)
 # OutBufSize: longest command is waveform upload (command  WVDT) with 
 #             10^6 Samples = 2 * 10^6 Bytes + some overhead
 # InBufSize : longest command is waveform download (command WVDT?) with 
@@ -73,7 +79,7 @@ Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-tcpip;; TCPIP0::1
 Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; visa-usb  ;; USB0::0xF4EC::0x1101::\w+ ;;   20.01e6 ;;  20.01e6 ;; 0
 Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; demo      ;; USB0::0xF4EC::0x1101::demo;;   20.01e6 ;;  20.01e6 ;; 0
 # 
-# Keithley DMM                     (SID = 04380812)
+# Keithley DMM                      (SID = 04380812)
 # OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
 # InBufSize : longest command is about xx characters actual value has to be clarified !!!!!!
 Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.7     ;;       512 ;;    16384 ;; 0

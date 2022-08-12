@@ -189,9 +189,9 @@ classdef VisaIF < handle
     %   'VisaIFDate'
     %
     % tested with
-    %   - Matlab (version 9.8 = 2020a update 5) and
-    %   - Instrument Control Toolbox (version 4.2)
-    %   - NI-Visa 19.5 (download from NI, separate installation)
+    %   - Matlab (version 9.10 = 2021a update 7) and
+    %   - Instrument Control Toolbox (version 4.4)
+    %   - NI-Visa 2022 Q3 (download from NI, separate installation)
     %
     % currently available measurement devices (lab in room S110):
     %   - device = 'Tek-TDS1001C-EDU' with interface = 'visa-usb'
@@ -208,6 +208,7 @@ classdef VisaIF < handle
     %   - no bugs reported so far (version 1.5.2) ==> winter term 2019/20
     %                             (version 2.4.1) ==> winter term 2020/21
     %                             (version 2.4.3) ==> summer term 2021
+    %                             (version 2.4.4) ==> winter term 2022/23
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)
@@ -229,7 +230,7 @@ classdef VisaIF < handle
     % by using tmtool in Matlab
     % or
     % by using matlab command
-    % hwinfo = instrhwinfo('visa', 'ni')
+    % hwinfo = instrhwinfo('visa', 'ni')   % or 'rs'
     % hwinfo.ObjectConstructorName
     % result: e.g.
     % 'USB0::0xF4EC::0x1101::SDG6XBAC2R0003::INSTR' for SGD6022X
@@ -239,8 +240,8 @@ classdef VisaIF < handle
     % ---------------------------------------------------------------------
     
     properties(Constant = true)
-        VisaIFVersion = '2.4.3';      % current version of VisaIF
-        VisaIFDate    = '2021-02-15'; % release date
+        VisaIFVersion = '2.4.4';      % current version of VisaIF
+        VisaIFDate    = '2022-08-12'; % release date
     end
     
     properties(SetAccess = private, GetAccess = public)
@@ -549,7 +550,10 @@ classdef VisaIF < handle
                 % if closed try to open it
                 try
                     fopen(obj.VisaObject);
-                catch
+                catch ME
+                    if ~strcmp(obj.ShowMessages, 'none')
+                        disp(['Warning: VisaIF.open: ' ME.identifier]);
+                    end
                     % cannot be opened, device is not responding
                     % save current state and activate pause feature
                     PauseState = pause('on');
