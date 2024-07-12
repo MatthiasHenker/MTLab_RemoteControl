@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-07-12
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -51,10 +51,17 @@ y2 = sin(M2*pi*x);
 
 
 % now create a figure and plot both functions
+% plot command with two mandatory arguments for x and y data
+%   third argument mit plot options is optional 
+%       'r-*' means red ('r') color, solid ('-') line, 
+%                   and asterix ('*') to mark data points
+%   you can add even more options in the way
+%       ParameterName = ParameterValue
+%       here with Diplayname which is used for a legend
 fig1 = figure(1);    % create a figure window
-plot(x, y1, '-r*');  % plot 1st curve
+plot(x, y1, '-r*', DisplayName = 'cos curve');  % plot 1st curve
 hold on;             % prevent overwritting of 1st plot
-plot(x, y2, '-b*');  % plot 2nd curve
+plot(x, y2, '--b', DisplayName = 'sin curve');  % plot 2nd curve
 hold off;            % allow overwritting again (when script is rerun)
 
 % there are also many alternatives to 'plot' command:
@@ -69,7 +76,7 @@ hold off;            % allow overwritting again (when script is rerun)
 title('my first figure');
 xlabel('x-axis (unit)');
 ylabel('y-axis (unit)');
-legend('cos curve', 'sin curve');
+legend(Location = 'Best'); % or specific Location= 'NorthEast'
 
 grid minor;          % show a fine grid (or 'grid on', grid off')
 xlim auto;           % scale x- and y-axis separately

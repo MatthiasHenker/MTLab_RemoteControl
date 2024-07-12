@@ -1,5 +1,5 @@
 %% Howto save data as CSV-file (and read in the data later again)
-% 2022-08-05
+% 2024-07-12
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -72,7 +72,7 @@ myData = [x' y1' y2'];
 % define a new file name to prevent overwriting first file
 FileName_2    = [FileNameBase '_' TimeStamp '__2' FileExtension];
 % and write data to file (values separated by ';')
-writematrix(myData, FileName_2, 'Delimiter', ';');
+writematrix(myData, FileName_2, Delimiter = ';');
 
 % you can also include headers with names of variables
 % ==> see 'doc table' and 'doc writetable'
@@ -94,7 +94,7 @@ writematrix(myData, FileName_2, 'Delimiter', ';');
 clear myData x y*;
 
 % read file (option 1)
-myData = readmatrix(FileName_1, 'Delimiter', ';');
+myData = readmatrix(FileName_1, Delimiter = ';');
 % and extract data
 x  = myData(1, :);    % 1st row
 y1 = myData(2, :);    % 2nd row
@@ -112,7 +112,7 @@ disp(y2(1:5));
 clear myData x y*;
 
 % read file (option 2)
-myData = readmatrix(FileName_2, 'Delimiter', ';');
+myData = readmatrix(FileName_2, Delimiter = ';');
 % and extract data
 x  = myData(:, 1)';   % 1st column
 y1 = myData(:, 2)';   % 2nd column
