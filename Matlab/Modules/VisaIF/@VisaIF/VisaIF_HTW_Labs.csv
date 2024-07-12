@@ -36,6 +36,14 @@ Keysight-DSOX1102A;; Keysight ;; DSOX1000     ;; Scope      ;; visa-usb  ;; USB0
 Keysight-DSOX1202A;; Keysight ;; DSOX1000     ;; Scope      ;; visa-usb  ;; USB0::0x2A8D::0x0387::\w+  ;;      20e3 ;;     2e6
 #
 #
+# Siglent Scopes
+# OutBufSize: longest command is waveform upload ==> 2500 * approx. 5 ascii-characters + overhead
+# InBufSize : longest command is download of screenshot image (*.bmp)  ==> approx. 76kB
+#                                         or download data ==> ToDo check actual settings
+Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X     ;; Scope      ;; visa-usb  ;; USB0::0xF4ED::0xEE3A::\w+  ;;      10e3 ;;     1e6
+Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X     ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.15     ;;      10e3 ;;     1e6
+#
+#
 # Rigol Scope
 # OutBufSize: longest command is unknown    ==> define a large default value
 # InBufSize : longest command is screenshot image (*.bmp) ==> 1.16e6 Bytes
