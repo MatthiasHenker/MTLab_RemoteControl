@@ -19,8 +19,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.2.2.2R19 (2019-03-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-04-22'; % release date
+        MacrosVersion = '1.2.2';      % release version
+        MacrosDate    = '2024-07-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -836,7 +836,7 @@ classdef ScopeMacros < handle
                             elseif numAverage <= 32
                                 numAverage = 32;
                             elseif numAverage <= 64
-                                numAverage = 16;
+                                numAverage = 64;
                             elseif numAverage <= 128
                                 numAverage = 128;
                             elseif numAverage <= 256
