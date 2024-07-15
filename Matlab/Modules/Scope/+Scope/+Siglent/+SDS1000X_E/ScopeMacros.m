@@ -2,27 +2,16 @@ classdef ScopeMacros < handle
     % ToDo documentation
     %
     % known severe issues:
-    %
-    %  ALT vom SDS2304X
-    %   - trigger level can be set temporarily only (will not be updated in
-    %     trigger menu at scope display and get lost at next vDiv or
-    %     vOffset update) ==> can be a big problem
-    %   - measurement cannot be disabled again (first phase or delay
-    %     measurement enables measurement mode ==> captureWaveform become
-    %     much slower then) ==> reduces download speed, avoid phase
-    %     measurements to overcome this problem
-    %   - largest parameter value for maxLength of waveform (140MSa or 70
-    %     MSa (interleaved)) cannot be set remotely ==> not nice, but not a
-    %     big deal
-    %   - skew cannot be set remotely ==> not a big deal
+    %   - there is no SCPI command to disable Zoom window again ==> not a 
+    %     big deal, disable manually at scope 
     %
     %
     % for Scope: Siglent SDS1202X-E series
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.9.0';      % release version
-        MacrosDate    = '2024-05-02'; % release date
+        MacrosVersion = '0.9.1';      % release version
+        MacrosDate    = '2024-07-15'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -609,12 +598,12 @@ classdef ScopeMacros < handle
                        ':SKEW?']);
                    % remove unit and scale properly before
                    response   = char(response);
-                   idx = regexp(response, '^\-?\d+\.?\d*\e?\-?\d*', 'end', 'ignorecase');
+                   idx = regexp(response, '^\-?\d+\.?\d*\e?\-?\+?\d*', 'end', 'ignorecase');
                    if ~isempty(idx)
                        skewActual = str2double(response(1:idx));
                        if length(response) > idx
-                           unit  = response(idx+1:end);
-                           switch lower(unit)
+                           skewUnit  = response(idx+1:end);
+                           switch lower(skewUnit)
                                case {'ns'}
                                    skewActual = skewActual * 1e-9;
                                case {'us'}
