@@ -110,6 +110,15 @@ cd(workReleaseDir);
 pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
 
 % -------------------------------------------------------------------------
+workSourceDir  = fullfile(SourceDir,  PackageDirName, '+Siglent', '+SDS1000X_E');
+workReleaseDir = fullfile(ReleaseDir, PackageDirName, '+Siglent', '+SDS1000X_E');
+mkdir(workReleaseDir);
+cd(workReleaseDir);
+
+% create p-files out of original m-files
+pcode(fullfile(workSourceDir, 'ScopeMacros.m'));
+
+% -------------------------------------------------------------------------
 % return to original path
 cd(ThisDir);
 
