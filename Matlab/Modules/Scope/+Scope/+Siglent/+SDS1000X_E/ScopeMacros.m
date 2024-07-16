@@ -12,8 +12,9 @@ classdef ScopeMacros < handle
     %     runAfterOpen
     %   - only short form of command COMM_HEADER is allowed
     %     (error in programming guide) ==> use short form CHDR
-    %   - same for AUTO_SETUP  ==> use ASET instead
-    %   - same for SCREEN_DUMP ==> use SCDP instead
+    %   - same for AUTO_SETUP    ==> use ASET instead
+    %   - same for SCREEN_DUMP   ==> use SCDP instead
+    %   - same for MEASURE_DELAY ==> use MEAD instead
     %   - RUN command does not exist ==> use work around:
     %     'TRIG_MODE AUTO' instead (method acqRun)
     %
@@ -21,7 +22,7 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '0.9.1';      % release version
+        MacrosVersion = '1.0.0';      % release version
         MacrosDate    = '2024-07-16'; % release date
     end
     
@@ -2179,6 +2180,7 @@ classdef ScopeMacros < handle
             % displayed time range is tDelay-7*tDiv .. tDelay+7*tDiv
             numGrid    = 14;
             % copy result to output
+            % sign of tDelay is not verified yet ==> correct shift ???
             waveData.time = (0:xlength-1)/srate +tDelay -tDiv *numGrid/2;
             
             % -------------------------------------------------------------
@@ -2286,6 +2288,7 @@ classdef ScopeMacros < handle
                 
                 % scale waveform data (in V)
                 % formulas are given in SDS2304X programming guide
+                % same for SDS1202X-E
                 %
                 % display (vertical=voltage) is divided into 8 segments (grid)
                 % voltage range is

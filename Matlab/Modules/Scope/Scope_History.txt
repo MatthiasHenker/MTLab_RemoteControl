@@ -26,9 +26,12 @@ Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
       no changes
   - Scope.Rigol.DS2072A.ScopeMacros                   v1.2.1   (2021-04-12)
       no changes
-  - Scope.Siglent.SDS2000X.ScopeMacros                v1.2.1   (2021-04-22)
-      no changes
-
+  - Scope.Siglent.SDS2000X.ScopeMacros                v1.2.2   (2024-07-15)
+      Bug Fix: parameter value for numAverages in method
+      configureAcquisition was set to 16 when it should 
+      be set to 64
+  - Scope.Siglent.SDS1000X_E.ScopeMacros              v1.0.0   (2024-07-16)
+      initial version
 
 
 
