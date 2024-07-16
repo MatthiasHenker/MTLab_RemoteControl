@@ -2,16 +2,27 @@ classdef ScopeMacros < handle
     % ToDo documentation
     %
     % known severe issues:
-    %   - there is no SCPI command to disable Zoom window again ==> not a 
-    %     big deal, disable manually at scope 
-    %
+    %   - channel 2 cannot be set as trigger input source (ch1, ext,
+    %     ac-line is working, but not ch2 ==> severe bug, ch2 can only be
+    %     set as trigger source manually at scope
+    %   - there is no SCPI command to disable Zoom window again ==> not a
+    %     big deal, disable manually at scope
+    %   - scope always beeps when using 'VDIV' command (no idea why);
+    %     implemented workaround: disable buzzer permanently in method
+    %     runAfterOpen
+    %   - only short form of command COMM_HEADER is allowed
+    %     (error in programming guide) ==> use short form CHDR
+    %   - same for AUTO_SETUP  ==> use ASET instead
+    %   - same for SCREEN_DUMP ==> use SCDP instead
+    %   - RUN command does not exist ==> use work around:
+    %     'TRIG_MODE AUTO' instead (method acqRun)
     %
     % for Scope: Siglent SDS1202X-E series
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
     
     properties(Constant = true)
         MacrosVersion = '0.9.1';      % release version
-        MacrosDate    = '2024-07-15'; % release date
+        MacrosDate    = '2024-07-16'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -123,7 +134,7 @@ classdef ScopeMacros < handle
             end
             
             % clear status (event registers and error queue)
-            % ==> not supported by SDS2000X
+            % ==> not supported by SDS1000X-E & SDS 2000X
             %if obj.VisaIFobj.write('*CLS')
             %    status = -1;
             %end
@@ -209,10 +220,10 @@ classdef ScopeMacros < handle
                 'by remote access']);
         end
         
-        % work around: acq_mode = auto (RUN command does not exist)
         function status = acqRun(obj)
             % start data acquisitions at scope
             
+            % work around: acq_mode = auto (RUN command does not exist)
             disp(['Scope WARNING - Method ''acqRun'' does set ' ...
                 'Trigger Mode to ''Auto'' for ']);
             disp(['      ' obj.VisaIFobj.Vendor '/' ...
@@ -260,7 +271,7 @@ classdef ScopeMacros < handle
             % examples (for valid options see code below)
             %   'channel'     : '1' '1, 2'
             %   'trace'       : 'on', '1' or 'off', '1'
-            %   'impedance'   : '1e6'
+            %   'impedance'   : '1e6' only
             %   'vDiv'        : real > 0 ==> Scope always beeps, no idea why
             %   'vOffset'     : real
             %   'coupling'    : 'DC', 'AC', 'GND'
@@ -340,6 +351,7 @@ classdef ScopeMacros < handle
                                 disp(['  - impedance    : ' ...
                                     num2str(impedance, '%g') ' (coerced)']);
                             end
+                            % convert to char array
                             if impedance < 1e3
                                 impedance = '50';  % 50 Ohm : impossible to reach
                             else
@@ -473,13 +485,6 @@ classdef ScopeMacros < handle
                         % both parts are defined
                         if strcmpi(coupling, 'GND')
                             cpl = 'GND';
-                            if obj.ShowMessages
-                                disp(['  - impedance    : ' ...
-                                    '<empty> (coerced)']);
-                            end
-                            disp(['Scope: Warning - ''configureInput'' ' ...
-                                'impedance parameter will be ignored ' ...
-                                'when coupling = GND.']);
                         else
                             % A1M, D1M
                             cpl = [coupling impedance];
@@ -589,7 +594,6 @@ classdef ScopeMacros < handle
                    % format (round) numeric value 
                    skewString = num2str(skew, '%1.2e');
                    skew       = str2double(skewString);
-                   %skewString = [num2str(skew *1e9, '%g') 'ns'];
                    skewString = [num2str(skew, '%g') 's'];
                    % set parameter
                    obj.VisaIFobj.write(['C' channel ':SKEW ' skewString]);
@@ -598,7 +602,7 @@ classdef ScopeMacros < handle
                        ':SKEW?']);
                    % remove unit and scale properly before
                    response   = char(response);
-                   idx = regexp(response, '^\-?\d+\.?\d*\e?\-?\+?\d*', 'end', 'ignorecase');
+                   idx = regexp(response, '^\-?\d+\.?\d*\e?[\-\+]?\d*', 'end', 'ignorecase');
                    if ~isempty(idx)
                        skewActual = str2double(response(1:idx));
                        if length(response) > idx
@@ -668,7 +672,7 @@ classdef ScopeMacros < handle
                 % 'vOffset'        : positive double in V
                 if ~isempty(vOffset)
                     % format (round) numeric value
-                    vOffString = num2str(-vOffset, '%1.2e');  % Check sign!!
+                    vOffString = num2str(-vOffset, '%1.2e');
                     vOffset    = str2double(vOffString);
                     % set parameter
                     obj.VisaIFobj.write(['C' channel ...
@@ -938,22 +942,14 @@ classdef ScopeMacros < handle
                 if strcmpi(char(response(1)), '7')
                     % interleaved
                     % finally convert to string
-                    switch maxLength        %values for single channel cannot be set correctly
-                        case 7000
+                    switch maxLength
+                        case {7e3, 14e3}
                             MaxMemSize = '7k';
-                        case 14000
-                            MaxMemSize = '7k';
-                        case 70000
+                        case {7e4, 14e4}
                             MaxMemSize = '70k';
-                        case 140000
-                            MaxMemSize = '70k';
-                        case 700000
+                        case {7e5, 14e5}
                             MaxMemSize = '700k';
-                        case 1400000
-                            MaxMemSize = '700k';
-                        case 7000000
-                            MaxMemSize = '7M';
-                        case 14000000
+                        case {7e6, 14e6}
                             MaxMemSize = '7M';
                         otherwise
                             warning('Should be an impossible internal state');
@@ -963,22 +959,14 @@ classdef ScopeMacros < handle
                 else
                     % non interleaved (assumption)
                     % finally convert to string
-                    switch maxLength        %values for single channel cannot be set correctly
-                        case 7000
+                    switch maxLength
+                        case {7e3, 14e3}
                             MaxMemSize = '14k';
-                        case 14000
-                            MaxMemSize = '14k';
-                        case 70000
+                        case {7e4, 14e4}
                             MaxMemSize = '140k';
-                        case 140000
-                            MaxMemSize = '140k';
-                        case 700000
+                        case {7e5, 14e5}
                             MaxMemSize = '1.4M';
-                        case 1400000
-                            MaxMemSize = '1.4M';
-                        case 7000000
-                            MaxMemSize = '14M';
-                        case 14000000
+                        case {7e6, 14e6}
                             MaxMemSize = '14M';
                         otherwise
                             warning('Should be an impossible internal state');
@@ -1014,7 +1002,7 @@ classdef ScopeMacros < handle
             %   'mode'        : 'single', 'normal', 'auto'
             %   'type'        : 'risingedge', 'fallingedge' ...
             %   'source'      : 'ch1', 'ch2' , 'ext', 'ext5' ...
-            %   'coupling'    : 'AC', 'DC', 'LFReject', 'HFRreject', 'NoiseReject'
+            %   'coupling'    : 'AC', 'DC', 'LFReject', 'HFRreject'
             %   'level'       : real
             %   'delay'       : real
             
@@ -1074,10 +1062,6 @@ classdef ScopeMacros < handle
                                 source = 'C1';
                             case 'ch2'
                                 source = 'C2';
-                            case 'ch3'
-                                source = 'C3';
-                            case 'ch4'
-                                source = 'C4';
                             case 'ext'
                                 source = 'EX';
                             case 'ext5'
@@ -1104,8 +1088,7 @@ classdef ScopeMacros < handle
                             case {'noisereject', 'noiserej'}
                                 status = 1;
                                 disp(['Scope: Warning - ''configureTrigger'' ' ...
-                                    'NoiseReject cannot be set remotely ' ...
-                                    '--> has to be set manually at Scope']);
+                                    'NoiseReject is not supported by this Scope']);
                                 coupling = '';
                                 if obj.ShowMessages
                                     disp(['  - coupling     : ' ...
@@ -1161,7 +1144,7 @@ classdef ScopeMacros < handle
                 end
             end
             
-            % source   : 'C1..4', 'EX', 'EX5', 'LINE'
+            % source   : 'C1..2', 'EX', 'EX5', 'LINE'
             if isempty(source) && (~isempty(type) || ~isempty(coupling) ...
                     || (~isempty(level) && ~isnan(level)))
                 % request current trigger source setting
@@ -1183,6 +1166,8 @@ classdef ScopeMacros < handle
                 cmdString = ['EDGE,SR,' source ',HT,OFF'];
                 obj.VisaIFobj.write(['TRIG_SELECT ' cmdString]);
                 % read and verify
+                %
+                % known issue: FW1.3.27 setting C2 fails
                 response = obj.VisaIFobj.query('TRIG_SELECT?');
                 if ~strcmpi(cmdString, char(response))
                     disp(['Scope: Error - ''configureTrigger'' ' ...
@@ -1196,7 +1181,7 @@ classdef ScopeMacros < handle
                 % set parameter
                 obj.VisaIFobj.write([source ':TRIG_SLOPE ' type]);
                 % read and verify
-                response = obj.VisaIFobj.query('TRIG_SLOPE?');
+                response = obj.VisaIFobj.query([source ':TRIG_SLOPE?']);
                 if ~strcmpi(type, char(response))
                     disp(['Scope: Error - ''configureTrigger'' ' ...
                         'type parameter could not be set correctly.']);
@@ -1229,11 +1214,10 @@ classdef ScopeMacros < handle
                 % set trigger level to 50% of input signal
                 obj.VisaIFobj.write('SET50');
                 obj.VisaIFobj.opc;
-                % BUG in firmware@Scope
-                status = 1;
-                disp(['Scope: Warning - ''configureTrigger'' ' ...
-                    'set level to center of the trigger source ' ...
-                    'waveform does not work --> BUG@Scope']);
+                if obj.ShowMessages
+                disp(['  - trigger level is ''NaN'': try to set trigger ' ...
+                            'level to center of waveform signal.']);
+                end
             elseif ~isempty(level)
                 if strcmpi(source, 'LINE')
                     if obj.ShowMessages
@@ -1270,7 +1254,7 @@ classdef ScopeMacros < handle
                 response    = obj.VisaIFobj.query('TRIG_DELAY?');
                 response    = char(response); % delay with unit
                 % conversion: e.g. 20.0ns to 2e-8
-                idx = regexp(response, '^\-?\d+\.?\d*\e?\-?\d*', 'end');
+                idx = regexp(response, '^\-?\d+\.?\d*\e?[\-\+]?\d*', 'end', 'ignorecase');
                 if ~isempty(idx)
                     delayActual = str2double(response(1:idx));
                     if length(response) > idx
@@ -1287,6 +1271,9 @@ classdef ScopeMacros < handle
                             otherwise
                                 delayActual = delayActual * 1; %???
                         end
+                    else
+                        % SDS1202X-E give response without any unit
+                        delayActual = delayActual * 1;
                     end
                 else
                     delayActual = NaN;
@@ -1327,7 +1314,7 @@ classdef ScopeMacros < handle
                         if ~isempty(paramValue)
                             zoomFactor = abs(real(str2double(paramValue)));
                             coerced    = false;
-                            if zoomFactor <= 1 || isnan(zoomFactor)
+                            if zoomFactor < 1 || isnan(zoomFactor)
                                 zoomFactor = 1; % deactivates zoom
                                 coerced    = true;
                             end
@@ -1377,17 +1364,28 @@ classdef ScopeMacros < handle
                 %
                 % hmag value will be rounded by Scope to nearest upper value
                 if zoomFactor == 1
-                    % disable zoom window (indirectly)
-                    %
-                    % there is no command to disable the zoom window 
-                    % for SDS1202X-E
-                    obj.VisaIFobj.write(['TIME_DIV ' num2str(tdiv, '%g')]);
+                    % disable zoom window: there is no command to disable
+                    % the zoom window at SDS1202X-E again
+                    disp(['Scope: Warning - ' ...
+                        '''configureZoom'': zoom window cannot be disabled ' ...
+                        'by ''zoomFactor = 1'' again.']);
+                    disp(['                 ' ...
+                        'Disable zoom windows manually by pressing horizontal ' ...
+                        'knob (tDiv) at scope.']);
+                    status = 1; % warning
                     skipHPOS = true;
                 else
                     % enable zoom window
                     obj.VisaIFobj.write(['HOR_MAGNIFY ' ...
                         num2str(hmag_tdiv, '%1.1e')]);
                     % no readback and verify
+                end
+            else
+                % enable zoom window by writing current settings again
+                response = obj.VisaIFobj.query('HOR_MAGNIFY?');
+                response = char(response);
+                if isnumeric(str2double(response))
+                    obj.VisaIFobj.write(['HOR_MAGNIFY ' response]);
                 end
             end
             
@@ -1480,7 +1478,7 @@ classdef ScopeMacros < handle
             % > 1.25  ATTENTION: ADC will be overloaded: (-5 ..+5) vDiv
             %     scaling factor up to 1.25 is possible (ADC-full range)
             % 1.00 means full display-range (-4 ..+4) vDiv
-            % sensible range 0.3 .. 0.9
+            % sensible range is 0.3 .. 0.9
             verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
             
             % -------------------------------------------------------------
@@ -1507,13 +1505,13 @@ classdef ScopeMacros < handle
                     % calculate sensible tDiv parameter (14*tDiv@screen)
                     tDiv = numOfSignalPeriods / (14*freq);
                     % now send new tDiv parameter to scope
-                    obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
+                    %obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
                     % low level command to avoid display messages
-                    %statConf = obj.configureAcquisition( ...
-                    %    'tDiv', num2str(tDiv, '%1.1e'));
-                    %if statConf
-                    %    status = -5;
-                    %end
+                    statConf = obj.configureAcquisition( ...
+                       'tDiv', num2str(tDiv, '%1.2e'));
+                    if statConf
+                       status = -5;
+                    end
                 else
                     disp(['Scope: Warning - ''autoscale'': ' ...
                         'invalid frequency measurement results. ' ...
@@ -1524,7 +1522,7 @@ classdef ScopeMacros < handle
             end
             
             % Siglent scope is quite slow, additional wait is sensible
-            pause(0.1);
+            pause(0.05);
             % wait for operation complete
             obj.VisaIFobj.opc;
             
@@ -1543,7 +1541,7 @@ classdef ScopeMacros < handle
                     maxcnt   = 9;
                     while loopcnt < maxcnt
                         % time for settlement
-                        pause(0.1);
+                        pause(0.05);
                         
                         % request current vDiv setting
                         vDiv = obj.VisaIFobj.query( ...
@@ -1715,7 +1713,7 @@ classdef ScopeMacros < handle
             if save_and_restore_display_settings
                 % save display settings
                 % 1st step: save current intensity settings of display
-                dispSettings = obj.VisaIFobj.query('INTENSITY?');
+                dispSettings = obj.VisaIFobj.query('INTENSITY?'); %#ok<UNRCH>
                 dispSettings = char(dispSettings);
                 
                 % response has form
@@ -1764,7 +1762,7 @@ classdef ScopeMacros < handle
             % -------------------------------------------------------------
             if save_and_restore_display_settings
                 % restore Display settings
-                if ~isnan(TraceValue) && ~isnan(GridValue)
+                if ~isnan(TraceValue) && ~isnan(GridValue) %#ok<UNRCH>
                     obj.VisaIFobj.write(['INTENSITY ' ...
                         'TRACE,' num2str(TraceValue, '%g') ...
                         ',GRID,' num2str(GridValue, '%g')]);
