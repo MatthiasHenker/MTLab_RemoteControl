@@ -12,6 +12,19 @@ in preparation
 Release vx.x.x
 
 
+
+---------------------------------------------------------------------------
+Release v2.4.4  (2024-07-17) -  (same as VisaIF class)
+  - VisaIF                                             v2.4.4  (2022-08-12)
+      extend method listAvailableVisaUsbDevices to show also devices
+      supported by different VISA adaptors
+  - VisaDemo                                           v1.0.2  (2021-01-09)
+      no changes
+  - VisaIFLogEventData                                 v2.0.1  (2021-01-09)
+      no changes
+  - VisaIFLogger                                       v2.0.2  (2021-02-15)
+      doc method implemented
+
 ---------------------------------------------------------------------------
 Release v2.4.3  (2021-02-15) refresh only -  (same as VisaIF class)
   - VisaIF                                             v2.4.3  (2021-02-15)
