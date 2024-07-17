@@ -22,8 +22,8 @@
 % some config
 
 ModuleName = 'Scope'; % name of class file
-%VersionID  = '1.2.1_2021-04-22_refresh'; % should match name of tag in git (version control)
-VersionID  = 'x.y.z';
+VersionID  = '1.2.2_2024-07-17'; % should match name of tag in git (version control)
+%VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)

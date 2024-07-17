@@ -11,13 +11,17 @@ Feature Requests:
   - test all packages and fix bugs ==> reliable behavior is most important
 
 
-
-
 in preparation
 ---------------------------------------------------------------------------
-Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
-  - Scope                                             v1.2.1   (2021-04-12)
-      no changes
+Release XXX
+
+
+
+
+---------------------------------------------------------------------------
+Release v1.2.2 (same as Scope class) requires VisaIF v2.4.4 or later
+  - Scope                                             v1.2.2   (2024-07-17)
+      no changes besides version and date 
   - Scope.Tektronix.TDS1000_2000.ScopeMacros          v1.2.1   (2021-04-12)
       no changes
   - Scope.Keysight.DSOX1000.ScopeMacros               v1.2.1   (2021-04-12)
@@ -29,12 +33,10 @@ Release v1.2.1++ (same as Scope class) requires VisaIF v2.4.3 or later
   - Scope.Siglent.SDS2000X.ScopeMacros                v1.2.2   (2024-07-15)
       Bug Fix: parameter value for numAverages in method
       configureAcquisition was set to 16 when it should 
-      be set to 64
+      be set to 64 ==> fixed
   - Scope.Siglent.SDS1000X_E.ScopeMacros              v1.0.0   (2024-07-16)
+      new support package for SDS1202X-E scopes in lab
       initial version
-
-
-
 
 ---------------------------------------------------------------------------
 Release v1.2.1_refresh (same as Scope class) requires VisaIF v2.4.3 or later
