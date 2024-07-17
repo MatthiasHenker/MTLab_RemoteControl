@@ -10,6 +10,9 @@
 - sync with remote repo
     git push --tags      oder git push origin --tags
 
+- show existing tags
+    git tag
+
 - Rename a git tag old to new:
     git tag new old
     git tag -d old
