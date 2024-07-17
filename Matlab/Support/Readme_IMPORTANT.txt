@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# 2022-08-10
+# 2024-07-17
 # Prof. Matthias Henker (HTW Dresden, Germany)
 # ----------------------------------------------------------------------------
 
@@ -19,20 +19,21 @@ ACTIONS:
   ==> Matlab will find these files now
 
 # ----------------------------------------------------------------------------
-VisaIF       : VisaIF             class    v2.4.3   (2021-02-15)
+VisaIF       : VisaIF             class    v2.4.4   (2024-07-17)
   - addons   : VisaDemo           class    v1.0.2   (2021-01-09)
                VisaIFLogger       class    v2.0.2   (2021-02-15)
                VisaIFLogEventData class    v2.0.1   (2021-01-09)
   - configs  : VisaIF_HTW_Labs.csv                  (2022-03-23)
-               VisaIF_HTW_Henker.csv                (2021-03-09)
+               VisaIF_HTW_Henker.csv                (2024-07-16)
 
 # ----------------------------------------------------------------------------
-Scope        : Scope              class    v1.2.1   (2021-04-12)
+Scope        : Scope              class    v1.2.2   (2024-07-17)
   - packages : Tektronix.TDS1000_2000      v1.2.1   (2021-04-12)
                Keysight.DSOX1000           v1.2.1   (2021-04-12)
                RS.RTB2000                  v1.2.1   (2021-04-12)
                Rigol.DS2072A               v1.2.1   (2021-04-12)
-               Siglent.SDS2000X            v1.2.1   (2021-04-22)
+               Siglent.SDS2000X            v1.2.2   (2024-07-15)
+               Siglent.SDS1000X_E          v1.0.0   (2024-07-16)
 
 # ----------------------------------------------------------------------------
 FGen         : FGen               class    v1.0.7   (2021-03-16)
