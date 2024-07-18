@@ -22,8 +22,8 @@
 % some config
 
 ModuleName = 'VisaIF';  % name of class file
-VersionID  = '2.4.4_2024-07-17'; % should match name of tag in git (version control)
-%VersionID  = 'x.y.z';
+%VersionID  = '2.4.4_2024-07-17'; % should match name of tag in git (version control)
+VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)

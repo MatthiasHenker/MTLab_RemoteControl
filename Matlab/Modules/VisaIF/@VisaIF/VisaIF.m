@@ -4,9 +4,9 @@ classdef VisaIF < handle
     % This class defines functions for the communication with measurement
     % devices (Visa). This is a basic class providing standard functions
     % for writing commands to and reading values from measurement devices.
-    % This class is a wrapper for the Matlab 'visa' class coming with the 
+    % This class is a wrapper for the Matlab 'visa' class coming with the
     % Instrument Control Toolbox to provide more convenience. Current focus
-    % is set on measurement devices with USB or TCPIP interface. Devices 
+    % is set on measurement devices with USB or TCPIP interface. Devices
     % can be made accessible by adding device information to a config file.
     %
     % methods (static) of class 'VisaIF'
@@ -20,7 +20,7 @@ classdef VisaIF < handle
     %  - doc : open web browser with help (like 'help VisaIF') but in an
     %                   extra window
     %          * usage: VisaIF.doc
-    % 
+    %
     % See also contact at end of this documentation.
     % ---------------------------------------------------------------------
     % methods (public) of class 'VisaIF':
@@ -33,7 +33,7 @@ classdef VisaIF < handle
     %       with
     %         myDevice: object of class 'VisaIF' (mandatory output)
     %         device  : device name (char, mandatory input), use the
-    %                   command 'VisaIF.listContentOfConfigFiles' or 
+    %                   command 'VisaIF.listContentOfConfigFiles' or
     %                   'VisaIF' to get a list of all accessible devices
     %         serialID: serial identifier of device with 'visa-usb'
     %                   interface (char, optional input), default value
@@ -64,16 +64,16 @@ classdef VisaIF < handle
     %
     % General Notes:
     %     * methods with an output parameter 'status' behave identically
-    %     * status has the same meaning for all those methods 
+    %     * status has the same meaning for all those methods
     %         status   :  0 when okay
     %                    -1 when something went wrong
     %     * status output is optional
-    %     
+    %
     %   - open    : opens the visa interface
     %     * actual status of interface can be read via property
     %       myDevice.CommStatus
     %     * usage:
-    %           status = myDevice.open or simply myDevice.open 
+    %           status = myDevice.open or simply myDevice.open
     %
     %   - write   : send SCPI command to device
     %     * the SCPI command must NOT return a response (set command)
@@ -120,7 +120,7 @@ classdef VisaIF < handle
     %     * the SCPI (set) command '*RST' is sent
     %     * equivalent to myDevice.write('*RST')
     %     * initiate a device reset (no feedback from device)
-    %     * works with most supported devices (except for e.g. 
+    %     * works with most supported devices (except for e.g.
     %       Siglent-SPD3303X)
     %     * usage:
     %           status = myDevice.reset
@@ -211,10 +211,10 @@ classdef VisaIF < handle
     %                             (version 2.4.4) ==> winter term 2022/23
     %
     % development, support and contact:
-    %   - Constantin Wimmer (student, automation)
+    %   - Constantin Wimmer (student, automation for VisaIFLogger class)
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
-    
+
     % ---------------------------------------------------------------------
     % this VisaIF class is a wrapper for Matlab visa class for more
     % convenience (Instrument Control Toolbox)
@@ -238,12 +238,24 @@ classdef VisaIF < handle
     % e.g. vFgen = visa('ni','TCPIP0::192.168.178.11::INSTR');
     %
     % ---------------------------------------------------------------------
-    
+
+
+
+    %% ToDos
+    % move from visa to visa dev
+    %
+    % update documentation
+    %
+    % test also with MAC computers
+
+
+
+
     properties(Constant = true)
-        VisaIFVersion = '2.4.4';      % current version of VisaIF
-        VisaIFDate    = '2022-08-12'; % release date
+        VisaIFVersion = '3.0.0';      % current version of VisaIF
+        VisaIFDate    = '2024-07-18'; % release date
     end
-    
+
     properties(SetAccess = private, GetAccess = public)
         Device        char = '';     % selected device
         Instrument    char = '';     % type of instrument
@@ -251,28 +263,31 @@ classdef VisaIF < handle
         Vendor        char = '';     %
         Product       char = '';     %
     end
-    
+
     properties(Dependent = true)
         Name             % more readable than RsrcName
         RsrcName         % resource name of actual VisaObject
-        Alias            % has to be set externally ==> use NI-MAX instead
+        Alias            % can be set externally ==> use NI-MAX instead
         %                      - select Tools => NI-VISA => VISA Options
         %                      - and add alias names
         Type             % visa-tcpip or visa-usb
+        PreferredVisa    % NI, RS, Keysight
         RemoteHost       % for type visa-tcpip only
-        ManufacturerID   % for type visa-usb only
-        ModelCode        % for type visa-usb only
-        SerialNumber     % for type visa-usb only
+        ManufacturerID   % for type visa-usb only   ( VendorID)
+        ModelCode        % for type visa-usb only   (ProductID)
+        SerialNumber     %                          ( SerialID)
+        VendorIdentified % reported vendor
+        ProductIdentified% reported model
         Timeout          % will be initialized by constructor
         InputBufferSize  % ditto
         OutputBufferSize % ditto
         CommStatus       % communication status: open or closed
     end
-    
+
     properties(SetAccess = private, GetAccess = public)
         SupportedDevices % table of supported devices in config files
     end
-    
+
     properties(Constant = true)
         SupportedInstrumentClasses = { ...
             'Scope'             ...
@@ -301,114 +316,114 @@ classdef VisaIF < handle
         %     '^USB\d?::0x[a-fA-F\d]+::0x[a-fA-F\d]+::' ...
         %     '^DEMO$'};     % original idea (above seems better)
     end
-    
+
     properties
         ShowMessages             = 'all'; % talkative mode as default
         EnableCommandLog logical = false; % enable notifications for logs
     end
-    
+
     properties(SetAccess = private, GetAccess = protected)
         DeviceName     char   % identifier displayed when ShowMessages on
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         VisaObject            % interface object of class visa
         ExtraWait      double % optional extra pause between write & read
         CommandCounter double % SCPI command counter (write & read)
     end
-    
+
     properties(Constant = true, GetAccess = private)
         MaxNumOfChars = 62; % max. number of characters shown in Visa
         % command history (notifications for external VisaIFLog) and
         % shown in optional display messages (see property ShowMessages)
     end
-    
+
     events
         VisaIFLogEvent
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static)  % auxiliary
-        
+
         varargout = listAvailableConfigFiles
-        
+
         varargout = listContentOfConfigFiles
-        
+
         varargout = listAvailableVisaUsbDevices
-        
+
         function doc(className)
-            % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
+            % Normally the command 'doc NAME_OF_FUNCTION_OR_CLASS' is used
             % to display the help text. Classes named FGen or Scope
             % conflict with other classes and cause troubles.
             %
             % This method open a help windows using web-command.
-            
+
             narginchk(0, 1);
             if nargin == 0
                 className  = mfilename('class');
             end
-            
+
             web(regexprep(which(className), '.p$', '.m'), ...
                 '-new', '-notoolbar');
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static, Access = protected)
-        
+
         [selectedDevice, configTable] = filterConfigFiles( ...
             device, instrument, type, serialID) % ==> set to private ?
-        
+
         varargout = listSupportedPackages(className)
-        
+
     end
-    
+
     methods(Static, Access = private)
-        
+
         cfgTableOut = coerceConfigTable(cfgTableIn)
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods          % main
-        
+
         function obj = VisaIF(device, interface, showmsg, instrument)
             % constructor for a VisaIF object
             %
             % either device = '<DeviceType>'
             % or     device = {'<DeviceType>', '<SerialId>'}
-            
+
             % check number of input arguments
             narginchk(0, 4);
-            
+
             % -------------------------------------------------------------
             % set default values when no input is given
-            
+
             if nargin < 4 || isempty(instrument)
                 instrument = '';
             end
-            
+
             if nargin < 3 || isempty(showmsg)
                 showmsg = '';
             end
-            
+
             if nargin < 2 || isempty(interface)
                 interface = '';
             end
-            
+
             if nargin < 1 || isempty(device)
                 device   = '';
             end
-            
+
             % -------------------------------------------------------------
             % check input parameters
-            
+
             if ~isempty(showmsg)
                 % try to set ShowMessages property (includes syntax check)
                 obj.ShowMessages = showmsg;
             end
-            
+
             if iscell(device)
                 % check if a specific SerialID (visa-usb only) is specified
                 if numel(device) == 2
@@ -421,14 +436,14 @@ classdef VisaIF < handle
             else
                 serialId = '';
             end
-            
+
             % -------------------------------------------------------------
             % device, serialID, interface are defined as char inputs now
-            
+
             % search for a matching device
             [selectedDevice, configTable] = VisaIF.filterConfigFiles( ...
                 device, instrument, interface, serialId);
-            
+
             if isempty(selectedDevice)
                 % exit when no matching device was found and
                 % print out table with all supported devices as info
@@ -442,150 +457,158 @@ classdef VisaIF < handle
                 % interface type and instrument class
                 obj.SupportedDevices = configTable;
             end
-            
+
             % selectedDevice (table) contains a single row with same
             % column names as obj.SupportedDevices, but all field entries
             % are chars or doubles; RsrcName points to a specific device
             % (no regexp anymore)
-            
+
             % -------------------------------------------------------------
-            % delete old visa object(s) before creating a new visa object
-            
-            % list all already existing VISA objects for this interface
-            AvailableVisaObjects = instrfind('Type', char(selectedDevice.Type));
-            if isobject(AvailableVisaObjects)
-                for cnt = 1 : AvailableVisaObjects.length
-                    if startsWith(AvailableVisaObjects(cnt).RsrcName, ...
-                            selectedDevice.RsrcName)
-                        % delete this old object
-                        delete(AvailableVisaObjects(cnt));
-                    end
-                end
-            end
-            
+            % with 'visadev' no multiple objects for the same device can be
+            % created ==> neither check necessary nor easily feasible
+            %
+            % no deletion of old visa object(s) before creating a new
+            % visa object necessary
+
             % -------------------------------------------------------------
             % hurray, all preparations done:
             % a new Visa object can be created
             if ~strcmpi(selectedDevice.Type, 'demo')
-                obj.VisaObject = visa('ni', selectedDevice.RsrcName);
+                try
+                    obj.VisaObject = visadev(selectedDevice.RsrcName);
+                catch ME
+                    if (strcmp(ME.identifier, ...
+                            'instrument:interface:visa:multipleIdenticalResources'))
+                        msg = ['constructor method of class VisaIF for ' ...
+                            'resource ' selectedDevice.RsrcName ' failed.'];
+                        causeException = MException('VisaIF:RsrcAlreadyExists', msg);
+                        ME = addCause(ME, causeException);
+                    end
+                    % exit with error
+                    rethrow(ME);
+                end
             else
                 obj.VisaObject = VisaDemo(selectedDevice.RsrcName);
             end
+
             obj.Device     = selectedDevice.Device;
             obj.Instrument = selectedDevice.Instrument;
             % define identifier which should be displayed in messages
             switch selectedDevice.Type
                 case 'visa-tcpip'
-                    obj.DeviceName = [obj.Instrument ' ''' obj.Device ...
-                        ''' (' obj.RemoteHost ')'];
+                    obj.DeviceName = [char(obj.Instrument) ' ''' ...
+                        char(obj.Device) ''' (' char(obj.RemoteHost) ')'];
                 case 'visa-usb'
-                    obj.DeviceName = [obj.Instrument ' ''' obj.Device ...
-                        ''' (' obj.SerialNumber ')'];
+                    obj.DeviceName = [char(obj.Instrument) ' ''' ...
+                        char(obj.Device) ''' (' char(obj.SerialNumber) ')'];
                 otherwise
-                    obj.DeviceName = [obj.Instrument ' ''' obj.Device ...
-                        ''' (demo)'];
+                    obj.DeviceName = [char(obj.Instrument) ' ''' ...
+                        char(obj.Device) ''' (demo)'];
             end
+
             obj.Vendor     = selectedDevice.Vendor;
             obj.Product    = selectedDevice.Product;
-            
+
             % -------------------------------------------------------------
             % last step before we can use the new Visa object
             % => configure some parameters
-            
+
             % some common settings for all types of supported devices
-            obj.VisaObject.Timeout      = 10;  % in s, default value is 10
-            %                                   max value is 1000
-            obj.VisaObject.ByteOrder    = 'littleEndian';
-            obj.VisaObject.EOIMode      = 'on';
-            obj.VisaObject.EOSCharCode  = 'LF';   % not of interest when
-            %                                       EOSMode = 'none'
-            obj.VisaObject.EOSMode      = 'none'; % handled by own functions
-            %obj.VisaObject.EOSMode      = 'read&write'; % tbd.
-            
-            % buffer sizes will be copied from config table
+            obj.VisaObject.Timeout      = 1;  % in s, default value is 10
+            %                                    max value is 1000
+            obj.VisaObject.ByteOrder    = 'little-endian';   % default
+            %
+            % defines if EOI (end or identify) line is asserted at end of
+            % write operation ==> has to be 'on'
+            obj.VisaObject.EOIMode      = 'on';              % default
+            %
+            % terminator for read and write communications (ASCII only)
+            %obj.VisaObject.configureTerminator('CR/LF', 'LF');
+            %
+            % Rules for Completing a Read Operation
+            %   For any EOSMode value, the read operation completes when:
+            %   - The EOI line is asserted.
+            %   - Specified number of values is read.
+            %   - A timeout occurs.
+            %   Additionally, if EOSMode is read or read&write (reading is
+            %   enabled), then the read operation can complete when the
+            %   EOSCharCode property value is detected. (for ASCII only)
+            %
+            %obj.VisaObject.EOSMode      = 'read&write';      % default
+            % EOSCharCode is not of interest when EOSMode = 'none'
+            % EOSCharCode depends on Terminator (see configureTerminator)
+
+            % buffer sizes are defined in external config table
             obj.VisaObject.InputBufferSize  = selectedDevice.InBufSize;
             obj.VisaObject.OutputBufferSize = selectedDevice.OutBufSize;
+
             % pause parameter (between write and read in visa queries)
             obj.ExtraWait                   = selectedDevice.ExtraWait;
-            
+
             if ~strcmp(obj.ShowMessages, 'none')
                 disp([class(obj) ' object created.']);
             end
-            
+
             % init command counter (for external command logging)
             obj.CommandCounter = 0;
+
+            % disable timeout warnings while reading data from device
+            warning('off', 'transportlib:client:ReadWarning');
         end
-        
+
         function delete(obj)
             % destructor for a VisaIF object
-            
+
+            % enable timeout warnings again
+            warning('off', 'transportlib:client:ReadWarning');
+
             % save value of property ShowMessages
             ShowMsgs = obj.ShowMessages;
-            
+
             % close and delete visa instrument object again
             if ~isempty(obj.VisaObject) && isvalid(obj.VisaObject)
                 % close should be silent anyway
                 obj.ShowMessages = false;
+                % there is no dedicated visadev close method but
+                % it calls optional actions to restore instrument states
                 obj.close;
             end
+
             % call delete in all cases (silent mode)
+            % clearing the VISA object is closing the connection
             delete(obj.VisaObject);
-            
+            %obj.VisaObject = [];
+
             % print out message
             if ~strcmp(ShowMsgs, 'none')
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function status = open(obj)
             % opens interface
-            
+
             % init output
             status = NaN;
-            
-            % try to open interface
-            max_cnt = 3;
-            cnt     = 1;
-            while ~strcmpi(obj.VisaObject.Status, 'open') && cnt <= max_cnt
-                % if closed try to open it
-                try
-                    fopen(obj.VisaObject);
-                catch ME
-                    if ~strcmp(obj.ShowMessages, 'none')
-                        disp(['Warning: VisaIF.open: ' ME.identifier]);
-                    end
-                    % cannot be opened, device is not responding
-                    % save current state and activate pause feature
-                    PauseState = pause('on');
-                    % run a short pause before next try
-                    pause(0.25); % 250ms
-                    % restore original state
-                    pause(PauseState);
-                end
-                % increment loop counter
-                cnt = cnt + 1;
-            end
-            
-            % optional extra wait
-            if obj.ExtraWait > 0
-                % save current state and activate pause feature
-                PauseState = pause('on');
-                % run a short pause before next try
-                pause(obj.ExtraWait);
-                % restore original state
-                pause(PauseState);
-            end
-            
+
+            % the interface was already opened in constructor method
+            %
             % check actual state
             if ~strcmpi(obj.VisaObject.Status, 'open')
                 % something went wrong
-                status = -1;
-                warning(['Connection to ''' ...
+                status = -1; %#ok<NASGU>
+                % error or warning
+                error(['Connection to ''' ...
                     obj.DeviceName ''' could not be opened.']);
             else
-                if ~strcmp(obj.ShowMessages, 'none')
-                    disp(['Connection to ''' obj.DeviceName ''' opened.']);
+
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['Connection to ''' obj.DeviceName ''' is open.']);
+                    disp(['VisaIF: Open method only executes optional hook to ' ...
+                        'configure required settings of connected device '''  ...
+                        obj.DeviceName '''.']);
                 end
+
                 % test communication with device by requesting
                 % identifier ('*IDN?')
                 [~, status_idn] = obj.identify;
@@ -593,50 +616,47 @@ classdef VisaIF < handle
                     status = -1;
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         function status = close(obj)
             % to close interface
-            
+
             % init output
             status = NaN;
-            
-            % close the VISA object
-            fclose(obj.VisaObject);
-            
-            % check actual state
-            if ~strcmpi(obj.VisaObject.Status, 'closed')
-                % something went wrong
-                status = -1;
-                warning(['Connection to ''' ...
-                    obj.DeviceName ''' could not be closed.']);
-            elseif ~strcmpi(obj.ShowMessages, 'none')
-                disp(['Connection to '''  ...
-                    obj.DeviceName ''' closed.']);
+
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp(['VisaIF: Close method only executes optional hook to ' ...
+                    'restore states of connected device '''  ...
+                    obj.DeviceName '''.']);
+                disp(['        Actually you will have to run the ' ...
+                    'delete method to close the interface.']);
             end
-            
+
+            % actual state of obj.VisaObject.Status is still 'open'
+            % instead of 'closed'
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         % -----------------------------------------------------------------
         % some notes about write, read, query:
         %
         % the 'VisaCommand' (SCPI command) can be either
         %  - a set command (command string does not end with a '?') or
         %  - a get command (command string ends with a '?')
-        %  - Note: the '?' can be used as rule, there are some exceptions
+        %  - Note: the '?' cannot be used as rule, there are some exceptions
         %
         % Matlab provides two dedicated functions for both types
         %  - 'fprintf(VisaObject, VisaCommand);'
@@ -667,17 +687,17 @@ classdef VisaIF < handle
         %  - we do not know when end of line is reached ==> when using
         %    fscanf the EOSChar can be used as indicator for end of
         %    message
-        
+
         function status = write(obj, VisaCommand)
             % to write a Visa command to device
-            
+
             % init output
             status = NaN;
-            
+
             if nargin < 2
                 VisaCommand = '';
             end
-            
+
             if ischar(VisaCommand)
                 % cast to binary
                 VisaCommand = uint8(VisaCommand);
@@ -689,7 +709,7 @@ classdef VisaIF < handle
                     'char array or uint8.']);
                 VisaCommand = '';
             end
-            
+
             if isempty(VisaCommand)
                 status = -1;
                 disp(['Visa write: Error - Visa command is empty. ' ...
@@ -700,21 +720,21 @@ classdef VisaIF < handle
                 % optionally display message and log command in history
                 obj.ShowAndLogSCPICommand('write', VisaCommand);
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function [VisaResponse, status] = query(obj, VisaCommand)
             % to query a Visa command to device
-            
+
             % init output
             VisaResponse = uint8([]);
             status       = NaN;
-            
+
             if nargin < 2 || isempty(VisaCommand)
                 status = -1;
                 disp(['Visa query: Error - Visa command is empty. ' ...
@@ -725,14 +745,14 @@ classdef VisaIF < handle
                     status = -1;
                 end
             end
-            
+
             if ~isnan(status)
                 status = -1;
                 disp(['Visa query: Error - Write was not successful. ' ...
                     'Skip read command.']);
             else
                 % read back response
-                
+
                 % optional extra wait
                 if obj.ExtraWait > 0
                     % save current state and activate pause feature
@@ -742,22 +762,27 @@ classdef VisaIF < handle
                     % restore original state
                     pause(PauseState);
                 end
-                
-                % now read response
-                [VisaResponse, ~, ErrMsg] = fread( ...
+
+                % now read response (in binary format)
+                %
+                % the number of bytes to receive is not known beforehand
+                % ==> maximum number is requested (InputBufferSize)
+                %     but normally less data are available
+                % ==> normally an error will pop up (timeout, ...)
+
+                VisaResponse = read( ...
                     obj.VisaObject, ...
                     obj.VisaObject.InputBufferSize, 'uint8');
-                
+
+                ErrMsg = '';
+
+
                 % check error message
-                % the number of received bytes is not known beforehand
-                % ==> maximum size will be requested (InputBufferSize)
-                %     but normally less data are available
-                % ==> normally an error will pop up
                 expectedErrorText = {...
                     ['The EOI line was asserted before SIZE values ' ...
                     'were available'], ...
                     'XYZ second error text (for future use)'};
-                
+
                 if isempty(ErrMsg)
                     ErrMsg = ''; % replace ErrMsg = [] by ''
                 elseif contains(ErrMsg, expectedErrorText)
@@ -768,16 +793,16 @@ classdef VisaIF < handle
                     status = -1;
                     disp(['Visa query: Error - ' ErrMsg]);
                 end
-                
-                % fread is converting binary data to double at the end
+
+                % fread/read is converting binary data to double at the end
                 % ==> revert this action
                 VisaResponse = uint8(VisaResponse);
-                
+
                 % convert to row vector if needed
                 if iscolumn(VisaResponse)
                     VisaResponse = transpose(VisaResponse);
                 end
-                
+
                 % check response: last character should be a 'LF'
                 if isempty(VisaResponse)
                     % no response at all
@@ -800,115 +825,115 @@ classdef VisaIF < handle
                     end
                 end
             end
-            
+
             % optionally display message and log command in history
             obj.ShowAndLogSCPICommand('read', VisaResponse);
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         % -----------------------------------------------------------------
         % some notes about standard SCPI commands:
         %
         % *IDN? (identify): works with all supported devices
         % *OPC? (opc)     : not implemented at Siglent DC-Power Supply
         % *RST  (reset)   : not implemented at Siglent DC-Power Supply
-        
+
         function [idnMessage, status] = identify(obj)
             % request identifier (*IDN?) and update property Identifier
-            
+
             % init output
             idnMessage = '';
             status     = NaN;
-            
+
             VisaCommand = '*IDN?';
             [VisaResponse, status_query]  = obj.query(VisaCommand);
-            
+
             if status_query ~= 0
                 status = -1;
             else
                 idnMessage     = char(VisaResponse);
                 obj.Identifier = idnMessage;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function [opcMessage, status] = opc(obj)
             % request operation complete state (*OPC?)
-            
+
             % init output
             opcMessage = '';
             status     = NaN;
-            
+
             VisaCommand = '*OPC?';
             [VisaResponse, status_query]  = obj.query(VisaCommand);
-            
+
             if status_query ~= 0
                 status = -1;
             else
                 opcMessage     = char(VisaResponse);
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = reset(obj)
             % send reset command (*RST)
-            
+
             % init output
             status     = NaN;
-            
+
             % clear buffers (for visa-usb only)
             clrdevice(obj.VisaObject);
-            
+
             VisaCommand = '*RST';
             status_write  = obj.write(VisaCommand);
-            
+
             if status_write ~= 0
                 status = -1;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = clrdevice(obj)
             % clear buffers (for visa-usb only)
-            
+
             % init output
             status     = NaN;
-            
+
             % actual clear command
             clrdevice(obj.VisaObject);
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Access = private)
-        
+
         function ShowAndLogSCPICommand(obj, mode, VisaCommand)
             % optionally display message (sent/received SCPI command)
             %  ==> depends on obj.ShowMessages
@@ -916,7 +941,7 @@ classdef VisaIF < handle
             % enable a shared visa command history for all measurement
             % devices
             %  ==> depends on obj.EnableCommandLog
-            
+
             % -------------------------------------------------------------
             if strcmpi(obj.ShowMessages, 'all') || obj.EnableCommandLog
                 % display and log only heading characters of Visa commands
@@ -925,14 +950,14 @@ classdef VisaIF < handle
                 VisaCommandHead = char(max(32, VisaCommand( ...
                     1 : min(length(VisaCommand), obj.MaxNumOfChars))));
             end
-            
+
             % -------------------------------------------------------------
             % display messages
             switch lower(mode)
                 case 'write'
                     % update command message counter
                     obj.CommandCounter = obj.CommandCounter + 1;
-                    
+
                     if strcmpi(obj.ShowMessages, 'all')
                         disp(['SCPI: ' obj.DeviceName]);
                         disp(['  ''' VisaCommandHead ''' (' ...
@@ -948,7 +973,7 @@ classdef VisaIF < handle
                 otherwise
                     error('VisaIF: Invalid command mode. Fix Code.');
             end
-            
+
             % -------------------------------------------------------------
             % sent notification to external logging class
             if obj.EnableCommandLog
@@ -960,25 +985,25 @@ classdef VisaIF < handle
                     VisaCommandHead    , ...
                     length(VisaCommand)));
             end
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
             % get method of property
-            
+
             showmsg = obj.ShowMessages;
         end
-        
+
         function set.ShowMessages(obj, showmsg)
             % set method of property
-            
+
             % without return value (obj = ...) in a handle class
-            
+
             % check input argument
             if ischar(showmsg)
                 showmsg = lower(showmsg);
@@ -997,7 +1022,7 @@ classdef VisaIF < handle
                     '''ShowMessages''.']);
                 return
             end
-            
+
             % convert and set property
             switch showmsg
                 case {'none', 0}
@@ -1013,67 +1038,88 @@ classdef VisaIF < handle
                     end
             end
         end
-        
+
         function enableLog = get.EnableCommandLog(obj)
             % get method of property
-            
+
             % nothing to do here: it is a logical by property declaration
             enableLog = obj.EnableCommandLog;
         end
-        
+
         function set.EnableCommandLog(obj, enableLog)
             % set method of property
-            
+
             % nothing to do here: it is a logical by property declaration
             obj.EnableCommandLog = enableLog;
         end
-        
+
         function Status = get.CommStatus(obj)
-            Status = obj.VisaObject.Status;
+            try
+                Status = obj.VisaObject.Status;
+            catch ME
+                if (strcmp(ME.identifier,'MATLAB:structRefFromNonStruct'))
+                    Status = 'closed';
+                else
+                    Status = 'unknown';
+                    %rethrow(ME)
+                end
+            end
         end
-        
+
         function Name = get.Name(obj)
             Name = obj.VisaObject.Name;
         end
-        
+
         function RsrcName = get.RsrcName(obj)
             RsrcName = obj.VisaObject.RsrcName;
         end
-        
+
         function Alias = get.Alias(obj)
             Alias = obj.VisaObject.Alias;
         end
-        
+
         function Type = get.Type(obj)
             Type = obj.VisaObject.Type;
         end
-        
+
+        function PreferredVisa = get.PreferredVisa(obj)
+            PreferredVisa = obj.VisaObject.PreferredVisa;
+        end
+
         function RemoteHost = get.RemoteHost(obj)
             % visa-tcpip only
-            RemoteHost = obj.VisaObject.RemoteHost;
+            RemoteHost = obj.VisaObject.InstrumentAddress;
         end
-        
+
         function ManufacturerID = get.ManufacturerID(obj)
             % visa-usb only
-            ManufacturerID = obj.VisaObject.ManufacturerID;
+            ManufacturerID = obj.VisaObject.VendorID;
         end
-        
+
         function ModelCode = get.ModelCode(obj)
             % visa-usb only
-            ModelCode = obj.VisaObject.ModelCode;
+            ModelCode = obj.VisaObject.ProductID;
         end
-        
+
         function SerialNumber = get.SerialNumber(obj)
-            % visa-usb only
+            % of connected instrument device
             SerialNumber = obj.VisaObject.SerialNumber;
         end
-        
+
+        function VendorIdentified = get.VendorIdentified(obj)
+            VendorIdentified = obj.VisaObject.Vendor;
+        end
+
+        function ProductIdentified = get.ProductIdentified(obj)
+            ProductIdentified = obj.VisaObject.Model;
+        end
+
         function Timeout = get.Timeout(obj)
             Timeout = obj.VisaObject.Timeout;
         end
-        
+
         function set.Timeout(obj, Timeout)
-            
+
             % check input argument
             if isscalar(Timeout) && isnumeric(Timeout) ...
                     && isreal(Timeout) && Timeout > 0
@@ -1086,13 +1132,13 @@ classdef VisaIF < handle
                     '''Timeout''. Ignore input.']);
             end
         end
-        
+
         function InputBufferSize = get.InputBufferSize(obj)
             InputBufferSize = obj.VisaObject.InputBufferSize;
         end
-        
+
         function set.InputBufferSize(obj, InputBufferSize)
-            
+
             % check input argument
             if isscalar(InputBufferSize) && isnumeric(InputBufferSize) ...
                     && isreal(InputBufferSize) && InputBufferSize > 0
@@ -1105,13 +1151,13 @@ classdef VisaIF < handle
                     '''InputBufferSize''. Ignore input.']);
             end
         end
-        
+
         function OutputBufferSize = get.OutputBufferSize(obj)
             OutputBufferSize = obj.VisaObject.OutputBufferSize;
         end
-        
+
         function set.OutputBufferSize(obj, OutputBufferSize)
-            
+
             % check input argument
             if isscalar(OutputBufferSize) && isnumeric(OutputBufferSize) ...
                     && isreal(OutputBufferSize) && OutputBufferSize > 0
@@ -1124,15 +1170,15 @@ classdef VisaIF < handle
                     '''OutputBufferSize''. Ignore input.']);
             end
         end
-        
+
         function tableOfDevices = get.SupportedDevices(obj)
             tableOfDevices = obj.SupportedDevices;
         end
-        
+
         function set.SupportedDevices(obj, tableOfDevices)
             obj.SupportedDevices = tableOfDevices;
         end
-        
+
     end
-    
+
 end
