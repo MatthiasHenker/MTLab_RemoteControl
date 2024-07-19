@@ -523,22 +523,21 @@ classdef VisaIF < handle
             obj.VisaObject.EOIMode      = 'on';              % default
             %
             % terminator for read and write communications (ASCII only)
-            %obj.VisaObject.configureTerminator('CR/LF', 'LF');
+            obj.VisaObject.configureTerminator('LF', 'LF');
             %
-            % Rules for Completing a Read Operation
-            %   For any EOSMode value, the read operation completes when:
+            % Rules for Completing a Read Operation (binary data)
+            % 'read' suspends MATLAB execution until the specified number of
+            %  values is read or a timeout occurs.
+            %
+            % Rules for Completing a Read Operation (text)
+            %   the read operation completes when:
             %   - The EOI line is asserted.
             %   - Specified number of values is read.
             %   - A timeout occurs.
-            %   Additionally, if EOSMode is read or read&write (reading is
-            %   enabled), then the read operation can complete when the
-            %   EOSCharCode property value is detected. (for ASCII only)
-            %
-            %obj.VisaObject.EOSMode      = 'read&write';      % default
-            % EOSCharCode is not of interest when EOSMode = 'none'
-            % EOSCharCode depends on Terminator (see configureTerminator)
+            %   - the Terminator character is received ('off', 'LF', 'CR' ...)
 
             % buffer sizes are defined in external config table
+            % ==> still have to be set (Matlab 2024a)
             obj.VisaObject.InputBufferSize  = selectedDevice.InBufSize;
             obj.VisaObject.OutputBufferSize = selectedDevice.OutBufSize;
 
@@ -651,42 +650,41 @@ classdef VisaIF < handle
         end
 
         % -----------------------------------------------------------------
-        % some notes about write, read, query:
+        % some notes about write (set command) and query (get command):
         %
-        % the 'VisaCommand' (SCPI command) can be either
+        % the 'VisaCommand' (SCPI command char array) can be either
         %  - a set command (command string does not end with a '?') or
-        %  - a get command (command string ends with a '?')
+        %  - a get command (command string ends often with a '?')
         %  - Note: the '?' cannot be used as rule, there are some exceptions
         %
         % Matlab provides two dedicated functions for both types
-        %  - 'fprintf(VisaObject, VisaCommand);'
-        %      for set commands
-        %  - '[VisaResponse, ResLength, ErrMsg] = ...
-        %                        query(VisaObject, VisaCommand,'%s','%s')'
-        %      for get commands or
-        %      alternatively with 'fprintf(VisaObject, VisaCommand);' and
-        %      '[VisaResponse, RespLength, ErrMsg] = ...
-        %                        fscanf(VisaObject,'%s');
+        %  - writeline for set commands (write)
+        %  - writeread for get commands (query) or as separate commands
+        %    writeline followed by readline
         %
-        % both commands work fine a regular string based SCPI commands,
+        % these commands work fine a regular string based SCPI commands,
         % but problems come up when
         %  - binary data (or mixed form: ASCII + binary) should be
-        %    transferred or
-        %  - response (get command) is not available immediately
+        %    transferred
         %
         % selected solution:
-        %  - cast VisaCommand to 'uint8' and use 'fwrite' intead of
-        %    'fprintf' to send binary data to VisaObject
-        %  - use binary 'fread' instead of fscanf to read data and
+        %  - cast VisaCommand to 'uint8' and use 'write' intead of
+        %    'writeline' to send binary data to VisaObject
+        %  - use binary 'read' instead of readline to read data and
         %    convert data to ASCII later
         %  - use separate write and read functions with optional ExtraWait
-        %    between write & read actions
+        %    between write & read actions for slow instrument devices
         %
         % sounds great, but ...
-        %  - we have to know if read data is plain text or contains binary
-        %  - we do not know when end of line is reached ==> when using
-        %    fscanf the EOSChar can be used as indicator for end of
-        %    message
+        %  - read command requires specification of number of bytes to
+        %    be received
+        %  - the number of bytes to receive is not known beforehand
+        %    ==> maximum number is requested (InputBufferSize)
+        %        but normally less data are available
+        %    ==> in previous visa class an end-of-message indication terminated
+        %        read operation before timeout
+        %    ==> in visadev class the read operation will only be
+        %        terminated by timeout which SLOWS DOWN all device control
 
         function status = write(obj, VisaCommand)
             % to write a Visa command to device
@@ -716,7 +714,7 @@ classdef VisaIF < handle
                     'Skip write command.']);
             else
                 % write VisaCommand to device (as binary data)
-                fwrite(obj.VisaObject, VisaCommand, 'uint8');
+                write(obj.VisaObject, VisaCommand, 'uint8');
                 % optionally display message and log command in history
                 obj.ShowAndLogSCPICommand('write', VisaCommand);
             end
@@ -741,7 +739,7 @@ classdef VisaIF < handle
                     'Skip query command.']);
             else
                 % write Visa command to device
-                if 0 ~= obj.write(VisaCommand)
+                if obj.write(VisaCommand)
                     status = -1;
                 end
             end
@@ -765,14 +763,14 @@ classdef VisaIF < handle
 
                 % now read response (in binary format)
                 %
-                % the number of bytes to receive is not known beforehand
-                % ==> maximum number is requested (InputBufferSize)
-                %     but normally less data are available
-                % ==> normally an error will pop up (timeout, ...)
 
-                VisaResponse = read( ...
-                    obj.VisaObject, ...
-                    obj.VisaObject.InputBufferSize, 'uint8');
+                % VisaResponse = read( ...
+                %     obj.VisaObject, ...
+                %     obj.VisaObject.InputBufferSize, 'uint8');
+
+                VisaResponse = readline(obj.VisaObject);
+                VisaResponse = [char(VisaResponse) 10];
+
 
                 ErrMsg = '';
 
@@ -1071,7 +1069,7 @@ classdef VisaIF < handle
         end
 
         function RsrcName = get.RsrcName(obj)
-            RsrcName = obj.VisaObject.RsrcName;
+            RsrcName = obj.VisaObject.ResourceName;
         end
 
         function Alias = get.Alias(obj)
