@@ -38,9 +38,9 @@ Keysight-DSOX1202A;; Keysight ;; DSOX1000     ;; Scope      ;; visa-usb  ;; USB0
 #
 # Siglent Scopes
 # OutBufSize: longest command is unknown (no data upload)  ==> 1000 * approx. 5 ascii-characters + overhead = 10kB is enough
-# InBufSize : longest command is download of captured waveform data  ==> approx. 14MB + some overhead
-Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-usb  ;; USB0::0xF4ED::0xEE3A::\w+  ;;      10e3 ;;    15e6
-Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.15     ;;      10e3 ;;    15e6
+# InBufSize : longest command is download of captured waveform data  ==> approx. 1.4MB (in chunks) + some overhead
+Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-usb  ;; USB0::0xF4ED::0xEE3A::\w+  ;;      10e3 ;;   1.5e6
+Sig-SDS1202X-E    ;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.15     ;;      10e3 ;;   1.5e6
 #
 #
 # Rigol Scope
