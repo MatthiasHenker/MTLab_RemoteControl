@@ -435,8 +435,8 @@ classdef Scope < VisaIF
     %   - Constantin Wimmer (student, automation)
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
-    
-    
+
+
     % ---------------------------------------------------------------------
     % Rules:
     %   - class name and package name are identical
@@ -451,13 +451,13 @@ classdef Scope < VisaIF
     % trace  (syntax examples)
     % 'off', "off", '0', "0", 0, false  ==> '0'
     % 'on',  "on",  '1', "1", 1, true   ==> '1'
-    
-    
+
+
     properties(Constant = true)
-        ScopeVersion    = '1.2.2';      % release version (= class version)
-        ScopeDate       = '2024-07-17'; % release date
+        ScopeVersion    = '3.0.0';      % release version (= class version)
+        ScopeDate       = '2024-07-22'; % release date
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosVersion
         MacrosDate
@@ -465,72 +465,76 @@ classdef Scope < VisaIF
         TriggerState
         ErrorMessages
     end
-    
+
     properties
         AutoscaleHorizontalSignalPeriods double = 5;
         AutoscaleVerticalScalingFactor   double = 0.95;
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         MacrosObj       % access to actual device specific macros
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static)
-        
+
         varargout = listAvailablePackages
-        
+
         function doc
             % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
             % to display the help text. For classes named FGen or Scope
             % conflicts with other classes causes troubles.
             %
             % This method open a help windows using web-command.
-            
+
             className  = mfilename('class');
             VisaIF.doc(className);
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods
-        
+
         function obj = Scope(device, interface, showmsg)
             % constructor for a Scope object (same variables as for VisaIF
             % except for missing last "hidden" parameter instrument)
-            
+
             % check number of input arguments
             narginchk(0, 3);
-            
+
             % -------------------------------------------------------------
             % set default values when no input is given (all further checks
             % in superclass 'VisaIF')
-            
+
             if nargin < 3 || isempty(showmsg)
                 showmsg = 'few';
             end
-            
+
             if nargin < 2 || isempty(interface)
                 interface = '';
             end
-            
+
             if nargin < 1 || isempty(device)
                 device   = '';
             end
-            
+
             % -------------------------------------------------------------
             className  = mfilename('class');
-            
+
             % create object: inherited from superclass 'VisaIF'
             instrument = className; % see VisaIF.SupportedInstrumentClasses
+            %try
             obj = obj@VisaIF(device, interface, showmsg, instrument);
-            
+            %catch
+            %
+            %end
+
             if isempty(obj.Device)
                 error('Initialization failed.');
             end
-            
+
             % build up path to selected device package directory
             fString = [ ...
                 className    '.' ...
@@ -538,7 +542,7 @@ classdef Scope < VisaIF
                 obj.Product  '.' ...
                 className 'Macros'];
             fHandle = str2func(fString);
-            
+
             % create object with actual macros for selected device
             try
                 obj.MacrosObj = fHandle(obj);
@@ -546,211 +550,155 @@ classdef Scope < VisaIF
             catch
                 error(['No support package available for: ' fString]);
             end
-            
-        end
-        
-        function delete(obj)
-            % destructor
-            
-            try
-                % save property
-                myShowMsg = obj.ShowMessages;
-                % close connection silently
-                obj.ShowMessages = false;
-                obj.close;
-                % restore property
-                obj.ShowMessages = myShowMsg;
-            catch
-                disp('Closing connection to scope causes warnings.');
-            end
-            
-            % only run delete when object exists
-            if ~isempty(obj.MacrosObj)
-                % delete MacroObj
-                obj.MacrosObj.delete;
-            end
-            
-            % regular deletion of this class object follows now
-        end
-        
-        % -----------------------------------------------------------------
-        % extend some methods from super class (VisaIF)
-        % -----------------------------------------------------------------
-        
-        function status = open(obj)
-            % extend open method (inherited from super class VisaIF)
 
-            % init output
-            status = NaN;
-            
-            % execute "standard" open method from VisaIF class
-            if open@VisaIF(obj)
-                status = -1;
-                return;
-            end
-            
+            % execute device specific macros after opening connection
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute post-open macro');
             end
-            
-            % execute device specific macros after opening connection
             if obj.MacrosObj.runAfterOpen
-                status = -1;
-            end
-            
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
+                error('Initial configuration of scope failed.');
             end
         end
-        
-        function status = close(obj)
-            % extend close method (inherited from super class VisaIF)
-            
-            % init output
-            status = NaN;
-            
+
+        function delete(obj)
+            % destructor
+
             % execute device specific macros before closing connection
-            % skip when interface is already closed
-            if strcmpi(obj.CommStatus, 'open')
-                
-                if ~strcmpi(obj.ShowMessages, 'none')
-                    disp([obj.DeviceName ':']);
-                    disp('  execute pre-close macro');
-                end
-                
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  execute pre-close macro');
+            end
+
+            % only run delete when object exists
+            if ~isempty(obj.MacrosObj)
                 if obj.MacrosObj.runBeforeClose
-                    status = -1;
+                    error('Reconfiguration of scope before closing connecting failed.');
                 end
+                % delete MacroObj
+                obj.MacrosObj.delete;
             end
-            
-            % execute "standard" close method from super class
-            if close@VisaIF(obj)
-                status = -1;
-            end
-            
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
-            end
+
+            % regular deletion of this class object follows now
         end
-        
+
+        % -----------------------------------------------------------------
+        % extend some methods from super class (VisaIF)
+        % -----------------------------------------------------------------
+
         function status = reset(obj)
             % override reset method (inherited from super class VisaIF)
             % restore default settings at scope
-            
+
             % init output
             status = NaN;
-            
+
             % do not execute "standard" reset method from super class
             % reset@VisaIF(obj)
-            
+
             % optionally clear buffers (for visa-usb only)
             %obj.clrdevice;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute reset macro');
             end
-            
+
             % execute device specific macros for reset
             if obj.MacrosObj.reset
                 status = -1;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  reset failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual scope methods: actions without input parameters
         % -----------------------------------------------------------------
-        
+
         function status = clear(obj)
             % clear status at scope
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  clear status');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.clear;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  clear failed');
             end
         end
-        
+
         function status = lock(obj)
             % lock all buttons at scope
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  lock all buttons at scope');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.lock;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  lock failed');
             end
         end
-        
+
         function status = unlock(obj)
             % unlock all buttons at scope
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  unlock all buttons at scope');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.unlock;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  unlock failed');
             end
         end
-        
+
         function status = acqRun(obj)
             % start data acquisitions at scope
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  start data acquisitions');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.acqRun;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  acqRun failed');
             end
         end
-        
+
         function status = acqStop(obj)
             % stop data acquisitions at scope
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  stop data acquisitions');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.acqStop;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  acqStop failed');
             end
         end
-        
+
         function status = autoset(obj)
             % autoset : causes the oscilloscope to adjust its vertical,
             % horizontal, and trigger controls to display a stable waveform
@@ -758,19 +706,19 @@ classdef Scope < VisaIF
                 disp([obj.DeviceName ':']);
                 disp('  autoset vertical, horizontal and trigger parameters');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.autoset;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  autoset failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual scope methods: actions with varargin parameters
         % -----------------------------------------------------------------
-        
+
         function status = configureInput(obj, varargin)
             % configureInput  : configure input of specified channels
             %   'channel'     : 1 .. 4, [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
@@ -784,7 +732,7 @@ classdef Scope < VisaIF
             %   'invert'      : on/off
             %   'skew'        : real
             %   'unit'        : 'V', "V" or 'A', "A"
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure input channels');
@@ -792,15 +740,15 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'configureInput');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.configureInput(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  configureInput failed');
             end
         end
-        
+
         function status = configureAcquisition(obj, varargin)
             % configureAcquisition : configure acquisition parameters
             %   'tDiv'        : real > 0
@@ -808,7 +756,7 @@ classdef Scope < VisaIF
             %   'maxLength'   : integer > 0
             %   'mode'        : 'sample', 'peakdetect', average ...
             %   'numAverage'  : integer > 0
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure acquisition parameters');
@@ -816,15 +764,15 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'configureAcquisition');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.configureAcquisition(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  configureAcquisition failed');
             end
         end
-        
+
         function status = configureTrigger(obj, varargin)
             % configureTrigger : configure trigger parameters
             %   'mode'        : 'single', 'normal', 'auto'
@@ -833,7 +781,7 @@ classdef Scope < VisaIF
             %   'coupling'    : 'AC', 'DC', 'LFReject', 'HFRreject', 'NoiseReject'
             %   'level'       : real
             %   'delay'       : real
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure trigger parameters');
@@ -841,20 +789,20 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'configureTrigger');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.configureTrigger(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  configureTrigger failed');
             end
         end
-        
+
         function status = configureZoom(obj, varargin)
             % configureZoom   : configure zoom window
             %   'zoomFactor'  :
             %   'zoomPosition':
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure zoom window');
@@ -862,20 +810,20 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'configureZoom');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.configureZoom(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  configureZoom failed');
             end
         end
-        
+
         function status = autoscale(obj, varargin)
             % autoscale       : adjust vertical and/or horizontal scaling
             %   'mode'        : 'hor', 'vert', 'both'
             %   'channel'     : 1 .. 4, [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  adjust vertical and/or horizontal scaling');
@@ -883,20 +831,20 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'autoscale');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.autoscale(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  autoscale failed');
             end
         end
-        
+
         function status = makeScreenShot(obj, varargin)
             % makeScreenShot  : make a screenshot of scope display
             %   'fileName'    : file name with optional extension
             %   'darkMode'    : on/off
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  make a screenshot of scope display');
@@ -904,15 +852,15 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'makeScreenShot');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.makeScreenShot(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  makeScreenShot failed');
             end
         end
-        
+
         function meas = runMeasurement(obj, varargin)
             % runMeasurement  : request measurement value
             %   'channel'
@@ -922,7 +870,7 @@ classdef Scope < VisaIF
             % meas.unit      : corresponding unit         (char)
             % meas.channel   : specified channel(s)       (char)
             % meas.parameter : specified parameter        (char)
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  request measurement value');
@@ -930,15 +878,15 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'runMeasurement');
             end
-            
+
             % execute device specific macro
             meas = obj.MacrosObj.runMeasurement(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && meas.status ~= 0
                 disp('  runMeasurement failed');
             end
         end
-        
+
         function waveData = captureWaveForm(obj, varargin)
             % captureWaveForm: download waveform data
             %   'channel' : one or more channels
@@ -947,7 +895,7 @@ classdef Scope < VisaIF
             %   waveData.volt       : waveform data in Volt
             %   waveData.time       : corresponding time vector in s
             %   waveData.samplerate : sample rate in Sa/s (Hz)
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  download waveform data');
@@ -955,33 +903,33 @@ classdef Scope < VisaIF
             else
                 params = obj.checkParams(varargin, 'captureWaveForm');
             end
-            
+
             % execute device specific macro
             waveData = obj.MacrosObj.captureWaveForm(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && waveData.status ~= 0
                 disp('  captureWaveForm failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual scope methods: get methods (dependent)
         % -----------------------------------------------------------------
-        
+
         function acqState = get.AcquisitionState(obj)
             % get acquisition state
-            %   'running' or 
+            %   'running' or
             %   'stopped[_(add_text)]' or
             %   'XXX error.[add_text]'
             acqState = obj.MacrosObj.AcquisitionState;
-            
+
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp(['  acqusition state = ' acqState]);
             end
         end
-        
+
         function trigState = get.TriggerState(obj)
             % get trigger state
             %   'waitfortrigger[_(add_text)]' or
@@ -989,7 +937,7 @@ classdef Scope < VisaIF
             %   '' (neither triggered nor waitfortrigger, e.g. acqStop) or
             %   'XXX error.[add_text]'
             trigState = obj.MacrosObj.TriggerState;
-            
+
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
                 if isempty(trigState)
@@ -1001,42 +949,42 @@ classdef Scope < VisaIF
                 disp(['  trigger state = ' trigStateDisp]);
             end
         end
-        
+
         function errMsg = get.ErrorMessages(obj)
             % read error list from the scope’s error buffer
             errMsg = obj.MacrosObj.ErrorMessages;
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static, Access = private)
-        
+
         outVars = checkParams(inVars, command, showmsg)
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)
-            
+
             version = obj.MacrosObj.MacrosVersion;
         end
-        
+
         function date = get.MacrosDate(obj)
             % get method of property (dependent)
-            
+
             date = obj.MacrosObj.MacrosDate;
         end
-        
+
         function periods = get.AutoscaleHorizontalSignalPeriods(obj)
             periods = obj.AutoscaleHorizontalSignalPeriods;
         end
-        
+
         function set.AutoscaleHorizontalSignalPeriods(obj, periods)
-            
+
             % check input argument
             if isscalar(periods) && isnumeric(periods) ...
                     && isreal(periods) && periods > 0
@@ -1051,13 +999,13 @@ classdef Scope < VisaIF
                     '''AutoscaleHorizontalSignalPeriods''.']);
             end
         end
-        
+
         function factor = get.AutoscaleVerticalScalingFactor(obj)
             factor = obj.AutoscaleVerticalScalingFactor;
         end
-        
+
         function set.AutoscaleVerticalScalingFactor(obj, factor)
-            
+
             % check input argument
             if isscalar(factor) && isnumeric(factor) ...
                     && isreal(factor) && factor > 0
@@ -1072,6 +1020,6 @@ classdef Scope < VisaIF
                     '''AutoscaleVerticalScalingFactor''.']);
             end
         end
-        
+
     end
 end

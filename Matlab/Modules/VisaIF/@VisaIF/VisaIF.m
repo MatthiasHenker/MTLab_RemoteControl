@@ -253,7 +253,7 @@ classdef VisaIF < handle
 
     properties(Constant = true)
         VisaIFVersion = '3.0.0';      % current version of VisaIF
-        VisaIFDate    = '2024-07-18'; % release date
+        VisaIFDate    = '2024-07-22'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -265,7 +265,8 @@ classdef VisaIF < handle
     end
 
     properties(Dependent = true)
-        Name             % more readable than RsrcName
+        Name             % <unused>, will be removed in future
+        %                  (more descriptive name than RsrcName)
         RsrcName         % resource name of actual VisaObject
         Alias            % can be set externally ==> use NI-MAX instead
         %                      - select Tools => NI-VISA => VISA Options
@@ -465,16 +466,15 @@ classdef VisaIF < handle
 
             % -------------------------------------------------------------
             % with 'visadev' no multiple objects for the same device can be
-            % created ==> neither check necessary nor easily feasible
-            %
-            % no deletion of old visa object(s) before creating a new
-            % visa object necessary
+            % created ==> no check and no deletion of old visa object(s) before
+            % creating a new visa object is necessary
 
             % -------------------------------------------------------------
             % hurray, all preparations done:
             % a new Visa object can be created
             if ~strcmpi(selectedDevice.Type, 'demo')
                 try
+                    % try to access wanted device and create object
                     obj.VisaObject = visadev(selectedDevice.RsrcName);
                 catch ME
                     if (strcmp(ME.identifier, ...
@@ -488,6 +488,7 @@ classdef VisaIF < handle
                     rethrow(ME);
                 end
             else
+                % object for demo devic only (no real external device)
                 obj.VisaObject = VisaDemo(selectedDevice.RsrcName);
             end
 
@@ -508,6 +509,9 @@ classdef VisaIF < handle
 
             obj.Vendor     = selectedDevice.Vendor;
             obj.Product    = selectedDevice.Product;
+
+            % for visadevfind
+            obj.VisaObject.Tag = char(obj.Instrument);
 
             % -------------------------------------------------------------
             % last step before we can use the new Visa object
@@ -551,32 +555,46 @@ classdef VisaIF < handle
             % init command counter (for external command logging)
             obj.CommandCounter = 0;
 
-            % disable timeout warnings while reading data from device
+            % disable timeout warnings while reading binary data from device
             warning('off', 'transportlib:client:ReadWarning');
+
+            % -------------------------------------------------------------
+            % the interface was already opened by the 'visadev' constructor
+            % method, 'visadev' does not support dedicated open/close methods
+            % anymore
+            %
+            % check actual state
+            if strcmpi(obj.VisaObject.Status, 'open')
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['Connection to ''' obj.DeviceName ''' is open.']);
+                end
+                % test communication with device by requesting
+                % identifier ('*IDN?')
+                [~, status_idn] = obj.identify;
+                if status_idn
+                    % something went wrong ==> error (or warning?)
+                    error(['Identifier of ''' ...
+                        obj.DeviceName ''' could not be read.']);
+                end
+            else
+                % something went wrong ==> error (or warning?)
+                error(['Connection to ''' ...
+                    obj.DeviceName ''' could not be opened.']);
+            end
         end
 
         function delete(obj)
             % destructor for a VisaIF object
 
-            % enable timeout warnings again
+            % enable timeout warnings again (read binary data)
             warning('off', 'transportlib:client:ReadWarning');
 
             % save value of property ShowMessages
             ShowMsgs = obj.ShowMessages;
 
-            % close and delete visa instrument object again
-            if ~isempty(obj.VisaObject) && isvalid(obj.VisaObject)
-                % close should be silent anyway
-                obj.ShowMessages = false;
-                % there is no dedicated visadev close method but
-                % it calls optional actions to restore instrument states
-                obj.close;
-            end
-
-            % call delete in all cases (silent mode)
-            % clearing the VISA object is closing the connection
+            % delete and clear visa instrument object
+            % deleting the VISA object is closing the connection before
             delete(obj.VisaObject);
-            %obj.VisaObject = [];
 
             % print out message
             if ~strcmp(ShowMsgs, 'none')
@@ -590,30 +608,13 @@ classdef VisaIF < handle
             % init output
             status = NaN;
 
-            % the interface was already opened in constructor method
-            %
-            % check actual state
-            if ~strcmpi(obj.VisaObject.Status, 'open')
-                % something went wrong
-                status = -1; %#ok<NASGU>
-                % error or warning
-                error(['Connection to ''' ...
-                    obj.DeviceName ''' could not be opened.']);
-            else
-
-                if ~strcmpi(obj.ShowMessages, 'none')
-                    disp(['Connection to ''' obj.DeviceName ''' is open.']);
-                    disp(['VisaIF: Open method only executes optional hook to ' ...
-                        'configure required settings of connected device '''  ...
-                        obj.DeviceName '''.']);
-                end
-
-                % test communication with device by requesting
-                % identifier ('*IDN?')
-                [~, status_idn] = obj.identify;
-                if status_idn
-                    status = -1;
-                end
+            % the interface was already opened by the constructor method,
+            % 'visadev' does not support dedicated open/close methods
+            % anymore
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp('Open and close methods are not required anymore.');
+                disp(['Constructor has already opened interface to ''' ...
+                    obj.DeviceName '''.'])
             end
 
             % set final status
@@ -621,7 +622,6 @@ classdef VisaIF < handle
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-
         end
 
         function status = close(obj)
@@ -631,22 +631,16 @@ classdef VisaIF < handle
             status = NaN;
 
             if ~strcmpi(obj.ShowMessages, 'none')
-                disp(['VisaIF: Close method only executes optional hook to ' ...
-                    'restore states of connected device '''  ...
-                    obj.DeviceName '''.']);
-                disp(['        Actually you will have to run the ' ...
-                    'delete method to close the interface.']);
+                disp('Open and close methods are not required anymore.');
+                disp(['Destructor (''delete'') will close interface to ''' ...
+                    obj.DeviceName '''.'])
             end
-
-            % actual state of obj.VisaObject.Status is still 'open'
-            % instead of 'closed'
 
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-
         end
 
         % -----------------------------------------------------------------
@@ -667,7 +661,7 @@ classdef VisaIF < handle
         %  - binary data (or mixed form: ASCII + binary) should be
         %    transferred
         %
-        % selected solution:
+        % preferred solution (not working with 'visadev' anymore):
         %  - cast VisaCommand to 'uint8' and use 'write' intead of
         %    'writeline' to send binary data to VisaObject
         %  - use binary 'read' instead of readline to read data and
@@ -685,9 +679,16 @@ classdef VisaIF < handle
         %        read operation before timeout
         %    ==> in visadev class the read operation will only be
         %        terminated by timeout which SLOWS DOWN all device control
+        %
+        % finally implemented solution:
+        %  - set commands with write method (send always as binary data)
+        %  - query commands with writeread method (for ASCII/text data)
+        %  - when query binary data then use separate write & read method
 
         function status = write(obj, VisaCommand)
             % to write a Visa command to device
+            % 
+            % data is always send as binary data to device (always fine)
 
             % init output
             status = NaN;
@@ -726,101 +727,55 @@ classdef VisaIF < handle
             end
         end
 
-        function [VisaResponse, status] = query(obj, VisaCommand)
-            % to query a Visa command to device
+        function [VisaResponse, status] = read(obj)
+            % to read a Visa command from device
+            %
+            % data is always read as binary data from device (always fine, 
+            % but read can always be terminated by timeout warning only)
+            % use only when really binary data should be downloaded
 
-            % init output
-            VisaResponse = uint8([]);
+            % init status
             status       = NaN;
 
-            if nargin < 2 || isempty(VisaCommand)
-                status = -1;
-                disp(['Visa query: Error - Visa command is empty. ' ...
-                    'Skip query command.']);
-            else
-                % write Visa command to device
-                if obj.write(VisaCommand)
-                    status = -1;
-                end
+            % read method requires specification of number of bytes to read
+            % ==> unknown, define as maximum value (size of input buffer)
+            % ==> will end up with timeout warning always (disabled in
+            %     constructor) which slow down speed
+            VisaResponse = read(obj.VisaObject, ...
+                obj.VisaObject.InputBufferSize, 'uint8');
+
+            % read is converting binary data to double at the end
+            % ==> revert this action
+            VisaResponse = uint8(VisaResponse);
+
+            % convert to row vector if needed
+            if iscolumn(VisaResponse)
+                VisaResponse = transpose(VisaResponse);
             end
 
-            if ~isnan(status)
-                status = -1;
-                disp(['Visa query: Error - Write was not successful. ' ...
-                    'Skip read command.']);
-            else
-                % read back response
-
-                % optional extra wait
-                if obj.ExtraWait > 0
-                    % save current state and activate pause feature
-                    PauseState = pause('on');
-                    % run a short pause before next try
-                    pause(obj.ExtraWait);
-                    % restore original state
-                    pause(PauseState);
+            % check response: last character should be a 'LF'
+            if isempty(VisaResponse)
+                % no response at all
+                status       = -1;     % allowed state ???
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['Visa query: Warning - Empty message ' ...
+                        '(0 bytes received) from ' obj.DeviceName ]);
                 end
-
-                % now read response (in binary format)
-                %
-
-                % VisaResponse = read( ...
-                %     obj.VisaObject, ...
-                %     obj.VisaObject.InputBufferSize, 'uint8');
-
-                VisaResponse = readline(obj.VisaObject);
-                VisaResponse = [char(VisaResponse) 10];
-
-
-                ErrMsg = '';
-
-
-                % check error message
-                expectedErrorText = {...
-                    ['The EOI line was asserted before SIZE values ' ...
-                    'were available'], ...
-                    'XYZ second error text (for future use)'};
-
-                if isempty(ErrMsg)
-                    ErrMsg = ''; % replace ErrMsg = [] by ''
-                elseif contains(ErrMsg, expectedErrorText)
-                    % also clear error meassage again
-                    ErrMsg = '';
-                end
-                if ~isempty(ErrMsg)
-                    status = -1;
-                    disp(['Visa query: Error - ' ErrMsg]);
-                end
-
-                % fread/read is converting binary data to double at the end
-                % ==> revert this action
-                VisaResponse = uint8(VisaResponse);
-
-                % convert to row vector if needed
-                if iscolumn(VisaResponse)
-                    VisaResponse = transpose(VisaResponse);
-                end
-
-                % check response: last character should be a 'LF'
-                if isempty(VisaResponse)
-                    % no response at all
-                    status       = -1;     % allowed state ???
-                    if ~strcmpi(obj.ShowMessages, 'none')
-                        disp(['Visa query: Warning - Empty message ' ...
-                            '(0 bytes received) from ' obj.DeviceName ]);
-                    end
-                elseif VisaResponse(end) == 10 % 'LF' = \n = char(10)
-                    % remove last character (= obj.VisaObject.EOSCharCode)
+            elseif VisaResponse(end) == 10 % 'LF' = \n = char(10)
+                % remove last character (Terminator)
+                if length(VisaResponse) > 1
                     VisaResponse = VisaResponse(1:end-1);
                 else
-                    % 'LF' is missing
-                    % some devices show missing LF sometimes, but response
-                    % was always still okay (except for missing LF)
-                    status       = -1;
-                    if ~strcmpi(obj.ShowMessages, 'none')
-                        disp(['Visa query: Warning - ''LF'' as last ' ...
-                            'character in response is missing.']);
-                    end
+                    VisaResponse = uint8([]);
+                end
+            else
+                % 'LF' is missing
+                % some devices show missing LF sometimes, but response
+                % was always still okay (except for missing LF)
+                status       = 1;
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['Visa query: Warning - ''LF'' as last ' ...
+                        'character in response is missing.']);
                 end
             end
 
@@ -834,12 +789,64 @@ classdef VisaIF < handle
             end
         end
 
+        function [VisaResponse, status] = query(obj, VisaCommand)
+            % to query a Visa command to device
+            %
+            % works for text based data (ASCII) only !!!
+
+            % init output
+            VisaResponse = uint8([]);
+            status       = NaN;
+
+            if nargin < 2 || isempty(VisaCommand)
+                status = -1;
+                disp(['Visa query: Error - Visa command is empty. ' ...
+                    'Skip query command.']);
+            else
+                % write Visa command to device and read back response
+                %
+                % separate writeline and readline commands
+                writeline(obj.VisaObject, char(VisaCommand));
+                % optional extra wait (for separated writeline & readline)
+                if obj.ExtraWait > 0
+                    % save current state and activate pause feature
+                    PauseState = pause('on');
+                    % run a short pause before next try
+                    pause(obj.ExtraWait);
+                    % restore original state
+                    pause(PauseState);
+                end
+                VisaResponse = readline(obj.VisaObject);
+
+                % or use single command
+                %VisaResponse = writeread(obj.VisaObject, char(VisaCommand));
+
+                % received data is a string (text)
+                VisaResponse = uint8(char(VisaResponse));
+
+                % convert to row vector if needed
+                if iscolumn(VisaResponse)
+                    VisaResponse = transpose(VisaResponse);
+                end
+            end
+
+            % optionally display message and log command in history
+            obj.ShowAndLogSCPICommand('write', uint8(VisaCommand));
+            obj.ShowAndLogSCPICommand('read', VisaResponse);
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+        end
+
         % -----------------------------------------------------------------
         % some notes about standard SCPI commands:
         %
         % *IDN? (identify): works with all supported devices
-        % *OPC? (opc)     : not implemented at Siglent DC-Power Supply
-        % *RST  (reset)   : not implemented at Siglent DC-Power Supply
+        % *OPC? (opc)     : not implemented e.g. at Siglent DC-Power Supply
+        % *RST  (reset)   : not implemented e.g. at Siglent DC-Power Supply
 
         function [idnMessage, status] = identify(obj)
             % request identifier (*IDN?) and update property Identifier
@@ -918,7 +925,8 @@ classdef VisaIF < handle
             status     = NaN;
 
             % actual clear command
-            clrdevice(obj.VisaObject);
+            flush(obj.VisaObject, 'input');
+            flush(obj.VisaObject, 'output');
 
             % set final status
             if isnan(status)
@@ -1062,10 +1070,6 @@ classdef VisaIF < handle
                     %rethrow(ME)
                 end
             end
-        end
-
-        function Name = get.Name(obj)
-            Name = obj.VisaObject.Name;
         end
 
         function RsrcName = get.RsrcName(obj)
