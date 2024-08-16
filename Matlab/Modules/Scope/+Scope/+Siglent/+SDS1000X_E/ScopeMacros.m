@@ -22,8 +22,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
     
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2024-07-16'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-16'; % release date
     end
     
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -53,7 +53,8 @@ classdef ScopeMacros < handle
             % destructor
             
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
         

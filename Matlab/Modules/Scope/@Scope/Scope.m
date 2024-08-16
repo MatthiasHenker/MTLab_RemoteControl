@@ -455,7 +455,7 @@ classdef Scope < VisaIF
 
     properties(Constant = true)
         ScopeVersion    = '3.0.0';      % release version (= class version)
-        ScopeDate       = '2024-07-22'; % release date
+        ScopeDate       = '2024-08-16'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -565,7 +565,7 @@ classdef Scope < VisaIF
             % destructor
 
             % execute device specific macros before closing connection
-            if ~strcmpi(obj.ShowMessages, 'none')
+            if ~strcmpi(obj.ShowMessages, 'none') && ~isempty(obj.DeviceName)
                 disp([obj.DeviceName ':']);
                 disp('  execute pre-close macro');
             end

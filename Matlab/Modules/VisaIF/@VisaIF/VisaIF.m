@@ -253,7 +253,7 @@ classdef VisaIF < handle
 
     properties(Constant = true)
         VisaIFVersion = '3.0.0';      % current version of VisaIF
-        VisaIFDate    = '2024-07-22'; % release date
+        VisaIFDate    = '2024-08-16'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -477,15 +477,23 @@ classdef VisaIF < handle
                     % try to access wanted device and create object
                     obj.VisaObject = visadev(selectedDevice.RsrcName);
                 catch ME
-                    if (strcmp(ME.identifier, ...
-                            'instrument:interface:visa:multipleIdenticalResources'))
-                        msg = ['constructor method of class VisaIF for ' ...
-                            'resource ' selectedDevice.RsrcName ' failed.'];
-                        causeException = MException('VisaIF:RsrcAlreadyExists', msg);
-                        ME = addCause(ME, causeException);
+                    switch ME.identifier
+                        case 'instrument:interface:visa:multipleIdenticalResources'
+                            disp(['Object for specified resource ''' ...
+                                selectedDevice.RsrcName ''' already exists ' ...
+                                'and its interface is open.']);
+                        case 'instrument:interface:visa:unableToDetermineInterfaceType'
+                            disp(['Specified resource ''' selectedDevice.RsrcName ...
+                                ''' was not found.']);
+                        otherwise
+                            disp(['Unknown error: ' ME.identifier]);
                     end
                     % exit with error
-                    rethrow(ME);
+                    %rethrow(ME);
+                    %throw(ME);
+                    error(['Constructor method of class ''' class(obj) ...
+                            ''' for resource ''' selectedDevice.RsrcName ...
+                            ''' failed.']);
                 end
             else
                 % object for demo devic only (no real external device)
@@ -598,7 +606,8 @@ classdef VisaIF < handle
 
             % print out message
             if ~strcmp(ShowMsgs, 'none')
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
