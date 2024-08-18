@@ -455,7 +455,7 @@ classdef Scope < VisaIF
 
     properties(Constant = true)
         ScopeVersion    = '3.0.0';      % release version (= class version)
-        ScopeDate       = '2024-08-16'; % release date
+        ScopeDate       = '2024-08-18'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -525,11 +525,7 @@ classdef Scope < VisaIF
 
             % create object: inherited from superclass 'VisaIF'
             instrument = className; % see VisaIF.SupportedInstrumentClasses
-            %try
             obj = obj@VisaIF(device, interface, showmsg, instrument);
-            %catch
-            %
-            %end
 
             if isempty(obj.Device)
                 error('Initialization failed.');
@@ -557,7 +553,7 @@ classdef Scope < VisaIF
                 disp('  execute post-open macro');
             end
             if obj.MacrosObj.runAfterOpen
-                error('Initial configuration of scope failed.');
+                error('Initial configuration of Scope failed.');
             end
         end
 
@@ -573,7 +569,7 @@ classdef Scope < VisaIF
             % only run delete when object exists
             if ~isempty(obj.MacrosObj)
                 if obj.MacrosObj.runBeforeClose
-                    error('Reconfiguration of scope before closing connecting failed.');
+                    error('Reconfiguration of Scope before closing connecting failed.');
                 end
                 % delete MacroObj
                 obj.MacrosObj.delete;

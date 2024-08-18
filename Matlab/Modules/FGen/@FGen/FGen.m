@@ -139,7 +139,7 @@ classdef FGen < VisaIF
     %                       a file extension would be ignored
     %           'wavedata': sample values of arbitrary wave signal, vector
     %                       of real numbers (for all FGen) or
-    %                       complex numbers (for dual channel FGen),  
+    %                       complex numbers (for dual channel FGen),
     %                       data has to be in range (-1 ... +1)
     %                       (signal is internally upscaled by
     %                       2^(#numBITSofDAC-1)-1, clipped and rounded)
@@ -232,7 +232,7 @@ classdef FGen < VisaIF
     %   - Constantin Wimmer (student, automation)
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
-    
+
     % potential new property in arbWaveform:
     %           'filename': file name specifying wave data at host computer
     %                         for mode = upload:
@@ -241,82 +241,82 @@ classdef FGen < VisaIF
     %                         for mode = download:
     %                           downloaded wave data are additionally saved
     %                           to file at host
-    
+
     properties(Constant = true)
-        FGenVersion    = '1.0.7';      % release version (= class version)
-        FGenDate       = '2021-03-16'; % release date
+        FGenVersion    = '3.0.0';      % release version (= class version)
+        FGenDate       = '2024-08-18'; % release date
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosVersion
         MacrosDate
         % ...
         ErrorMessages
     end
-    
+
     properties
         %tbd    double = 1;
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         MacrosObj       % access to actual device specific macros
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static)
-        
+
         varargout = listAvailablePackages
-        
+
         function doc
             % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
             % to display the help text. For classes named FGen or Scope
             % conflicts with other classes causes troubles.
             %
             % This method open a help windows using web-command.
-            
+
             className  = mfilename('class');
             VisaIF.doc(className);
-            
+
         end
     end
-    
+
     % ---------------------------------------------------------------------
     methods
-        
+
         function obj = FGen(device, interface, showmsg)
             % constructor for a FGen object (same variables as for VisaIF
             % except for missing last "hidden" parameter instrument)
-            
+
             % check number of input arguments
             narginchk(0, 3);
-            
+
             % -------------------------------------------------------------
             % set default values when no input is given (all further checks
             % in superclass 'VisaIF')
-            
+
             if nargin < 3 || isempty(showmsg)
                 showmsg = 'few';
             end
-            
+
             if nargin < 2 || isempty(interface)
                 interface = '';
             end
-            
+
             if nargin < 1 || isempty(device)
                 device   = '';
             end
-            
+
             % -------------------------------------------------------------
             className  = mfilename('class');
-            
+
             % create object: inherited from superclass 'VisaIF'
             instrument = className; % see VisaIF.SupportedInstrumentClasses
             obj = obj@VisaIF(device, interface, showmsg, instrument);
-            
+
             if isempty(obj.Device)
                 error('Initialization failed.');
             end
-            
+
             % build up path to selected device package directory
             fString = [ ...
                 className    '.' ...
@@ -324,7 +324,7 @@ classdef FGen < VisaIF
                 obj.Product  '.' ...
                 className 'Macros'];
             fHandle = str2func(fString);
-            
+
             % create object with actual macros for selected device
             try
                 obj.MacrosObj = fHandle(obj);
@@ -332,185 +332,129 @@ classdef FGen < VisaIF
             catch
                 error(['No support package available for: ' fString]);
             end
-            
-        end
-        
-        function delete(obj)
-            % destructor
-            
-            try
-                % save property
-                myShowMsg = obj.ShowMessages;
-                % close connection silently
-                obj.ShowMessages = false;
-                obj.close;
-                % restore property
-                obj.ShowMessages = myShowMsg;
-            catch
-                disp('Closing connection to generator causes warnings.');
-            end
-            
-            % only run delete when object exists
-            if ~isempty(obj.MacrosObj)
-                % delete MacroObj
-                obj.MacrosObj.delete;
-            end
-            
-            % regular deletion of this class object follows now
-        end
-        
-        % -----------------------------------------------------------------
-        % extend some methods from super class (VisaIF)
-        % -----------------------------------------------------------------
-        
-        function status = open(obj)
-            % extend open method (inherited from super class VisaIF)
-            
-            % init output
-            status = NaN;
-            
-            % execute "standard" open method from VisaIF class
-            if open@VisaIF(obj)
-                status = -1;
-                return;
-            end
-            
+
+            % execute device specific macros after opening connection
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute post-open macro');
             end
-            
-            % execute device specific macros after opening connection
             if obj.MacrosObj.runAfterOpen
-                status = -1;
-            end
-            
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
+                error('Initial configuration of FGen failed.');
             end
         end
-        
-        function status = close(obj)
-            % extend close method (inherited from super class VisaIF)
-            
-            % init output
-            status = NaN;
-            
+
+        function delete(obj)
+            % destructor
+
             % execute device specific macros before closing connection
-            % skip when interface is already closed
-            if strcmpi(obj.CommStatus, 'open')
-                
-                if ~strcmpi(obj.ShowMessages, 'none')
-                    disp([obj.DeviceName ':']);
-                    disp('  execute pre-close macro');
-                end
-                
+            if ~strcmpi(obj.ShowMessages, 'none') && ~isempty(obj.DeviceName)
+                disp([obj.DeviceName ':']);
+                disp('  execute pre-close macro');
+            end
+
+            % only run delete when object exists
+            if ~isempty(obj.MacrosObj)
                 if obj.MacrosObj.runBeforeClose
-                    status = -1;
+                    error('Reconfiguration of FGen before closing connecting failed.');
                 end
+                % delete MacroObj
+                obj.MacrosObj.delete;
             end
-            
-            % execute "standard" close method from super class
-            if close@VisaIF(obj)
-                status = -1;
-            end
-            
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
-            end
+
+            % regular deletion of this class object follows now
         end
-        
+
+        % -----------------------------------------------------------------
+        % extend some methods from super class (VisaIF)
+        % -----------------------------------------------------------------
+
         function status = reset(obj)
             % override reset method (inherited from super class VisaIF)
             % restore default settings at generator
-            
+
             % init output
             status = NaN;
-            
+
             % do not execute "standard" reset method from super class
             % reset@VisaIF(obj)
-            
+
             % optionally clear buffers (for visa-usb only)
             obj.clrdevice;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute reset macro');
             end
-            
+
             % execute device specific macros for reset
             if obj.MacrosObj.reset
                 status = -1;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  reset failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual generator methods: actions without input parameters
         % -----------------------------------------------------------------
-        
+
         function status = clear(obj)
             % clear status at generator
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  clear status');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.clear;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  clear failed');
             end
         end
-        
+
         function status = lock(obj)
             % lock all buttons at generator
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  lock all buttons at generator');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.lock;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  lock failed');
             end
         end
-        
+
         function status = unlock(obj)
             % unlock all buttons at generator
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  unlock all buttons at generator');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.unlock;
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  unlock failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual generator methods: actions with varargin parameters
         % -----------------------------------------------------------------
-        
+
         function status = configureOutput(obj, varargin)
             % configureOutput: configure output of specified channels
             %   'channel'    : [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
@@ -528,7 +472,7 @@ classdef FGen < VisaIF
             %   'bandwidth'  : real > 0
             %   'outputimp'  : real > 0
             %   'samplerate' : real > 0
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure output channels');
@@ -536,15 +480,15 @@ classdef FGen < VisaIF
             else
                 params = obj.checkParams(varargin, 'configureOutput');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.configureOutput(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  configureOutput failed');
             end
         end
-        
+
         function varargout = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
@@ -559,14 +503,14 @@ classdef FGen < VisaIF
             % varargout is either
             % status            (1 output variable)
             % [status, waveout] (2 output variables)
-            
+
             % init output variables
             if nargout > 2
                 error('FGen: ''arbWaveform'' - Too many output arguments.');
             else
                 varargout  = cell(1, nargout);
             end
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  configure arbitrary waveforms');
@@ -574,14 +518,14 @@ classdef FGen < VisaIF
             else
                 params = obj.checkParams(varargin, 'arbWaveform');
             end
-            
+
             % execute device specific macro
             [status, waveout] = obj.MacrosObj.arbWaveform(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  arbWaveform failed');
             end
-            
+
             if nargout >= 1
                 varargout(1) = {status};
             end
@@ -589,11 +533,11 @@ classdef FGen < VisaIF
                 varargout(2) = {waveout};
             end
         end
-        
+
         function status = enableOutput(obj, varargin)
             % enableOutput  : enable output of specified channels
             %   'channel'   : [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  enable output channels');
@@ -601,19 +545,19 @@ classdef FGen < VisaIF
             else
                 params = obj.checkParams(varargin, 'enableOutput');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.enableOutput(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  enableOutput failed');
             end
         end
-        
+
         function status = disableOutput(obj, varargin)
             % disableOutput : disable output of specified channels
             %   'channel'   : [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
-            
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  disable output channels');
@@ -621,47 +565,47 @@ classdef FGen < VisaIF
             else
                 params = obj.checkParams(varargin, 'disableOutput');
             end
-            
+
             % execute device specific macro
             status = obj.MacrosObj.disableOutput(params{:});
-            
+
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  disableOutput failed');
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual generator methods: get methods (dependent)
         % -----------------------------------------------------------------
-        
+
         function errMsg = get.ErrorMessages(obj)
             % read error list from the generator’s error buffer
             errMsg = obj.MacrosObj.ErrorMessages;
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static, Access = private)
-        
+
         outVars = checkParams(inVars, command, showmsg)
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)
-            
+
             version = obj.MacrosObj.MacrosVersion;
         end
-        
+
         function date = get.MacrosDate(obj)
             % get method of property (dependent)
-            
+
             date = obj.MacrosObj.MacrosDate;
         end
-        
+
     end
 end
