@@ -4,7 +4,7 @@ classdef VisaDemo < handle
         % matches to VisaIF class version min. 3.x.x
         % emulates 'visadev'
         VisaDemoVersion = '3.0.0';      % current version
-        VisaDemoDate    = '2024-07-18'; % release date
+        VisaDemoDate    = '2024-08-18'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -24,11 +24,12 @@ classdef VisaDemo < handle
 
     properties
         Timeout          double = 0;
+        Tag              char   = '';
         InputBufferSize  double = 0;
         OutputBufferSize double = 0;
         ByteOrder        char   = '';
         EOIMode          char   = '';
-        EOSMode          char   = '';
+        %EOSMode          char   = '';
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -63,7 +64,7 @@ classdef VisaDemo < handle
                 RsrcName = 'demo';
             end
             obj.RsrcName = RsrcName;
-            obj.Status   = 'closed';
+            obj.Status   = 'open';
 
             % -------------------------------------------------------------
             % here starts the actual emulation
@@ -99,22 +100,11 @@ classdef VisaDemo < handle
             %disp(['Object destructor called for class ' class(obj)]);
         end
 
-        function fopen(obj)
-            obj.Status = 'open';
-        end
-
-        function fclose(obj)
-            obj.Status = 'closed';
-        end
-
-        function fwrite(obj, cmd, type) %#ok<INUSD>
+        function write(obj, cmd, type) %#ok<INUSD>
             narginchk(3, 3);
             % input 'type' will be ignored
             if ~isa(cmd, 'uint8')
-                error('VisaDemo (fwrite): invalid input (cmd).');
-            end
-            if ~strcmpi(obj.Status, 'open')
-                error('OBJ must be connected to the hardware with OPEN.');
+                error('VisaDemo (write): invalid input (cmd).');
             end
             % convert to characters
             cmd = char(cmd);
@@ -167,14 +157,9 @@ classdef VisaDemo < handle
             % -------------------------------------------------------------
         end
 
-        function [response, cnt, msg] = fread(obj, bufsize, type) %#ok<INUSD>
+        function response = read(obj, bufsize, type) %#ok<INUSD>
             narginchk(3, 3);
             % inputs bufsize and 'type' will be ignored
-            if ~strcmpi(obj.Status, 'open')
-                error('OBJ must be connected to the hardware with OPEN.');
-            end
-            cnt      = 0;
-            msg      = '';
             response = '';
             % -------------------------------------------------------------
             % here starts the actual emulation
@@ -218,10 +203,15 @@ classdef VisaDemo < handle
             response = [double(response) 10];
         end
 
-        function clrdevice(obj)
-            if ~strcmpi(obj.Status, 'open')
-                error('OBJ must be connected to the hardware with OPEN.');
-            end
+        function writeline(obj, cmd)
+            obj.write(uint8(cmd), 'uint8')
+        end
+
+        function response = readline(obj)
+            response = obj.read(inf, 'uint8');
+        end
+
+        function clrdevice(obj) %#ok<MANU>
             % do nothing else
         end
 
