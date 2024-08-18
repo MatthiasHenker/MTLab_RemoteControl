@@ -3,6 +3,8 @@ function varargout = listAvailableVisaUsbDevices
 % function call
 %   VisaIF.listAvailableVisaUsbDevices
 %   visaUsbDeviceList = VisaIF.listAvailableVisaUsbDevices
+%
+% for use within VisaIF (minimum version 3.x.x, Matlab minimum 2022)
 
 className   = mfilename('class');
 
@@ -15,38 +17,18 @@ end
 
 numOfUsbDevices = 0;
 visaUsbDevices  = {};
-visaAdaptor     = {};
 
-% list known hardware (for connected hardware via USB)
-% 1st step: which adaptors for visa are installed?
-HardwareInfo     = instrhwinfo('visa');
-visaAdaptors     = HardwareInfo.InstalledAdaptors;
+% list available VISA resources
+resourceList      = visadevlist(Timeout = 2);
+numOfAvailableRes = size(resourceList, 1); % num of rows
 
-if isempty(visaAdaptors)
-    error('No Visa-support installed.');
-elseif ischar(visaAdaptors)
-    % create 1x1 cell array
-    visaAdaptors = {visaAdaptors};
-elseif iscell(visaAdaptors)
-    % everything is fine, nothing to do
-else
-    % this branch must no be reached
-    error('Program error. Unknown data format.');
-end
-
-for idx = 1:length(visaAdaptors)
-    HardwareInfo     = instrhwinfo('visa', visaAdaptors{idx});
-    connectedDevices = HardwareInfo.ObjectConstructorName;
-    
-    for cnt = 1 : length(connectedDevices)
-        % RsrcName has form USB[0]::0x<VID>::0x<PID>::<SID>
-        RsrcName = regexpi(connectedDevices{cnt}, ...
-            'USB\d?::\w*::\w*::\w*', 'match', 'ignorecase');
-        if ~isempty(RsrcName)
-            numOfUsbDevices = numOfUsbDevices + 1;
-            visaUsbDevices{numOfUsbDevices} = char(RsrcName);   %#ok<AGROW>
-            visaAdaptor{numOfUsbDevices}    = visaAdaptors{idx};%#ok<AGROW>
-        end
+for cnt = 1 : numOfAvailableRes
+    % RsrcName has form USB[0]::0x<VID>::0x<PID>::<SID>
+    RsrcName = regexpi(resourceList.ResourceName(cnt), ...
+        'USB\d?::\w*::\w*::\w*', 'match', 'ignorecase');
+    if ~isempty(RsrcName)
+        numOfUsbDevices = numOfUsbDevices + 1;
+        visaUsbDevices{numOfUsbDevices} = char(RsrcName);   %#ok<AGROW>
     end
 end
 
@@ -54,10 +36,10 @@ end
 if nargout == 0
     % read in config table to check if USB device is in list
     cfgTable = VisaIF.listContentOfConfigFiles;
-    
+
     % display search results when called with no outputs only
     disp([num2str(numOfUsbDevices) ' visa-usb devices are available.']);
-    
+
     for cnt = 1 : numOfUsbDevices
         % is USB device listed in column 'RsrcName' of config table?
         searchRsrcName = regexpi(visaUsbDevices{cnt}, ...
@@ -74,7 +56,7 @@ if nargout == 0
         % print out results
         disp([' (' num2str(cnt, '%02d') ') Device = ' pad(devName, 19) ...
             ' for RsrcName = ' visaUsbDevices{cnt}]);
-        
+
         % extract USB-IDs
         RsrcCell = split(visaUsbDevices{cnt}, '::');
         if length(RsrcCell) == 4
@@ -82,7 +64,6 @@ if nargout == 0
             disp(['      ModelCode      (PID): ' char(RsrcCell{3})]);
             disp(['      SerialNumber   (SID): ' char(RsrcCell{4})]);
         end
-        disp(['      Visa Adaptor        : ' visaAdaptor{cnt}]);
     end
 elseif nargout == 1
     % silent mode when called with outputs
