@@ -85,3 +85,9 @@ Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; demo      ;; USB0::0xF
 Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.7     ;;       512 ;;    16384 ;; 0
 Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-usb  ;; USB0::0x05E6::0x6500::\w+ ;;       512 ;;    16384 ;; 0
 # 
+# Siglent DMM                       (SID = SDM34FBC7R0240)
+# OutBufSize: longest command is roughly less than 100 characters, 512 bytes (default) is fine
+# InBufSize : longest command is about xx characters actual value has to be clarified !!!!!!
+Siglent-SDM3045X ;; Siglent  ;; SDM3045X ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.16    ;;       512 ;;    16384 ;; 0
+Siglent-SDM3045X ;; Siglent  ;; SDM3045X ;; DMM        ;; visa-usb  ;; USB0::0xF4EC::0x1203::\w+ ;;       512 ;;    16384 ;; 0
+# 
