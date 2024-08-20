@@ -60,8 +60,10 @@ if nargout == 0
         % extract USB-IDs
         RsrcCell = split(visaUsbDevices{cnt}, '::');
         if length(RsrcCell) == 4
-            disp(['      ManufacturerID (VID): ' char(RsrcCell{2})]);
-            disp(['      ModelCode      (PID): ' char(RsrcCell{3})]);
+            disp(['      ManufacturerID (VID): ' char(RsrcCell{2}) ...
+                '     (' char(resourceList.Vendor(cnt)) ')']);
+            disp(['      ModelCode      (PID): ' char(RsrcCell{3}) ...
+                '     (' char(resourceList.Model(cnt))  ')']);
             disp(['      SerialNumber   (SID): ' char(RsrcCell{4})]);
         end
     end
