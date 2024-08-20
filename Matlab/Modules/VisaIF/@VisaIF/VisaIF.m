@@ -30,6 +30,7 @@ classdef VisaIF < handle
     %     * usage:
     %         myDevice = VisaIF(device, interface, showmsg);
     %         myDevice = VisaIF({device, serialID}, interface, showmsg);
+    %         myDevice = VisaIF(device, interface, {showmsg, enablelog});
     %       with
     %         myDevice: object of class 'VisaIF' (mandatory output)
     %         device  : device name (char, mandatory input), use the
@@ -392,8 +393,11 @@ classdef VisaIF < handle
         function obj = VisaIF(device, interface, showmsg, instrument)
             % constructor for a VisaIF object
             %
-            % either device = '<DeviceType>'
-            % or     device = {'<DeviceType>', '<SerialId>'}
+            % either device  = '<DeviceType>'
+            % or     device  = {'<DeviceType>', '<SerialId>'}
+            %
+            % either showmsg = '<ShowMsgStr>'
+            % or     showmsg = {'<ShowMsgStr>', '<EnableLogStr>'}
 
             % check number of input arguments
             narginchk(0, 4);
@@ -420,9 +424,20 @@ classdef VisaIF < handle
             % -------------------------------------------------------------
             % check input parameters
 
-            if ~isempty(showmsg)
-                % try to set ShowMessages property (includes syntax check)
-                obj.ShowMessages = showmsg;
+            if iscell(showmsg)
+                if numel(showmsg) == 2
+                    % try to set properties
+                    obj.EnableCommandLog = showmsg{2};
+                    obj.ShowMessages     = showmsg{1};
+                else
+                    error(['Third input parameter {showmsg, enablelog}' ...
+                        'is not a cell array with two elements.']);
+                end
+            else
+                if ~isempty(showmsg)
+                    % try to set ShowMessages property (includes syntax check)
+                    obj.ShowMessages = showmsg;
+                end
             end
 
             if iscell(device)
@@ -526,8 +541,8 @@ classdef VisaIF < handle
             % => configure some parameters
 
             % some common settings for all types of supported devices
-            obj.VisaObject.Timeout      = 1;  % in s, default value is 10
-            %                                    max value is 1000
+            obj.VisaObject.Timeout      = 1.5;  % in s, default value is 10
+            %                                     max value is 1000
             obj.VisaObject.ByteOrder    = 'little-endian';   % default
             %
             % defines if EOI (end or identify) line is asserted at end of

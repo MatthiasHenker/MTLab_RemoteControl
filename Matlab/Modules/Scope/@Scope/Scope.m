@@ -543,7 +543,7 @@ classdef Scope < VisaIF
             try
                 obj.MacrosObj = fHandle(obj);
                 clear fHandle;
-            catch
+            catch %#ok<CTCH>
                 error(['No support package available for: ' fString]);
             end
 

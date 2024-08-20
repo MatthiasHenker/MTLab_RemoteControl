@@ -120,9 +120,9 @@ classdef VisaIFLogger < handle
     %   and 'VisaIFLoggerDate'
     %
     % tested with
-    %   - VisaIF             v2.4.3  (2021-02-15)
+    %   - VisaIF             v3.0.0  (2024-08-20)
     %   - VisaIFLogEventData v2.0.1  (2021-01-09)
-    %   - Matlab 2020b update 4 (Windows 10)
+    %   - Matlab 2023b update 9 (Windows 10)
     %   - for further requirements see VisaIF
     %
     % ---------------------------------------------------------------------
@@ -132,8 +132,8 @@ classdef VisaIFLogger < handle
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
-        VisaIFLoggerVersion = '2.0.2';      % current version
-        VisaIFLoggerDate    = '2021-02-15'; % release date
+        VisaIFLoggerVersion = '3.0.0';      % current version
+        VisaIFLoggerDate    = '2024-08-20'; % release date
     end
 
     properties
@@ -257,9 +257,9 @@ classdef VisaIFLogger < handle
                         ' listeners to VisaIF log events were created:']);
                     for cnt = 1 : length(obj.VisaListener.Source)
                         disp([' (' num2str(cnt, '%02d') ') ' ...
-                            pad(obj.VisaListener.Source{cnt}.Device, ...
+                            pad(char(obj.VisaListener.Source{cnt}.Device), ...
                             18) ' (' ...
-                            obj.VisaListener.Source{cnt}.RsrcName ')']);
+                            char(obj.VisaListener.Source{cnt}.RsrcName) ')']);
                     end
                 end
             end
@@ -314,6 +314,7 @@ classdef VisaIFLogger < handle
             % remove listeners
             delete(obj.VisaListener);
             delete(obj.ListenToVisaIFCreation);
+            delete(obj.ListenToVisaIFDeletion);
 
             if ~strcmp(obj.ShowMessages, 'none')
                 disp(['Object destructor called for class ' class(obj) ...
@@ -330,9 +331,9 @@ classdef VisaIFLogger < handle
                     ' listeners to VisaIF log events exist:']);
                 for cnt = 1 : length(obj.VisaListener.Source)
                     disp([' (' num2str(cnt, '%02d') ') ' ...
-                        pad(obj.VisaListener.Source{cnt}.Device, ...
+                        pad(char(obj.VisaListener.Source{cnt}.Device), ...
                         18) ' (' ...
-                        obj.VisaListener.Source{cnt}.RsrcName ')']);
+                        char(obj.VisaListener.Source{cnt}.RsrcName) ')']);
                 end
             else
                 disp(['VisaIFLogger: Empty or invalid list of VisaIF ' ...
@@ -507,7 +508,7 @@ classdef VisaIFLogger < handle
             end
 
             % clear command history table
-            obj.initCmdHistTable
+            obj.initCmdHistTable;
 
             % copy content of loaded table to internal command history
             lineIdx = (1-size(inTable, 1) : 0) + obj.CmdHistTableLength;
@@ -550,8 +551,8 @@ classdef VisaIFLogger < handle
                     'was created:']);
                 disp([' (' num2str(length(obj.VisaListener.Source), ...
                     '%02d') ') ' ...
-                    pad(obj.VisaListener.Source{end}.Device, 18) ...
-                    ' (' obj.VisaListener.Source{end}.RsrcName ')']);
+                    pad(char(obj.VisaListener.Source{end}.Device), 18) ...
+                    ' (' char(obj.VisaListener.Source{end}.RsrcName) ')']);
             end
         end
 
@@ -568,8 +569,8 @@ classdef VisaIFLogger < handle
                     disp(['VisaIFLogger: Remove listener to VisaIF ' ...
                         'log events:']);
                     for deletedListeners = obj.VisaListener.Source{matches}
-                        disp(['      ' pad(deletedListeners.Device, 18) ...
-                            ' (' deletedListeners.RsrcName ')']);
+                        disp(['      ' pad(char(deletedListeners.Device), 18) ...
+                            ' (' char(deletedListeners.RsrcName) ')']);
                     end
                 end
 
@@ -598,9 +599,9 @@ classdef VisaIFLogger < handle
             % save new data in the last line of the table
             obj.CmdHistTable.Line(end, :)        = obj.LineCounter;
             obj.CmdHistTable.CmdID(end, :)       = EventData.CmdNumber;
-            obj.CmdHistTable.Device(end, :)      = EventData.Device;
-            obj.CmdHistTable.Mode(end, :)        = EventData.Mode;
-            obj.CmdHistTable.SCPIcommand(end, :) = EventData.SCPIcommand;
+            obj.CmdHistTable.Device(end, :)      = char(EventData.Device);
+            obj.CmdHistTable.Mode(end, :)        = char(EventData.Mode);
+            obj.CmdHistTable.SCPIcommand(end, :) = char(EventData.SCPIcommand);
             obj.CmdHistTable.NumBytes(end, :)    = EventData.CmdLength;
 
             % optionally run autosave periodically

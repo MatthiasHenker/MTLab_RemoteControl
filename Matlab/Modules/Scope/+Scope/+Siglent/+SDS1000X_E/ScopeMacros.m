@@ -23,7 +23,7 @@ classdef ScopeMacros < handle
 
     properties(Constant = true)
         MacrosVersion = '3.0.0';      % release version
-        MacrosDate    = '2024-08-18'; % release date
+        MacrosDate    = '2024-08-20'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -166,6 +166,7 @@ classdef ScopeMacros < handle
             % ...
 
             % wait for operation complete
+            pause(1); % otherwise timeout of visa communication will pop up
             obj.VisaIFobj.opc;
 
             % set final status
