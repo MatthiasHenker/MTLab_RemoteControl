@@ -171,7 +171,7 @@ end
 % -------------------------------------------------------------------------
 % all filter operations are done: now select one row
 
-if cfgTable.Type(1) ~= 'visa-usb'
+if cfgTable.Type(1) ~= 'visa-usb' %#ok<BDSCA>
     % select first row
     cfgTable = cfgTable(1, :);
     if ~isempty(serialId)
@@ -181,15 +181,15 @@ else
     % when usb interface is selected then check if a matching device is
     % connected ==> remove all non usb type from table
     cfgTable = cfgTable(cfgTable.Type == 'visa-usb', :);
-    
+
     % search for connected USB devices
     connectedUsbDevices = VisaIF.listAvailableVisaUsbDevices;
-        
+
     if isempty(connectedUsbDevices)
         disp('No visa-usb devices are available.');
         return
     end
-    
+
     % select first matching device
     matchingUsbDevices = [];
     for idx = 1 : length(cfgTable.RsrcName)
@@ -201,12 +201,12 @@ else
             break
         end
     end
-    
+
     if isempty(matchingUsbDevices)
         disp('No matching visa-usb devices are available.');
         return
     end
-    
+
     % cfgTable now with one row
     % one or more matching USB devices found
     if isempty(serialId)

@@ -38,12 +38,12 @@ classdef(ConstructOnLoad) VisaIFLogEventData < event.EventData
     %   - Constantin Wimmer (student, automation)
     %   - Matthias Henker   (professor)
     %----------------------------------------------------------------------
-    
+
     properties(Constant = true)
         VisaIFLogEventVersion = '2.0.1';      % current version
         VisaIFLogEventDate    = '2021-01-09'; % release date
     end
-    
+
     properties (GetAccess = public, SetAccess = private)
         CmdNumber      double
         Device         char
@@ -51,57 +51,57 @@ classdef(ConstructOnLoad) VisaIFLogEventData < event.EventData
         SCPIcommand    char
         CmdLength      double
     end
-    
+
     methods
-        
+
         function eventData = VisaIFLogEventData(...
                 CmdNumber   , ...
                 Device      , ...
                 Mode        , ...
                 SCPIcommand , ...
                 CmdLength   )
-            
+
             narginchk(5, 5);
-            
+
             % -------------------------------------------------------------
             % set defaults for missing inputs
-            
+
             if isempty(CmdNumber)
                 CmdNumber   = NaN;
             end
-            
+
             if isempty(Device)
                 Device      = '<missing>';
             end
-            
+
             if isempty(Mode)
                 Mode        = '<missing>';
             end
-            
+
             if isempty(SCPIcommand)
                 SCPIcommand = '<missing>';
             end
-            
-            
+
+
             if isempty(CmdLength)
                 CmdLength   = NaN;
             end
-            
+
             % -------------------------------------------------------------
             % no type check of inputs required (single types declared)
-            
-            
+
+
             % -------------------------------------------------------------
             % actual code: copy data to object
             % (no conversions needed, only single type allowed)
-            
+
             eventData.CmdNumber   = CmdNumber;   % double
             eventData.Device      = Device;      % char
             eventData.Mode        = Mode;        % char
             eventData.SCPIcommand = SCPIcommand; % char
             eventData.CmdLength   = CmdLength;   % double
-            
+
         end
-        
+
     end
 end

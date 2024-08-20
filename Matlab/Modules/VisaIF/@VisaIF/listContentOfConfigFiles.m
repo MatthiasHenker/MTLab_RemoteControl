@@ -55,12 +55,12 @@ for cfgFile = cfgFileList
         'ExpectedNumVariables', 9               , ...
         'ReadRowNames'        , false           );
     newPartOfCfgTable = readtable(cfgFile, opts);
-    
+
     % select matching columns (variable names in header)
     matchingCols = intersect(colNamesTypes(:, 1), ...
         newPartOfCfgTable.Properties.VariableNames);
     numOfNewRows = height(newPartOfCfgTable);
-    
+
     if isempty(matchingCols)
         % ignore new config data (cfg file seems to be empty)
         if nargout == 0
@@ -70,7 +70,7 @@ for cfgFile = cfgFileList
         % define row vector for config table and update counter
         rowIdx    = numOfRows + (1 : numOfNewRows);
         numOfRows = numOfRows + numOfNewRows;
-        
+
         % copy matching columns to cfgTable and fill missing
         % columns by default values (<undefined> for categorical
         % and 0 (zero) for double)
@@ -78,11 +78,11 @@ for cfgFile = cfgFileList
         cfgTable(rowIdx, matchingCols) = ...
             newPartOfCfgTable(:, matchingCols);
         warning('on');
-        
+
         % check field entries (e.g. remove invalid categories)
         cfgTable(rowIdx, :) = ...
             VisaIF.coerceConfigTable(cfgTable(rowIdx, :));
-        
+
         if nargout == 0
             % display results only
             disp(['Content of ' char(cfgFile) ':']);
@@ -97,19 +97,19 @@ end
 
 % copy final table to output
 if nargout > 0
-    
+
     % remove duplicate rows
     cfgTable = unique(cfgTable);
-    
+
     % sort table (a-z)
     cfgTable.Device = setcats(cfgTable.Device, ...
         categories(reordercats(cfgTable.Device)));
     cfgTable = sortrows(cfgTable, 'Device');
-    
+
     % finally add a column 'Id' with row numbers to table
     cfgTable = [table((1 : height(cfgTable))', ...
         'VariableNames', {'Id'}) cfgTable];
-    
+
     varargout(1) = {cfgTable};
 end
 
