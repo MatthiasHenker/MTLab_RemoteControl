@@ -23,7 +23,7 @@ classdef ScopeMacros < handle
 
     properties(Constant = true)
         MacrosVersion = '3.0.0';      % release version
-        MacrosDate    = '2024-08-20'; % release date
+        MacrosDate    = '2024-08-22'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -135,39 +135,19 @@ classdef ScopeMacros < handle
                 status = -1;
             end
 
+            % scope is quite slow ==> wait with next command
+            pause(1);
+
             % clear status (event registers and error queue)
             % ==> not supported by SDS1000X-E & SDS 2000X
             %if obj.VisaIFobj.write('*CLS')
             %    status = -1;
             %end
 
-            % defines the way the scope formats response to queries
-            % off: header is omitted from the response and units in numbers
-            % are suppressed ==> shortest feedback
-            % only short form of command is allowed (error in programming
-            % guide); long form is COMM_HEADER
-            if obj.VisaIFobj.write('CHDR OFF')
+            % reconfigure device after reset
+            if obj.runAfterOpen()
                 status = -1;
             end
-
-            % set the intensity level of the grid and trace
-            TraceValue = 95; % 1 ... 100
-            GridValue  = 60; % 0 ... 100
-            if obj.VisaIFobj.write( ...
-                    ['INTENSITY TRACE,' num2str(TraceValue, '%g') ...
-                    ',GRID,' num2str(GridValue, '%g')])
-                status = -1;
-            end
-
-            if obj.VisaIFobj.write('BUZZER OFF')
-                status = -1;
-            end
-
-            % ...
-
-            % wait for operation complete
-            pause(1); % otherwise timeout of visa communication will pop up
-            obj.VisaIFobj.opc;
 
             % set final status
             if isnan(status)
@@ -1741,14 +1721,21 @@ classdef ScopeMacros < handle
             end
 
             % -------------------------------------------------------------
-            % request actual binary screen shot data
+            % request screen shot data (binary response)
             % only shortform of SCPI command is supported
-            %bitMapData = obj.VisaIFobj.query('SCREEN_DUMP');
-            %bitMapData = obj.VisaIFobj.query('SCDP');
-            % split query command to separate write and read due to binary
-            % response
-            obj.VisaIFobj.write('SCDP');
-            bitMapData = obj.VisaIFobj.read;
+            % ('SCDP' instead of 'SCREEN_DUMP')
+
+            % version ID has to be >= 3.x.x
+            if str2double(getfield(split(char( ...
+                    obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                % split query command to separate write and read due to
+                % binary response
+                obj.VisaIFobj.write('SCDP');
+                bitMapData = obj.VisaIFobj.read;
+            else
+                % previous version does not need this workaround
+                bitMapData = obj.VisaIFobj.query('SCDP');
+            end
 
             % response is always 768066 bytes for plain bitmap data
             % without any additional header
@@ -2238,11 +2225,18 @@ classdef ScopeMacros < handle
                             num2str(cnt2 +1, '%d') '/' ...
                             num2str(NumSegments, '%d')]);
                     end
-                    % split query into separate write and read to due
-                    % binary response
-                    %RawData  = obj.VisaIFobj.query([channel ':WF? DAT2']);
-                    obj.VisaIFobj.write([channel ':WF? DAT2']);
-                    RawData  = obj.VisaIFobj.read;
+
+                    % version ID has to be >= 3.x.x
+                    if str2double(getfield(split(char( ...
+                            obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                        % split query command to separate write and read due to
+                        % binary response
+                        obj.VisaIFobj.write([channel ':WF? DAT2']);
+                        RawData  = obj.VisaIFobj.read;
+                    else
+                        % previous version does not need this workaround
+                        RawData  = obj.VisaIFobj.query([channel ':WF? DAT2']);
+                    end
 
                     % check and extract header:
                     % e.g. DAT2,#9001400000binarydata with 9 chars
