@@ -244,7 +244,7 @@ classdef FGen < VisaIF
 
     properties(Constant = true)
         FGenVersion    = '3.0.0';      % release version (= class version)
-        FGenDate       = '2024-08-18'; % release date
+        FGenDate       = '2024-08-22'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -329,7 +329,7 @@ classdef FGen < VisaIF
             try
                 obj.MacrosObj = fHandle(obj);
                 clear fHandle;
-            catch
+            catch %#ok<CTCH>
                 error(['No support package available for: ' fString]);
             end
 

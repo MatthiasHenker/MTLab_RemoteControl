@@ -254,7 +254,7 @@ classdef VisaIF < handle
 
     properties(Constant = true)
         VisaIFVersion = '3.0.0';      % current version of VisaIF
-        VisaIFDate    = '2024-08-16'; % release date
+        VisaIFDate    = '2024-08-22'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -541,7 +541,7 @@ classdef VisaIF < handle
             % => configure some parameters
 
             % some common settings for all types of supported devices
-            obj.VisaObject.Timeout      = 1.5;  % in s, default value is 10
+            obj.VisaObject.Timeout      = 5;  % in s, default value is 10
             %                                     max value is 1000
             obj.VisaObject.ByteOrder    = 'little-endian';   % default
             %
@@ -841,9 +841,6 @@ classdef VisaIF < handle
                     pause(PauseState);
                 end
                 VisaResponse = readline(obj.VisaObject);
-
-                % or use single command
-                %VisaResponse = writeread(obj.VisaObject, char(VisaCommand));
 
                 % received data is a string (text)
                 VisaResponse = uint8(char(VisaResponse));
