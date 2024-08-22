@@ -135,9 +135,6 @@ classdef ScopeMacros < handle
                 status = -1;
             end
 
-            % scope is quite slow ==> wait with next command
-            pause(1);
-
             % clear status (event registers and error queue)
             % ==> not supported by SDS1000X-E & SDS 2000X
             %if obj.VisaIFobj.write('*CLS')
