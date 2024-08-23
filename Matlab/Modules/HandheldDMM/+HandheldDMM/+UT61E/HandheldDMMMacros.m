@@ -3,7 +3,7 @@ classdef HandheldDMMMacros < handle
     %
     %
     % Uni-T, UT61E series macros
-    
+
     properties(Constant = true)
         MacrosVersion = '1.1.0';      % release version
         MacrosDate    = '2022-08-10'; % release date
@@ -25,41 +25,41 @@ classdef HandheldDMMMacros < handle
         BinaryTerminator = {}; % has to be empty when Terminator is set
         RequestPacket    = {}; % uni-directional connection
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages logical
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         HandheldDMMobj                % HandheldDMMobj object
     end
-    
-    
+
+
     % ------- basic methods -----------------------------------------------
     methods
-        
+
         function obj = HandheldDMMMacros(HandheldDMMobj)
             % constructor
-            
+
             obj.HandheldDMMobj = HandheldDMMobj;
         end
-        
+
         function delete(obj)
             % destructor
-            
+
             if obj.ShowMessages
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function [value, mode, status] = convertData(obj, rawData)
             % convert block of bytes (rawData) to actual numeric value
-            
+
             % init output variables
             value  = NaN;
             mode   = '';
             status = NaN;
-            
+
             if obj.HandheldDMMobj.DemoMode
                 % DC-V mode with 0.0000 .. 2.2000 V range
                 DCoffset  = 1.3;   % in V
@@ -70,17 +70,17 @@ classdef HandheldDMMMacros < handle
                 measValue = max(measValue, -2.199);
                 % limit to four decimal places
                 measValue = round(measValue * 1e4) / 1e4;
-                
+
                 % respond a random value and return
                 value  = measValue;
                 mode   = 'DC-V';
                 status = 0;
                 return
             end
-            
+
             % a check that 14 Bytes (property NumBytes) were received
             % is already implemented in the public read function
-            
+
             % first we check bytes order: the bytes are numbers
             % Attention: 7 Databits only ==> MSB (8-bit) is always '0'
             % num byte:   upper nibble     lower nibble
@@ -101,7 +101,7 @@ classdef HandheldDMMMacros < handle
             % 13th byte:             0x0D
             % 14th byte:             0x0A
             rawBin = dec2bin(rawData(1:12), 8);
-            
+
             % check last two bytes
             if ~all(rawData(13:14) == [13; 10])
                 % incorrect order of bytes
@@ -112,7 +112,7 @@ classdef HandheldDMMMacros < handle
                 status = -1;
                 return
             end
-            
+
             % check upper nibble of first bytes (1 .. 12)
             % always 0x3 = '0011' expected
             if ~all(rawBin(:,1:4) == dec2bin(zeros(12, 1)+3, 4), 'all')
@@ -123,15 +123,15 @@ classdef HandheldDMMMacros < handle
                 status = -1;
                 return
             end
-            
+
             % now we can convert the actual data (lower nibble)
             lowNib = rawBin(:,5:8);
-            
+
             % conversion can start
             %
             % bytes  2:6 are the actual digits
             value = [1e4 1e3 1e2 1e1 1e0] * bin2dec(lowNib(2:6, :));
-            
+
             % bytes 1 & 7 define measurement range and mode
             % Attention: percent mode is not implemented here
             switch lowNib(7, :)         % mode
@@ -215,10 +215,10 @@ classdef HandheldDMMMacros < handle
                     multiplier = NaN;
                     status     = -1;
             end
-            
+
             % scale value according to measurement mode and range
             value = value * multiplier;
-            
+
             % bytes 8..12 define sign, AC/DC mode, and overload
             % Byte  8
             %percent = lowNib( 8, 1); % unused here
@@ -245,18 +245,18 @@ classdef HandheldDMMMacros < handle
             %vbar    = lowNib(12, 2); % unused here
             %hold    = lowNib(12, 3); % unused here
             %LPF     = lowNib(12, 4); % unused here
-            
+
             % add sign to value
             % sign
             if Vz == '1'
                 value = (-1)* value;
             end
-            
+
             % overload
             if OL == '1'
                 value = inf;
             end
-            
+
             % finally: AC or DC? (byte 11)
             switch [AC DC]
                 case '10',   mode   = ['AC-' mode];
@@ -264,29 +264,29 @@ classdef HandheldDMMMacros < handle
                 case '00'    % nothing to do
                 otherwise,   status = -1;
             end
-            
+
             % all others bits were ignored up to now
             %
             % ==> code can be extended later
-            
+
             % set status
             if isnan(status)
                 status = 0;
             end
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
-            
+
             % logical (boolean)
             showmsg = obj.HandheldDMMobj.ShowMessages;
         end
-        
+
     end
-    
+
 end

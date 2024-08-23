@@ -3,7 +3,7 @@ classdef HandheldDMMMacros < handle
     %
     %
     % Voltcraft, VC820 series macros
-    
+
     properties(Constant = true)
         MacrosVersion = '1.1.0';      % release version
         MacrosDate    = '2022-08-10'; % release date
@@ -29,41 +29,41 @@ classdef HandheldDMMMacros < handle
             'E6', 'E7', 'E8', 'E9', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF'});
         RequestPacket    = {}; % uni-directional connection
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages logical
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         HandheldDMMobj                % HandheldDMMobj object
     end
-    
-    
+
+
     % ------- basic methods -----------------------------------------------
     methods
-        
+
         function obj = HandheldDMMMacros(HandheldDMMobj)
             % constructor
-            
+
             obj.HandheldDMMobj = HandheldDMMobj;
         end
-        
+
         function delete(obj)
             % destructor
-            
+
             if obj.ShowMessages
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function [value, mode, status] = convertData(obj, rawData)
             % convert block of bytes (rawData) to actual numeric value
-            
+
             % init output variables
             value  = NaN;
             mode   = '';
             status = NaN;
-            
+
             if obj.HandheldDMMobj.DemoMode
                 % DC-V mode with 0.000 .. 3.999 V range
                 DCoffset  = 2.5;   % in V
@@ -74,17 +74,17 @@ classdef HandheldDMMMacros < handle
                 measValue = max(measValue, -3.999);
                 % limit to four decimal places
                 measValue = round(measValue * 1e3) / 1e3;
-                
+
                 % respond a random value and return
                 value  = measValue;
                 mode   = 'DC-V';
                 status = 0;
                 return
             end
-            
+
             % a check that 14 Bytes (property NumBytes) were received
             % is already implemented in the public read function
-            
+
             % first we check bytes order: the bytes are numbers
             % num byte:   upper nibble       lower nibble
             %  1st byte:     0x1              AC,DC,Auto,RS232
@@ -102,7 +102,7 @@ classdef HandheldDMMMacros < handle
             % 13th byte:     0xD              A,V,Hz,Battery
             % 14th byte:     0xE              '','','',°C
             rawBin = dec2bin(rawData, 8);
-            
+
             % check upper nibble
             if ~all(rawBin(:,1:4) == dec2bin(transpose(1:14), 4), 'all')
                 % incorrect order of bytes
@@ -112,10 +112,10 @@ classdef HandheldDMMMacros < handle
                 status = -1;
                 return
             end
-            
+
             % now we can convert the actual data (lower nibble)
             lowNib = rawBin(:,5:8);
-            
+
             % we have to extract all bits first
             % Byte  1
             AC      = lowNib( 1, 1);
@@ -187,7 +187,7 @@ classdef HandheldDMMMacros < handle
             %unknown = lowNib(14, 2);
             %unknown = lowNib(14, 3);
             %degrees = lowNib(14, 4); % unused here
-            
+
             % pooh, create numbers and modes out of all these bits
             %
             % we start with the digits (bytes 2 ... 9)
@@ -225,9 +225,9 @@ classdef HandheldDMMMacros < handle
                         status      = -1;
                         digits(idx) = 'x';
                 end
-                
+
             end
-            
+
             % where is the decimal point? (still bytes 2 ... 9)
             switch [P1 P2 P3]
                 case '001', multiplier = 0.1;
@@ -236,14 +236,14 @@ classdef HandheldDMMMacros < handle
                 otherwise,  multiplier = NaN;
                     status     = -1;
             end
-            
+
             % merge all digits and convert
             value = str2double(digits) * multiplier;
             % sign
             if Vz == '1'
                 value = (-1)* value;
             end
-            
+
             % now we add the exponent (bytes 10 ... 11)
             switch [M k m mu n]
                 case '10000', mult2  = 1e6;
@@ -260,7 +260,7 @@ classdef HandheldDMMMacros < handle
             if isnan(value)
                 status = -1;
             end
-            
+
             % now detect mode (bytes 12 ... 13)
             switch [V A Hz F Ohm]
                 case '10000', mode   = 'V';
@@ -278,25 +278,25 @@ classdef HandheldDMMMacros < handle
                 case '00'    % nothing to do
                 otherwise,   status = -1;
             end
-            
+
             % set status
             if isnan(status)
                 status = 0;
             end
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
-            
+
             % logical (boolean)
             showmsg = obj.HandheldDMMobj.ShowMessages;
         end
-        
+
     end
-    
+
 end

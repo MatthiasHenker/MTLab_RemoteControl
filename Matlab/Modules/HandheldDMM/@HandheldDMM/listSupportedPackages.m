@@ -65,22 +65,22 @@ else
     % remove all dirs not starting with '+'
     ProductDirs = ProductDirs(~cellfun(@isempty, ...
         regexp({ProductDirs.name}, '^\+\w+$')));
-    
+
     PackageList = {};
     % check each Product dir
     for pIdx = 1 : length(ProductDirs)
         % get product name (without leading '+')
         Product = regexprep(ProductDirs(pIdx).name, '^\+', '');
-        
+
         % init
         MacrosVersion = '';
         MacrosDate    = '';
         errMsg        = '';
-        
+
         % full path and name of macros class file (m- or p-file)
         macroFile = fullfile(ProductDirs(pIdx).folder, ...
             ProductDirs(pIdx).name, [className 'Macros']);
-        
+
         % check if a macro class file is available
         if exist([macroFile '.m'], 'file') || exist([macroFile '.p'], 'file')
             % build up path to selected device package directory
@@ -100,18 +100,18 @@ else
         else
             errMsg = 'no support package found in this directory';
         end
-        
+
         if ~isempty(MacrosVersion) && ~isempty(MacrosDate)
-            PackageList = [PackageList, {Product}];
+            PackageList = [PackageList, {Product}]; %#ok<AGROW>
         end
-        
+
         if ShowMessages
             if pIdx == 1
                 fprintf('%s support packages are located at\n', ...
                     className);
                 fprintf('  Path   : %s\n', ProductDirs(pIdx).folder);
             end
-            
+
             % display information about support package
             fprintf('#%d: \n', pIdx);
             fprintf('  Product: %s\n', Product);
@@ -122,9 +122,9 @@ else
                 fprintf('  Error  : %s\n', errMsg);
             end
         end
-        
+
     end
-    
+
     % done
     if nargout == 1
         varargout(1) = {PackageList};

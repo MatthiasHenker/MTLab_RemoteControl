@@ -204,7 +204,7 @@ classdef HandheldDMM < handle
     % further development, support and contact:
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
-    
+
     % ---------------------------------------------------------------------
     % some hints and notes for future extensions when an additional DMM
     % should be supported by this class  ==> how to add another DMM type:
@@ -217,17 +217,17 @@ classdef HandheldDMM < handle
     %
     % add package in folder +HandheldDMM
     % ---------------------------------------------------------------------
-    
+
     properties (Constant = true)
         Version = '2.1.0';
         Date    = '2022-08-10';
     end
-    
+
     properties (SetAccess = private, GetAccess = public)
         SupportedDmmTypes% list of all supported DMMs
         DmmType char ='';% DMM type
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosName       % package name
         MacrosVersion    % package version
@@ -237,80 +237,80 @@ classdef HandheldDMM < handle
         SerialPorts      % struct with port informations
         SupportedPorts   % string array with all supported ports
     end
-    
+
     properties (Constant = true, GetAccess = private)
         % will be internally attached to public property 'SupportedPorts'
         AdditionalPorts = "DEMO";   % later ["DEMO", "USB-HID"] ?
     end
-    
+
     properties
         Port string = "";% selected interface to DMM
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         PortStatus       % 'connected' or 'disconnected'
         BytesAvailable   % number of bytes in input buffer
         ValuesAvailable  % number of meas. values in input buffer
     end
-    
+
     properties(SetAccess = private, GetAccess = public)
         DemoMode logical = false; % true when connected to 'serialportDemo'
     end
-    
+
     properties
         ShowMessages logical = true;% print out more detailed information
     end
-    
+
     properties (SetAccess = private, GetAccess = private)
         MacrosObj        % access to actual device specific macros
         SerialObj        % interface object of class serial (or demo)
         %
         Connected logical = false;
     end
-    
+
     % ---------------------------------------------------------------------
     methods(Static)  % auxiliary
-        
+
         function doc
             % Normally the command 'doc NAME_OF_FUNCTIONOR_CLASS' is used
             % to display the help text.
             %
             % This method opens a help windows using web-command.
-            
+
             narginchk(0, 0);
             if nargin == 0
                 className  = mfilename('class');
             end
-            
+
             web(regexprep(which(className), '.p$', '.m'), ...
                 '-new', '-notoolbar');
         end
-        
+
         varargout = listSupportedPackages(varargin)
-        
+
         varargout = listSerialPorts(varargin)
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods          % main
-        
+
         function obj = HandheldDMM(type, port, showmsg)
             % Constructor for a serial DMM device object
             % for help see 'help HandheldDMM'
-            
+
             % check available support packages for DMMs
             obj.SupportedDmmTypes = obj.listSupportedPackages(false);
             if isempty(obj.SupportedDmmTypes)
                 % it makes no sense to go on further
                 error('No support package for ''HandheldDMM'' found.');
             end
-            
+
             % check input parameters
             %
             % check number of input arguments
             narginchk(0,3);
-            
+
             % check input parameter 'showmsg'
             if nargin < 3 || isempty(showmsg)
                 % use default value ==> nothing to do now
@@ -318,7 +318,7 @@ classdef HandheldDMM < handle
                 % try to set ShowMessages property (includes syntax check)
                 obj.ShowMessages = showmsg;
             end
-            
+
             % check input parameter 'port': is missing or empty
             if nargin < 2 || isempty(port)
                 % use default value ==> nothing to do now
@@ -326,7 +326,7 @@ classdef HandheldDMM < handle
                 % try to set Port property (includes syntax check)
                 obj.Port = port;
             end
-            
+
             % check input parameter 'type'
             if nargin < 1 || isempty(type)
                 % 'type' is missing or empty ==> use default value
@@ -350,7 +350,7 @@ classdef HandheldDMM < handle
             end
             % check is done: set property
             obj.DmmType = type;
-            
+
             % build up path to selected device package directory
             className  = mfilename('class');
             fString = [ ...
@@ -366,7 +366,7 @@ classdef HandheldDMM < handle
                 disp(ME.identifier);
                 error(['No support package accessible for: ' fString]);
             end
-            
+
             % finally optionally print out some messages
             if obj.ShowMessages
                 % search for serial ports at computer system
@@ -377,35 +377,35 @@ classdef HandheldDMM < handle
                 disp(['DMM type                         : ' ...
                     obj.DmmType]);
             end
-            
+
         end
-        
+
         function delete(obj)
             % destructor for a serial DMM device object
-            
+
             % delete(disconnect) serial interface object
             obj.disconnect;
-            
+
             % only run delete when object exists
             if ~isempty(obj.MacrosObj)
                 % delete MacroObj
                 obj.MacrosObj.delete;
             end
-            
+
             % regular deletion of this class object follows now
-            
+
             % print out message
             disp(['Object destructor called for class ' class(obj)]);
         end
-        
+
         function status = connect(obj)
             % method to connect (create) the interface object
             % normally as serial interface, optionally as DEMO mode
             % (or possibly in future as USB-HID)
-            
+
             % init
             status = NaN;
-            
+
             if obj.Connected
                 if obj.ShowMessages
                     disp(['Already connected to ''Port = ' ...
@@ -416,7 +416,7 @@ classdef HandheldDMM < handle
                 status = -1;
                 return
             end
-            
+
             if obj.Port == ""
                 if obj.ShowMessages
                     disp(['Set property ''Port'' to one of these ' ...
@@ -428,7 +428,7 @@ classdef HandheldDMM < handle
                 status = -1;
                 return
             end
-            
+
             if strcmpi(obj.Port, 'DEMO')
                 % demo mode for serialport (small own implementation)
                 obj.SerialObj = serialportDemo();
@@ -464,41 +464,41 @@ classdef HandheldDMM < handle
                 obj.Connected = true;
                 % disable specific warning (e.g. timeout)
                 warning('off', 'serialport:serialport:ReadlineWarning');
-                
+
                 % set DTR and RTS
                 obj.SerialObj.setRTS(false); % RequestToSend     = 'off';
                 obj.SerialObj.setDTR(true);  % DataTerminalReady = 'on';
-                
+
                 % finally clear input buffer and resync
                 if (obj.flush)
                     status = -1;
                 end
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 status = 0;
             else
                 status = -1;
             end
-            
+
         end
-        
+
         function status = disconnect(obj)
             % method to disconnect (delete) the interface object
-            
+
             % init
             status = NaN;
-            
+
             % delete serial object
             delete(obj.SerialObj);
             obj.Connected = false;
             obj.DemoMode  = false;
-            
+
             % enaable specific warnings again
             warning('on', 'serialport:serialport:ReadlineWarning');
-            
+
             % set final status
             if isnan(status)
                 status = 0;
@@ -506,13 +506,13 @@ classdef HandheldDMM < handle
                 status = -1;
             end
         end
-        
+
         function status = flush(obj)
             % method to clear input buffer and resync to data stream
-            
+
             % init output variables
             status = NaN;
-            
+
             if ~obj.Connected
                 if obj.ShowMessages
                     disp('Serial port is not connected. Cannot read data.');
@@ -520,7 +520,7 @@ classdef HandheldDMM < handle
                 status = -1;
                 return
             end
-            
+
             % clear all data from input buffer (old measurement data)
             try
                 obj.SerialObj.flush; % input and output buffer
@@ -529,14 +529,14 @@ classdef HandheldDMM < handle
                 status = -1;
                 return
             end
-            
+
             if isempty(hex2dec(obj.MacrosObj.RequestPacket))
                 % regular case: DMM is sending values periodically
                 % ---------------------------------------------------------
                 % now resync to data stream
-                % good case: first received new data byte is also first 
+                % good case: first received new data byte is also first
                 %            byte of a data packet
-                % bad  case: first received new data byte is not the first 
+                % bad  case: first received new data byte is not the first
                 %            byte of a data packet
                 % but we are not sure to have the good case
                 % Solution:
@@ -599,13 +599,13 @@ classdef HandheldDMM < handle
                     status = -1;
                 end
             end
-            
+
             % now all following data should be complete data packets
             if obj.ShowMessages
                 disp(['Input buffer of serial interface flushed and ' ...
                     'resynced to DMM data stream.']);
             end
-            
+
             % set final status
             if isnan(status)
                 status = 0;
@@ -613,7 +613,7 @@ classdef HandheldDMM < handle
                 status = -1;
             end
         end
-        
+
         function [value, mode, status] = read(obj)
             % fetch data from serial interface and convert data to
             % numerical value (double) as well as mode and status
@@ -624,12 +624,12 @@ classdef HandheldDMM < handle
             %         for 'V' and 'A' a prefix 'DC-' or 'AC-' is added
             % status:  0 when okay
             %         -1 when something went wrong, see display messages
-            
+
             % init output variables
             value  = NaN;
             mode   = '';
             status = NaN;
-            
+
             if ~obj.Connected
                 if obj.ShowMessages
                     disp('Serial port is not connected. Cannot read data.');
@@ -637,18 +637,18 @@ classdef HandheldDMM < handle
                 status = -1;
                 return
             end
-            
+
             % uni-directional connection: just wait for data
             % bi-directional connection : send Request and wait for response
             if ~isempty(hex2dec(obj.MacrosObj.RequestPacket))
                 RQST = uint8(hex2dec(obj.MacrosObj.RequestPacket));
                 obj.SerialObj.write(RQST, 'uint8');
             end
-            
+
             % read one data packet (NumBytes)
             rawData = obj.SerialObj.read(obj.MacrosObj.NumBytes, 'uint8');
             rawData = transpose(double(rawData));
-            
+
             % NumBytes from DMM represent one measurement value
             if length(rawData) ~= obj.MacrosObj.NumBytes
                 % something went wrong: incorrect number of bytes
@@ -667,13 +667,13 @@ classdef HandheldDMM < handle
                 if cvtStat
                     status = -1;
                 end
-                
+
                 if obj.ShowMessages
                     disp(['DMM value: ' num2str(value, '%g') ...
                         ' ''' mode ''', status: ' num2str(cvtStat, '%d')]);
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 status = 0;
@@ -681,32 +681,32 @@ classdef HandheldDMM < handle
                 status = -1;
             end
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods          % get/set methods
-        
+
         function name = get.MacrosName(obj)
             % get method of property (dependent)
             name = obj.MacrosObj.MacrosName;
         end
-        
+
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)
             version = obj.MacrosObj.MacrosVersion;
         end
-        
+
         function date = get.MacrosDate(obj)
             % get method of property (dependent)
             date = obj.MacrosObj.MacrosDate;
         end
-        
+
         function SamplePeriod = get.SamplePeriod(obj)
             % get method of property (dependent)
             SamplePeriod = obj.MacrosObj.SamplePeriod;
         end
-        
+
         function SerialPorts = get.SerialPorts(obj)
             [All, Available, Busy] = obj.listSerialPorts(false);
             % output (as strings)
@@ -714,25 +714,25 @@ classdef HandheldDMM < handle
             SerialPorts.Available = string(Available);
             SerialPorts.Busy      = string(Busy);
         end
-        
+
         function SupportedPorts = get.SupportedPorts(obj)
             allSerialPorts = string(obj.listSerialPorts(false));
             SupportedPorts = [allSerialPorts, obj.AdditionalPorts];
         end
-        
+
         function Port = get.Port(obj)
             % get method of property
-            
+
             % the conversion to string is not really needed here
             % (it is already astring)
             Port = string(obj.Port);
         end
-        
+
         function set.Port(obj, port)
             % set method of property
-            
+
             % without return value (obj = ...) in a handle class
-            
+
             % check input argument
             if obj.Connected           %#ok<MCSUP>
                 if obj.ShowMessages    %#ok<MCSUP>
@@ -742,7 +742,7 @@ classdef HandheldDMM < handle
             elseif ischar(port) || (isstring(port) && isscalar(port))
                 % convert to string with uppercase letters and set property
                 port = string(upper(port));
-                
+
                 % check sensibility
                 if any(port == obj.SupportedPorts) || port == "" %#ok<MCSUP>
                     obj.Port = port;
@@ -755,20 +755,20 @@ classdef HandheldDMM < handle
                     '''Port'' was not set.']);
             end
         end
-        
+
         function ShowMessages = get.ShowMessages(obj)
             % get method of property
-            
+
             % the conversion to logical is not really needed here
             % (it is already an boolean)
             ShowMessages = logical(obj.ShowMessages);
         end
-        
+
         function set.ShowMessages(obj, showMsg)
             % set method of property
-            
+
             % without return value (obj = ...) in a handle class
-            
+
             % check input argument
             if isscalar(showMsg) && ...
                     (islogical(showMsg) || isnumeric(showMsg))
@@ -779,17 +779,17 @@ classdef HandheldDMM < handle
                     '''ShowMessages'' was not changed.']);
             end
         end
-        
+
         function PortStatus = get.PortStatus(obj)
             % get method of property
-            
+
             if obj.Connected
                 PortStatus = 'connected';
             else
                 PortStatus = 'disconnected';
             end
         end
-        
+
         function BytesAvailable = get.BytesAvailable(obj)
             if obj.Connected
                 BytesAvailable = obj.SerialObj.NumBytesAvailable;
@@ -797,7 +797,7 @@ classdef HandheldDMM < handle
                 BytesAvailable = NaN;
             end
         end
-        
+
         function ValuesAvailable = get.ValuesAvailable(obj)
             if obj.Connected
                 ValuesAvailable = floor(obj.SerialObj.NumBytesAvailable ...
@@ -806,7 +806,7 @@ classdef HandheldDMM < handle
                 ValuesAvailable = NaN;
             end
         end
-        
+
     end
-    
+
 end
