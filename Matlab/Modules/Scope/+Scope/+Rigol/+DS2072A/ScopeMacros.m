@@ -4,12 +4,12 @@ classdef ScopeMacros < handle
     %
     % for Scope: Rigol DS2072A series
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
-    
+
     properties(Constant = true)
         MacrosVersion = '1.2.1';      % release version
         MacrosDate    = '2021-04-12'; % release date
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages                      logical
         AutoscaleHorizontalSignalPeriods  double
@@ -18,45 +18,45 @@ classdef ScopeMacros < handle
         TriggerState                      char
         ErrorMessages                     char
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         VisaIFobj         % VisaIF object
     end
-    
+
     % ------- basic methods -----------------------------------------------
     methods
-        
+
         function obj = ScopeMacros(VisaIFobj)
             % constructor
-            
+
             obj.VisaIFobj = VisaIFobj;
         end
-        
+
         function delete(obj)
             % destructor
-            
+
             if obj.ShowMessages
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function status = runAfterOpen(obj)
-            
+
             % init output
             status = NaN;
-            
+
             % add some device specific commands:
             %
             % set language
             if obj.VisaIFobj.write(':SYSTem:LANGuage ENGLish')
                 status = -1;
             end
-            
+
             % enable autoscale (see method autoset)
             if obj.VisaIFobj.write(':SYSTem:AUToscale ON')
                 status = -1;
             end
-            
+
             % selects range of samples for download of wavedata
             % MAXimum: in the run state, read the waveform data displayed
             % on the screen; in the stop state, read the waveform data in
@@ -69,112 +69,112 @@ classdef ScopeMacros < handle
             if obj.VisaIFobj.write(':WAVeform:FORMat BYTE')
                 status = -1;
             end
-            
+
             % disable the antialiasing function of the oscilloscope
             % (default after reset is off)
             if obj.VisaIFobj.write(':ACQuire:AALias OFF')
                 status = -1;
             end
-            
+
             % ...
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
             % ...
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = runBeforeClose(obj)
-            
+
             % init output
             status = NaN;
-            
+
             % add some device specific commands:
             %
             % XXX
             %if obj.VisaIFobj.write('xxx')
             %    status = -1;
             %end
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = reset(obj)
-            
+
             % init output
             status = NaN;
-            
+
             % use standard reset command Factory Default)
             if obj.VisaIFobj.write('*RST')
                 status = -1;
             end
-            
+
             % clear status (event registers and error queue)
             if obj.VisaIFobj.write('*CLS')
                 status = -1;
             end
-            
+
             % selects range of samples for download of wavedata
             if obj.VisaIFobj.write(':WAVeform:MODE MAXimum')
                 status = -1;
             end
-            
+
             % ...
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
     end
-    
+
     % ------- main scope macros -------------------------------------------
     methods
-        
+
         function status = clear(obj)
             % init output
             status = NaN;
-            
+
             % clear status at scope
             if obj.VisaIFobj.write('*CLS')
                 status = -1;
             end
-            
+
             % clear also all the waveforms on the screen
             if obj.VisaIFobj.write(':CLEar')
                 status = -1;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = lock(obj)
             % lock all buttons at scope
-            
+
             %status = obj.VisaIFobj.write('SYSTEM:REMOTE'); % not available
-            status = 0; 
-            
+            status = 0;
+
             if obj.ShowMessages
                 disp(['Scope WARNING - Method ''lock'' is not ' ...
                     'supported for ']);
@@ -184,60 +184,60 @@ classdef ScopeMacros < handle
                     'by remote access']);
             end
         end
-        
+
         function status = unlock(obj)
             % unlock all buttons at scope
-            
+
             %status = obj.VisaIFobj.write('SYSTEM:LOCAL'); % not available
             status = 0;
-            
+
             disp(['Scope WARNING - Method ''unlock'' is not ' ...
                 'supported for ']);
             disp(['      ' obj.VisaIFobj.Vendor '/' ...
                 obj.VisaIFobj.Product ...
                 ' -->  Scope will never be locked ' ...
-                    'by remote access']);
+                'by remote access']);
         end
-        
+
         function status = acqRun(obj)
             % start data acquisitions at scope
-            
+
             status = obj.VisaIFobj.write(':RUN');
         end
-        
+
         function status = acqStop(obj)
             % stop data acquisitions at scope
-            
+
             status = obj.VisaIFobj.write(':STOP');
         end
-        
+
         function status = autoset(obj)
             % performs an autoset process for analog channels: analyzes the
             % enabled analog channel signals, and adjusts the horizontal,
             % vertical, and trigger settings to display stable waveforms
-            
+
             % init output
             status = NaN;
-            
+
             % actual autoset command
             if obj.VisaIFobj.write(':AUToscale')
                 status = -1;
             end
             % wait for operation complete
             obj.VisaIFobj.opc;
-            
+
             % has a valid signal been detected?
             % ==> no option for validation
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         % -----------------------------------------------------------------
-        
+
         function status = configureInput(obj, varargin)
             % configureInput  : configure input of specified channels
             % examples (for valid options see code below)
@@ -252,10 +252,10 @@ classdef ScopeMacros < handle
             %   'invert'      : on/off
             %   'skew'        : real
             %   'unit'        : 'V' or 'A'
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels       = {};
             trace          = '';
@@ -268,7 +268,7 @@ classdef ScopeMacros < handle
             invert         = '';
             skew           = '';
             unit           = '';
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -449,20 +449,20 @@ classdef ScopeMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             if isempty(channels)
                 disp(['Scope: Warning - ''configureInput'' no channels ' ...
                     'are specified. --> skip and continue']);
             end
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 channel = channels{cnt};
-                
+
                 % 'impedance'
                 if ~isempty(impedance)
                     % set parameter
@@ -477,7 +477,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'coupling'         : 'DC', 'AC', 'GND'
                 if ~isempty(coupling)
                     % set parameter
@@ -490,7 +490,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'inputDiv', 'probe': .. 1, 10, 20, 50, 100, ..
                 if ~isempty(inputDiv)
                     % set parameter
@@ -503,7 +503,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'unit'             : 'V' or 'A'
                 if ~isempty(unit)
                     % set parameter
@@ -516,7 +516,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'bwLimit'          : 'off', 'on'
                 if ~isempty(bwLimit)
                     % set parameter
@@ -531,7 +531,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'invert'           : 'off', 'on'
                 if ~isempty(invert)
                     % set parameter
@@ -546,7 +546,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'skew'           : (-200e-9 ... 200e-9 = +/- 200ns)
                 if ~isempty(skew)
                     % format (round) numeric value
@@ -565,7 +565,7 @@ classdef ScopeMacros < handle
                             'Check limits.']);
                     end
                 end
-                
+
                 % 'trace'          : 'off', 'on'
                 if ~isempty(trace)
                     % set parameter
@@ -580,7 +580,7 @@ classdef ScopeMacros < handle
                         status = -1;
                     end
                 end
-                
+
                 % 'vDiv'           : positive double in V/div
                 if ~isempty(vDiv)
                     % format (round) numeric value
@@ -604,7 +604,7 @@ classdef ScopeMacros < handle
                         ':SCALe?']);
                     vDivActual = str2double(char(response));
                 end
-                
+
                 % 'vOffset'        : positive double in V
                 if ~isempty(vOffset)
                     % format (round) numeric value
@@ -624,14 +624,14 @@ classdef ScopeMacros < handle
                     end
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = configureAcquisition(obj, varargin)
             % configureAcquisition : configure acquisition parameters
             %   'tDiv'        : real > 0
@@ -639,17 +639,17 @@ classdef ScopeMacros < handle
             %   'maxLength'   : integer > 0
             %   'mode'        : 'sample', 'peakdetect', average ...
             %   'numAverage'  : integer > 0
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             tDiv        = [];
             %sampleRate  = [];
             maxLength   = [];
             mode        = '';
             numAverage  = [];
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -762,11 +762,11 @@ classdef ScopeMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % tDiv        : numeric value in s
             %               [5e-9 ... 1e3]
             if ~isempty(tDiv)
@@ -784,10 +784,10 @@ classdef ScopeMacros < handle
                         'Check limits. ']);
                 end
             end
-            
+
             % maxLength : 0 for AUTO
             %             7k, 70k, 700k, 7M for dual channel
-            %             value*2           for single channel 
+            %             value*2           for single channel
             if ~isempty(maxLength)
                 % check if dual or single channel
                 response = obj.VisaIFobj.query(':CHANnel1:DISPlay?');
@@ -801,7 +801,7 @@ classdef ScopeMacros < handle
                         'unexpected response. --> exit and continue']);
                     return;
                 end
-                
+
                 % set parameter
                 if maxLength == 0
                     obj.VisaIFobj.write(':ACQuire:MDEPth AUTO');
@@ -813,7 +813,7 @@ classdef ScopeMacros < handle
                 % ==> actual acquisition length is reported which can be
                 % smaller
             end
-            
+
             % mode     : 'sample', 'peakdetect', 'average'
             %            and additionally also 'highres'
             if ~isempty(mode)
@@ -827,7 +827,7 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % numAverage  : 2 .. 8192
             if ~isempty(numAverage)
                 % set parameter
@@ -842,14 +842,14 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = configureTrigger(obj, varargin)
             % configureTrigger : configure trigger parameters
             %   'mode'        : 'single', 'normal', 'auto'
@@ -858,10 +858,10 @@ classdef ScopeMacros < handle
             %   'coupling'    : 'AC', 'DC', 'LFReject', 'HFRreject', 'NoiseReject'
             %   'level'       : real
             %   'delay'       : real
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             mode      = '';
             type      = '';
@@ -869,7 +869,7 @@ classdef ScopeMacros < handle
             coupling  = '';
             level     = [];
             delay     = [];
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -970,11 +970,11 @@ classdef ScopeMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % mode     : 'single', 'normal', 'auto'
             if ~isempty(mode)
                 % set parameter
@@ -987,7 +987,7 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % source   : 'CHAN1..2', 'EXT', 'ACL'
             if ~isempty(source)
                 obj.VisaIFobj.write(':TRIGger:MODE EDGE');
@@ -1001,7 +1001,7 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % type      : rising or falling edge
             if ~isempty(type)
                 obj.VisaIFobj.write(':TRIGger:MODE EDGE');
@@ -1015,7 +1015,7 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % coupling
             if ~isempty(coupling)
                 obj.VisaIFobj.write(':TRIGger:MODE EDGE');
@@ -1047,11 +1047,11 @@ classdef ScopeMacros < handle
                         obj.VisaIFobj.write(':TRIGger:NREJect 1');
                     otherwise
                         disp(['Scope: Error - ''configureTrigger'' ' ...
-                        'invalid state ==> ignore and continue.']);
-                    status = -1;
+                            'invalid state ==> ignore and continue.']);
+                        status = -1;
                 end
             end
-            
+
             % level    : double, in V; NaN for set level to 50%
             if isnan(level)
                 % set trigger level to 50% of input signal
@@ -1074,7 +1074,7 @@ classdef ScopeMacros < handle
                         'Check limits.']);
                 end
             end
-            
+
             % delay    : double, in s
             if ~isempty(delay)
                 % format (round) numeric value
@@ -1092,19 +1092,19 @@ classdef ScopeMacros < handle
                         'Check limits.']);
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = configureZoom(obj, varargin)
             % configureZoom   : configure zoom window
-            
+
             status = 0;
-            
+
             if obj.ShowMessages
                 disp(['Scope WARNING - Method ''configureZoom'' is ' ...
                     'not supported for ']);
@@ -1113,21 +1113,21 @@ classdef ScopeMacros < handle
                     ' -->  Zoom can only be configured manually']);
             end
         end
-        
+
         function status = autoscale(obj, varargin)
             % autoscale       : adjust vertical and/or horizontal scaling
             %                   vDiv, vOffset for vertical and
             %                   tDiv for horizontal
             %   'mode'        : 'hor', 'vert', 'both'
             %   'channel'     : 1 .. 2
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             mode      = '';
             channels  = {};
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -1178,7 +1178,7 @@ classdef ScopeMacros < handle
                         end
                 end
             end
-            
+
             % two config parameters:
             % how many signal periods should be visible in waveform?
             % sensible range 2 .. 50 (large values result in slow sweeps
@@ -1191,11 +1191,11 @@ classdef ScopeMacros < handle
             % 1.00 means full display-range (-4 ..+4) vDiv
             % sensible range 0.3 .. 0.9
             verticalScalingFactor = obj.AutoscaleVerticalScalingFactor;
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % define default when channel parameter is missing
             if isempty(channels)
                 channels = {'1', '2'};
@@ -1203,7 +1203,7 @@ classdef ScopeMacros < handle
                     disp('  - channel      : 1, 2 (coerced)');
                 end
             end
-            
+
             % vertical scaling: adjust vDiv, vOffset
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
                 for cnt = 1:length(channels)
@@ -1224,7 +1224,7 @@ classdef ScopeMacros < handle
                         while loopcnt < maxcnt
                             % time for settlement
                             pause(0.4);
-                            
+
                             % measure min and max voltage
                             result = obj.runMeasurement( ...
                                 'channel', channels{cnt}, ...
@@ -1234,11 +1234,11 @@ classdef ScopeMacros < handle
                                 'channel', channels{cnt}, ...
                                 'parameter', 'maximum');
                             vMax   = result.value;
-                            
+
                             % ADC is clipped?
                             adcMax = isnan(vMax);
                             adcMin = isnan(vMin);
-                            
+
                             % estimate voltage scaling (gain)
                             % 8 vertical divs at display
                             vDiv = (vMax - vMin) / 8;
@@ -1252,7 +1252,7 @@ classdef ScopeMacros < handle
                                     break;
                                 end
                             end
-                            
+
                             % estimate voltage offset
                             vOffset = (vMax + vMin)/2;
                             if isnan(vOffset)
@@ -1265,7 +1265,7 @@ classdef ScopeMacros < handle
                                     break;
                                 end
                             end
-                            
+
                             if adcMax && adcMin
                                 % pos. and neg. clipping: scale down
                                 vDiv    = vDiv / 0.34;
@@ -1281,23 +1281,23 @@ classdef ScopeMacros < handle
                                 % adjust gently
                                 vDiv    = vDiv / verticalScalingFactor;
                             end
-                            
+
                             % send new vDiv, vOffset parameters to scope
                             statConf = obj.configureInput(...
                                 'channel' , channels{cnt}, ...
                                 'vDiv'    , num2str(vDiv   , '%1.1e'),  ...
                                 'vOffset' , num2str(vOffset, '%1.1e'));
-                            
+
                             if statConf
                                 status = -8;
                             end
-                            
+
                             % wait for completion
                             obj.VisaIFobj.opc;
-                            
+
                             % update loop counter
                             loopcnt = loopcnt + 1;
-                            
+
                             if ~adcMax && ~adcMin && loopcnt ~= maxcnt
                                 % shorten loop when no clipping ==> do a
                                 % final loop run to ensure proper scaling
@@ -1307,7 +1307,7 @@ classdef ScopeMacros < handle
                     end
                 end
             end
-            
+
             % horizontal scaling: adjust tDiv
             if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
                 % which channel is used for trigger
@@ -1323,12 +1323,12 @@ classdef ScopeMacros < handle
                             'channel', trigSrc(end), ...
                             'parameter', 'frequency');
                         freq   = result.value;
-                        
+
                         if ~isnan(freq)
                             % adjust tDiv parameter
                             % calculate sensible tDiv parameter (14*tDiv@screen)
                             tDiv = numOfSignalPeriods / (14*freq);
-                            
+
                             % now send new tDiv parameter to scope
                             %obj.VisaIFobj.configureAcquisition('tDiv', tDiv);
                             statConf = obj.configureAcquisition( ...
@@ -1336,7 +1336,7 @@ classdef ScopeMacros < handle
                             if statConf
                                 status = -10;
                             end
-                            
+
                             % wait for completion
                             obj.VisaIFobj.opc;
                         else
@@ -1344,21 +1344,21 @@ classdef ScopeMacros < handle
                                 'invalid frequency measurement results. ' ...
                                 'Skip horizontal scaling.']);
                         end
-                        
+
                     otherwise
                         disp(['Scope: Warning - ''autoscale'': ' ...
                             'invalid trigger channel. ' ...
                             'Skip horizontal scaling.']);
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = makeScreenShot(obj, varargin)
             % make a screenshot of scope display (BMP-file)
             %   'fileName' : file name with optional extension
@@ -1366,10 +1366,10 @@ classdef ScopeMacros < handle
             %   'darkMode' : on/off, dark or white background color
             %                optional, default is 'off', 0, false,
             %                unsupported parameter
-            
+
             % init output
             status = NaN;
-            
+
             % configuration and default values
             listOfSupportedFormats = {'.bmp'};
             filename = './Rigol_Scope_DS2072A.bmp';
@@ -1394,7 +1394,7 @@ classdef ScopeMacros < handle
                             paramName ''' is unknown --> ignore']);
                 end
             end
-            
+
             % check if file extension is supported
             [~, fname, fext] = fileparts(filename);
             if isempty(fname)
@@ -1425,14 +1425,14 @@ classdef ScopeMacros < handle
                     return
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % request actual binary screen shot data
             bitMapData = obj.VisaIFobj.query(':DISPlay:DATA?');
-            
+
             % check data header
             headerChar = char(bitMapData(1));
             if ~strcmpi(headerChar, '#') || length(bitMapData) < 20
@@ -1446,7 +1446,7 @@ classdef ScopeMacros < handle
                 else
                     bitMapSize = str2double(char(bitMapData(3:HeaderLen+2)));
                 end
-                
+
                 if bitMapSize > 0
                     bitMapData = bitMapData(HeaderLen+3:end);
                     if length(bitMapData) ~= bitMapSize
@@ -1460,25 +1460,25 @@ classdef ScopeMacros < handle
                     status = -1;
                 end
             end
-            
+
             % save data to file
             fid = fopen(filename, 'wb+');  % open as binary
             fwrite(fid, bitMapData, 'uint8');
             fclose(fid);
-            
+
             % wait for operation complete
             [~, status_query] = obj.VisaIFobj.opc;
             if status_query
                 status = -1;
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function meas = runMeasurement(obj, varargin)
             % runMeasurement  : request measurement value
             %   'channel'
@@ -1488,19 +1488,19 @@ classdef ScopeMacros < handle
             % meas.unit      : corresponding unit         (char)
             % meas.channel   : specified channel(s)       (char)
             % meas.parameter : specified parameter        (char)
-            
+
             % init output
             meas.status    = NaN;
             meas.value     = NaN;
             meas.unit      = '';
             meas.channel   = '';
             meas.parameter = '';
-            
+
             % default values
             channels  = {};
             parameter = '';
             unit      = '';
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -1596,7 +1596,7 @@ classdef ScopeMacros < handle
                             paramName ''' is unknown --> ignore']);
                 end
             end
-            
+
             % check inputs (parameter)
             switch lower(parameter)
                 case ''
@@ -1648,18 +1648,18 @@ classdef ScopeMacros < handle
                         source    = ['CHAN' channels{1}];
                     end
             end
-            
+
             % copy to output
             meas.parameter = lower(parameter);
             meas.channel   = strjoin(channels, ', ');
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % additional settling time
             pause(0.2);
-            
+
             % request measurement value
             value = obj.VisaIFobj.query([':MEASure:' parameter '? ' source]);
             value = str2double(char(value));
@@ -1669,7 +1669,7 @@ classdef ScopeMacros < handle
                 meas.status = 1;      % warning (positive status)
                 value = NaN;          % invalid measurement
             end
-            
+
             % copy to output
             if strcmpi(unit, '%')
                 meas.value = 100* value;
@@ -1677,14 +1677,14 @@ classdef ScopeMacros < handle
                 meas.value = value;
             end
             meas.unit  = unit;
-            
+
             % set final status
             if isnan(meas.status)
                 % no error so far ==> set to 0 (fine)
                 meas.status = 0;
             end
         end
-        
+
         function waveData = captureWaveForm(obj, varargin)
             % captureWaveForm: download waveform data
             %   'channel' : one or more channels
@@ -1693,13 +1693,13 @@ classdef ScopeMacros < handle
             %   waveData.volt       : waveform data in Volt
             %   waveData.time       : corresponding time vector in s
             %   waveData.samplerate : sample rate in Sa/s (Hz)
-            
+
             % init output
             waveData.status     = NaN;
             waveData.volt       = [];
             waveData.time       = [];
             waveData.samplerate = [];
-            
+
             % configuration and default values
             channels = {''};
             for idx = 1:2:length(varargin)
@@ -1735,7 +1735,7 @@ classdef ScopeMacros < handle
                             'parameter ''' paramName ''' will be ignored']);
                 end
             end
-            
+
             % define default when channel parameter is missing
             if isempty(channels)
                 channels = {'CHANnel1', 'CHANnel2'};
@@ -1743,17 +1743,17 @@ classdef ScopeMacros < handle
                     disp('  - channel      : 1, 2 (coerced)');
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1 : length(channels)
                 channel = channels{cnt};
                 % select channel
                 obj.VisaIFobj.write([':WAVeform:SOURce ' channel]);
-                
+
                 % ---------------------------------------------------------
                 % read data header
                 header = obj.VisaIFobj.query(':WAVeform:PREamble?');
@@ -1785,19 +1785,19 @@ classdef ScopeMacros < handle
                     waveData.status = -10;
                     return; % exit
                 end
-                
+
                 % ---------------------------------------------------------
                 % always download waveform data ==> will be all zero when
                 % channel is not active (we don't care)
                 %
                 % resolution of data is always 8-bit (Byte)
-                
+
                 % ---------------------------------------------------------
                 % check all meta information and initialize output values
                 if ~isnan(xlength) && ...
                         ~isnan(xinc) && ~isnan(xorigin) && ~isnan(xref) && ...
                         ~isnan(yinc) && ~isnan(yorigin) && ~isnan(yref)
-                    
+
                     % set sample time (identical for all channels)
                     waveData.time = xref + xorigin + xinc*(0 : xlength-1);
                     % sample rate
@@ -1815,7 +1815,7 @@ classdef ScopeMacros < handle
                     waveData.status = -15;
                     return; % exit
                 end
-                
+
                 % ---------------------------------------------------------
                 % actual download of waveform data
                 %
@@ -1823,15 +1823,15 @@ classdef ScopeMacros < handle
                 % samples (when format is BYTE)
                 xstart = 1;
                 xstop  = min(xstart + 250e3 - 1, xlength);
-                
-                
+
+
                 while xstop <= xlength && xstart < xstop
                     % set addresses for data block to be read
                     obj.VisaIFobj.write([':WAVeform:STARt ' ...
                         num2str(xstart, '%d')]);
                     obj.VisaIFobj.write([':WAVeform:STOP ' ...
                         num2str(xstop, '%d')]);
-                    
+
                     % read data block
                     data = obj.VisaIFobj.query(':WAVeform:DATA?');
                     % check and extract header: e.g. #41000binarydata with
@@ -1861,7 +1861,7 @@ classdef ScopeMacros < handle
                     data = data(2 + headlen + (1:datalen));
                     % convert data
                     data = double(data);
-                    
+
                     % check and reformat
                     if length(data) ~= xstop - xstart + 1
                         % logical error or data error
@@ -1871,29 +1871,29 @@ classdef ScopeMacros < handle
                     % convert byte values to sample values in V
                     waveData.volt(cnt, xstart : xstop) = ...
                         (data - yref - yorigin) * yinc;
-                    
+
                     % updates addresses for next loop run
                     xstart = xstop + 1;
                     xstop  = min(xstart + 250e3 - 1, xlength);
                 end
-                
+
             end
-            
+
             % set final status
             if isnan(waveData.status)
                 % no error so far ==> set to 0 (fine)
                 waveData.status = 0;
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual scope methods: get methods (dependent)
         % -----------------------------------------------------------------
-        
+
         function acqState = get.AcquisitionState(obj)
             % get acquisition state
             % 'running' or 'stopped',   '' when invalid/unknown response
-            
+
             % there is only one command for trigger and acquisition state
             [acqState, status] = obj.VisaIFobj.query(':TRIGger:STATus?');
             %
@@ -1913,11 +1913,11 @@ classdef ScopeMacros < handle
                 end
             end
         end
-        
+
         function trigState = get.TriggerState(obj)
             % get trigger state
             % 'waitfortrigger' or 'triggered', '' when unknown response
-            
+
             % there is only one command for trigger and acquisition state
             [trigState, status] = obj.VisaIFobj.query(':TRIGger:STATus?');
             %
@@ -1937,16 +1937,16 @@ classdef ScopeMacros < handle
                 end
             end
         end
-        
+
         function errMsg = get.ErrorMessages(obj)
             % read error list from the scope’s error buffer
-            
+
             % config
             maxErrCnt = 16;  % size of error stack
             errCell   = cell(1, maxErrCnt);
             cnt       = 0;
             done      = false;
-            
+
             % read error from buffer until done
             while ~done && cnt < maxErrCnt
                 cnt = cnt + 1;
@@ -1960,10 +1960,10 @@ classdef ScopeMacros < handle
                     errCell{cnt} = errMsg;
                 end
             end
-            
+
             % remove empty cell elements
             errCell = errCell(~cellfun(@isempty, errCell));
-            
+
             % optionally display results
             if obj.ShowMessages
                 if ~isempty(errCell)
@@ -1976,19 +1976,19 @@ classdef ScopeMacros < handle
                     disp('Scope error list is empty');
                 end
             end
-            
+
             % copy result to output
             errMsg = strjoin(errCell, '; ');
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
-            
+
             switch lower(obj.VisaIFobj.ShowMessages)
                 case 'none'
                     showmsg = false;
@@ -1998,17 +1998,17 @@ classdef ScopeMacros < handle
                     disp('ScopeMacros: invalid state in get.ShowMessages');
             end
         end
-        
+
         function period = get.AutoscaleHorizontalSignalPeriods(obj)
-            
+
             period = obj.VisaIFobj.AutoscaleHorizontalSignalPeriods;
         end
-        
+
         function factor = get.AutoscaleVerticalScalingFactor(obj)
-            
+
             factor = obj.VisaIFobj.AutoscaleVerticalScalingFactor;
         end
-        
+
     end
-    
+
 end

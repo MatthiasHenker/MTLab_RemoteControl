@@ -45,7 +45,7 @@ cfgTable.Type       = setcats(cfgTable.Type, ...
 
 % -------------------------------------------------------------------------
 % check 'RsrcName'
-%   join list of rules: group by () and join by | (or) 
+%   join list of rules: group by () and join by | (or)
 SupportedRsrcNames = ['(' strjoin(VisaIF.SupportedRsrcNames, '|')  ')'];
 
 %   check resource names by rules

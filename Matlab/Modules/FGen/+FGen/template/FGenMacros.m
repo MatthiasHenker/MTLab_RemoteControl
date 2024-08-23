@@ -2,43 +2,43 @@ classdef FGenMacros < handle
     % template for: generator macros for DEVICE XYZ
     %
     % add device specific documentation (when sensible)
-       
+
     properties(Constant = true)
         MacrosVersion = '0.0.0';      % release version
         MacrosDate    = '2020-08-05'; % release date
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages                      logical
         ErrorMessages                     char
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         VisaIFobj         % VisaIF object
     end
-    
+
     % ------- basic methods -----------------------------------------------
     methods
-        
+
         function obj = FGenMacros(VisaIFobj)
             % constructor
-            
+
             obj.VisaIFobj = VisaIFobj;
         end
-        
+
         function delete(obj)
             % destructor
-            
+
             if obj.ShowMessages
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function status = runAfterOpen(obj)
-            
+
             % init output
             status = NaN;
-            
+
             disp('ToDo ...');
             % add some device specific commands:
             % XXX
@@ -50,42 +50,42 @@ classdef FGenMacros < handle
             %    status = -1;
             %end
             % ...
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
             % ...
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = runBeforeClose(obj)
-            
+
             % init output
             status = NaN;
-            
+
             disp('ToDo ...');
             % add some device specific commands:
             % XXX
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
             %end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = reset(obj)
-            
+
             % init output
             status = NaN;
-            
+
             % add device specific commands
             %
             % reset
@@ -96,7 +96,7 @@ classdef FGenMacros < handle
             if obj.VisaIFobj.write('*CLS')
                 status = -1;
             end
-            
+
             disp('ToDo ...');
             % XXX
             %if obj.VisaIFobj.write('XXX')
@@ -106,43 +106,43 @@ classdef FGenMacros < handle
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
             %end
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
     end
-    
+
     % ------- main FGen macros -------------------------------------------
     methods
-        
+
         function status = clear(obj)
             % clear status at generator
             status = obj.VisaIFobj.write('*CLS');
         end
-                 
+
         function status = lock(obj)
             % lock all buttons at generator
-            
+
             disp('ToDo ...');
             status = 0;
         end
-        
+
         function status = unlock(obj)
             % unlock all buttons at generator
-            
+
             disp('ToDo ...');
             status = 0;
         end
-        
+
         % -----------------------------------------------------------------
-        
+
         function status = configureOutput(obj, varargin)
             % configureOutput : configure output of specified channels
             %   'channel'     : '1' '1, 2'
@@ -159,10 +159,10 @@ classdef FGenMacros < handle
             %   'bandwidth'   : real
             %   'outputimp'   : real
             %   'samplerate'  : real
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels   = {};
             waveform   = '';
@@ -178,7 +178,7 @@ classdef FGenMacros < handle
             bandwidth  = '';
             outputimp  = '';
             samplerate = '';
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -331,115 +331,115 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % when >1 channel only
-                
+
                 % --- set waveform ----------------------------------------
                 if ~isempty(waveform)
-                    
+
                     disp('ToDo ... (waveform)');
-                    
+
                 end
-                
+
                 % --- set outputimp ---------------------------------------
                 if ~isempty(outputimp)
-                    
+
                     disp('ToDo ... (outputimp)');
-                    
+
                 end
-                
+
                 % --- set stdev -------------------------------------------
                 if ~isempty(stdev)
-                    
+
                     disp('ToDo ... (stdev)');
-                    
+
                 end
-                
+
                 % --- set unit and amplitude ------------------------------
                 if ~isempty(unit)
-                    
+
                     disp('ToDo ... (unit)');
-                    
+
                 end
-                
+
                 if ~isempty(amplitude) && isnan(status)
-                    
+
                     disp('ToDo ... (amplitude)');
-                    
+
                 end
-                
+
                 % --- set offset ------------------------------------------
                 if ~isempty(offset)
-                    
+
                     disp('ToDo ... (offset)');
-                    
+
                 end
-                
+
                 % --- set samplerate --------------------------------------
                 if ~isempty(samplerate)
-                    
+
                     disp('ToDo ... (samplerate)');
-                    
+
                 end
-                
+
                 % --- set frequency ---------------------------------------
                 if ~isempty(frequency)
-                   
+
                     disp('ToDo ... (frequency)');
-                    
+
                 end
-                
+
                 % --- set phase -------------------------------------------
                 if ~isempty(phase)
-                    
+
                     disp('ToDo ... (phase)');
-                    
+
                 end
-                
+
                 % --- set dutycycle ---------------------------------------
                 if ~isempty(dutycycle)
-                    
+
                     disp('ToDo ... (dutycycle)');
-                    
+
                 end
-                
+
                 % --- set symmetry ----------------------------------------
                 if ~isempty(symmetry)
-                    
+
                     disp('ToDo ... (symmetry)');
-                    
+
                 end
-                
+
                 % --- set bandwidth ---------------------------------------
                 if ~isempty(bandwidth)
-                    
+
                     disp('ToDo ... (bandwidth)');
-                    
+
                 end
-                
+
                 % --- set transition --------------------------------------
                 if ~isempty(transition)
-                    
+
                     disp('ToDo ... (transition)');
-                    
+
                 end
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
@@ -450,12 +450,12 @@ classdef FGenMacros < handle
             %   'wavename' : 'xyz' (char)
             %   'wavedata' : vector of real (range -1 ... +1)
             %   (for future use???)   'filename' : 'xyz' (char)
-            
+
             % init outputs
             status  = NaN;
             % either list of wavenames (list) or wavedata (download)
             waveout = '';
-            
+
             % initialize all supported parameters
             channels    = {};
             mode        = '';
@@ -463,9 +463,9 @@ classdef FGenMacros < handle
             wavename    = '';
             wavedata    = [];
             %filename    = '';
-            
+
             override    = false;  % default submode @ upload
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -547,13 +547,13 @@ classdef FGenMacros < handle
                         end
                     case 'wavename'
                         if ~isempty(paramValue)
-                            
-                            
-                            
+
+
+
                             wavename = paramValue;
-                            
-                            
-                            
+
+
+
                         end
                     case 'wavedata'
                         if ~isempty(paramValue)
@@ -564,11 +564,11 @@ classdef FGenMacros < handle
                             end
                             wavedata = real(wavedata);
                         end
-                    %case 'filename'
-                    %    if ~isempty(paramValue)
-                    %        % no further tests needed
-                    %        filename = paramValue;
-                    %    end
+                        %case 'filename'
+                        %    if ~isempty(paramValue)
+                        %        % no further tests needed
+                        %        filename = paramValue;
+                        %    end
                     otherwise
                         if ~isempty(paramValue)
                             disp(['  WARNING - parameter ''' ...
@@ -576,63 +576,63 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % download wavedata data from FGen
             if strcmp(mode, 'download')
-                
+
                 disp('ToDo ... (download)');
                 waveout = [];
-                
+
             end
-            
+
             % upload wavedata data to FGen
             if strcmp(mode, 'upload') && ~isempty(wavedata)
-                
+
                 disp('ToDo ... (upload)');
-                
+
             end
-            
+
             if strcmp(mode, 'list')
-                
+
                 disp('ToDo ... (list)');
                 waveout = '';
-                
+
             end
-            
+
             if strcmp(mode, 'delete')
-                
+
                 disp('ToDo ... (delete)');
-                
+
             end
-            
+
             if strcmp(mode, 'select')
-                
+
                 disp('ToDo ... (select)');
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         function status = enableOutput(obj, varargin)
             % enableOutput  : enable output of specified channels
             %   'channel'   : '1' '1, 2'
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels = {};
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -673,36 +673,36 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % when >1 channel only
-                
+
                 disp('ToDo ... (enableOutput)');
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = disableOutput(obj, varargin)
             % disableOutput : disable output of specified channels
             %   'channel'   : '1' '1, 2'
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels = {};
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -743,57 +743,57 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % when >1 channel only
-                
+
                 disp('ToDo ... (disableOutput)');
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual generator methods: get methods (dependent)
         % -----------------------------------------------------------------
-        
+
         function errMsg = get.ErrorMessages(obj)
             % read error list from the generator’s error buffer
-            
+
             % config
             maxErrCnt = 20;  % size of error stack at 33220A
             errCell   = cell(1, maxErrCnt);
             cnt       = 0;
             done      = false;
-            
+
             % read error from buffer until done
             while ~done && cnt < maxErrCnt
                 cnt = cnt + 1;
-                
-                
+
+
                 disp('ToDo ...');
                 errMsg = '<undefined>';
-                
+
                 errCell{cnt} = errMsg;
-                
+
                 done = true;
-                
-                
+
+
             end
-            
+
             % remove empty cell elements
             errCell = errCell(~cellfun(@isempty, errCell));
-            
+
             % optionally display results
             if obj.ShowMessages
                 if ~isempty(errCell)
@@ -806,19 +806,19 @@ classdef FGenMacros < handle
                     disp('FGen error list is empty');
                 end
             end
-            
+
             % copy result to output
             errMsg = strjoin(errCell, '; ');
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
-            
+
             switch lower(obj.VisaIFobj.ShowMessages)
                 case 'none'
                     showmsg = false;
@@ -828,7 +828,7 @@ classdef FGenMacros < handle
                     disp('FGenMacros: invalid state in get.ShowMessages');
             end
         end
-        
+
     end
-    
+
 end

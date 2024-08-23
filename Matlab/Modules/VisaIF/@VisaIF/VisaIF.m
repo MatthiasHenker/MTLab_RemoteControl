@@ -507,8 +507,8 @@ classdef VisaIF < handle
                     %rethrow(ME);
                     %throw(ME);
                     error(['Constructor method of class ''' class(obj) ...
-                            ''' for resource ''' selectedDevice.RsrcName ...
-                            ''' failed.']);
+                        ''' for resource ''' selectedDevice.RsrcName ...
+                        ''' failed.']);
                 end
             else
                 % object for demo devic only (no real external device)
@@ -711,7 +711,7 @@ classdef VisaIF < handle
 
         function status = write(obj, VisaCommand)
             % to write a Visa command to device
-            % 
+            %
             % data is always send as binary data to device (always fine)
 
             % init output
@@ -754,7 +754,7 @@ classdef VisaIF < handle
         function [VisaResponse, status] = read(obj)
             % to read a Visa command from device
             %
-            % data is always read as binary data from device (always fine, 
+            % data is always read as binary data from device (always fine,
             % but read can always be terminated by timeout warning only)
             % use only when really binary data should be downloaded
 

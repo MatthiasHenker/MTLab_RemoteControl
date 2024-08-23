@@ -1,9 +1,9 @@
 function varargout = listSupportedPackages(className)
 % displays information about available support packages for a specific sub
-% class (input parameter classname, e.g. 'Scope' out of 
+% class (input parameter classname, e.g. 'Scope' out of
 % VisaIF.SupportedInstrumentClasses)
 %
-% no outputs defined yet 
+% no outputs defined yet
 %   - all information are displayed in command window only
 %   - extend later when needed
 
@@ -48,7 +48,7 @@ else
     % remove all dirs not starting with '+'
     VendorDirs = VendorDirs(~cellfun(@isempty, ...
         regexp({VendorDirs.name}, '^\+\w+$')));
-    
+
     % check each Vendor dir
     for vIdx = 1 : length(VendorDirs)
         % get a list of all files and folders in this folder.
@@ -60,19 +60,19 @@ else
         % remove all dirs not starting with '+'
         ProductDirs = ProductDirs(~cellfun(@isempty, ...
             regexp({ProductDirs.name}, '^\+\w+$')));
-        
+
         % check each Product dir
         for pIdx = 1 : length(ProductDirs)
             % full path and name of macros class file (m- or p-file)
             macroFile = fullfile(ProductDirs(pIdx).folder, ...
                 ProductDirs(pIdx).name, [className 'Macros']);
-            
+
             % check if a macro class file is available
             if exist([macroFile '.m'], 'file') || exist([macroFile '.p'], 'file')
                 % get vendor and product name (without leading '+')
                 Vendor  = regexprep(VendorDirs(vIdx).name, '^\+', '');
                 Product = regexprep(ProductDirs(pIdx).name, '^\+', '');
-                
+
                 % build up path to selected device package directory
                 fString = [ className '.' Vendor '.' Product '.' ...
                     className 'Macros'];
@@ -84,7 +84,7 @@ else
                     MacrosVersion = '';
                     MacrosDate    = '';
                 end
-                
+
                 if ~isempty(MacrosVersion) && ~isempty(MacrosDate)
                     if cnt == 0
                         fprintf('%s support packages were found at\n', ...
@@ -93,7 +93,7 @@ else
                     end
                     % success
                     cnt = cnt + 1;
-                    
+
                     % display information about support package
                     fprintf('#%d: \n', cnt);
                     fprintf('  Vendor : %s\n', Vendor);
@@ -104,7 +104,7 @@ else
             end
         end
     end
-    
+
 end
 
 end

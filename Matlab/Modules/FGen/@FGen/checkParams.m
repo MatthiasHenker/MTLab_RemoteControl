@@ -42,7 +42,7 @@ end
 
 % -------------------------------------------------------------------------
 % initialize all parameter values (empty)
-channel      = '';   % configureOutput, arbWaveform, enableOutput, 
+channel      = '';   % configureOutput, arbWaveform, enableOutput,
 %                      disableOutput
 waveform     = '';   % configureOutput
 amplitude    = '';   % configureOutput
@@ -87,7 +87,7 @@ for nArgsIn = 2:2:length(inVars)
         elseif islogical(paramValue)
             paramValue = regexprep(num2str(paramValue), '\s+', ', ');
         elseif isa(paramValue, 'double')
-            % introduce an exception for wavedata to avoid time consuming 
+            % introduce an exception for wavedata to avoid time consuming
             % conversions of waveform data vectors from double to char
             if strcmpi(paramName, 'wavedata')
                 % ATTENTION: paramValue is still of type double now
@@ -248,7 +248,7 @@ switch command
             'submode'   , submode    , ...
             'wavename'  , wavename   , ...
             'wavedata'  , wavedata   }; %, ...
-            %'filename'  , filename   };
+        %'filename'  , filename   };
     case 'enableOutput'
         outVars = {                    ...
             'channel'   , channel    };
@@ -258,7 +258,7 @@ switch command
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
-            'channel'   , channel    , ... 
+            'channel'   , channel    , ...
             'waveform'  , waveform   , ...
             'amplitude' , amplitude  , ...
             'unit'      , unit       , ...
@@ -276,7 +276,7 @@ switch command
             'submode'   , submode    , ...
             'wavename'  , wavename   , ...
             'wavedata'  , wavedata   }; %, ...
-            %'filename'  , filename   };
+        %'filename'  , filename   };
         % copy only non-empty parameter name+value pairs to output
         outVars = cell(0);
         idx     = 1;
@@ -301,7 +301,7 @@ if showmsg
             % limit length of text
             if length(paramValueText) > 44
                 paramValueText = [paramValueText(1:40) ' ...'];
-            end            
+            end
             disp(['  - ' pad(outVars{cnt}, 13) ': ' ...
                 paramValueText]);
         end

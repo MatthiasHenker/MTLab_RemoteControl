@@ -2,44 +2,44 @@ classdef FGenMacros < handle
     % generator macros for Agilent 33220A
     %
     % add device specific documentation (when sensible)
-        
+
     properties(Constant = true)
         MacrosVersion = '1.0.5';      % release version
         MacrosDate    = '2021-03-10'; % release date
     end
-    
+
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages                      logical
         ErrorMessages                     char
     end
-    
+
     properties(SetAccess = private, GetAccess = private)
         VisaIFobj         % VisaIF object
     end
-    
+
     % ------- basic methods -----------------------------------------------
     methods
-        
+
         function obj = FGenMacros(VisaIFobj)
             % constructor
-            
+
             obj.VisaIFobj = VisaIFobj;
         end
-        
+
         function delete(obj)
             % destructor
-            
+
             if obj.ShowMessages
                 disp(['Object destructor called for class ' class(obj)]);
             end
         end
-        
+
         function status = runAfterOpen(obj)
-            
+
             % init output
             status = NaN;
-            
-            % add an Agilent33220A specific command: set to remote state 
+
+            % add an Agilent33220A specific command: set to remote state
             % (lock buttons at generator except for local button)
             if obj.VisaIFobj.write('SYSTEM:REMOTE')
                 status = -1;
@@ -49,24 +49,24 @@ classdef FGenMacros < handle
             %    status = -1;
             %end
             % ...
-                        
+
             % wait for operation complete
             obj.VisaIFobj.opc;
             % ...
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = runBeforeClose(obj)
-            
+
             % init output
             status = NaN;
-            
-            % add an Agilent33220A specific command: set to local state 
+
+            % add an Agilent33220A specific command: set to local state
             % again (buttons at generator are not locked anymore)
             if obj.VisaIFobj.write('SYSTEM:LOCAL')
                 status = -1;
@@ -76,19 +76,19 @@ classdef FGenMacros < handle
             %    status = -1;
             %end
             % ...
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = reset(obj)
-            
+
             % init output
             status = NaN;
-            
+
             % add Agilent33220A specific commands
             %
             % reset
@@ -107,22 +107,22 @@ classdef FGenMacros < handle
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
             %end
-            
+
             % wait for operation complete
             obj.VisaIFobj.opc;
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
     end
-    
+
     % ------- main generator macros -------------------------------------------
     methods
-        
+
         function status = clear(obj)
             % clear status at generator
             status = obj.VisaIFobj.write('*CLS');
@@ -132,19 +132,19 @@ classdef FGenMacros < handle
                 status = -1;
             end
         end
-                 
+
         function status = lock(obj)
             % lock all buttons at generator
             status = obj.VisaIFobj.write('SYSTEM:REMOTE');
         end
-        
+
         function status = unlock(obj)
             % unlock all buttons at generator
             status = obj.VisaIFobj.write('SYSTEM:LOCAL');
         end
-        
+
         % -----------------------------------------------------------------
-        
+
         function status = configureOutput(obj, varargin)
             % configureOutput : configure output of specified channels
             %   'channel'     : '1' '1, 2'
@@ -161,10 +161,10 @@ classdef FGenMacros < handle
             %   'bandwidth'   : real > 0
             %   'outputimp'   : real > 0
             %   'samplerate'  : real > 0
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels   = {};
             waveform   = '';
@@ -180,7 +180,7 @@ classdef FGenMacros < handle
             %bandwidth  = '';    % not supported by Agilent 33220A
             outputimp  = '';
             samplerate = '';
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -328,15 +328,15 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % 33220A has one channel only
-                
+
                 % --- set waveform ----------------------------------------
                 if ~isempty(waveform)
                     % set parameter
@@ -348,7 +348,7 @@ classdef FGenMacros < handle
                     end
                 end
                 % no text message needed; waveform displayed by dedicated LEDs
-                
+
                 % --- set outputimp ---------------------------------------
                 if ~isempty(outputimp)
                     % round and coerce input value
@@ -372,7 +372,7 @@ classdef FGenMacros < handle
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Output Load = ' ...
                         num2str(response, '%g') ' Ohm"']);
                 end
-                
+
                 % --- set stdev -------------------------------------------
                 if ~isempty(stdev)
                     if isempty(amplitude) && isempty(unit)
@@ -384,7 +384,7 @@ classdef FGenMacros < handle
                             'amplitude/unit --> ignore and continue']);
                     end
                 end
-                                
+
                 % --- set unit and amplitude ------------------------------
                 if ~isempty(unit)
                     % set unit at Fgen
@@ -408,7 +408,7 @@ classdef FGenMacros < handle
                             status = -1;
                     end
                 end
-                
+
                 if ~isempty(amplitude) && isnan(status)
                     % limit number of signicant digits
                     switch upper(unit)
@@ -426,13 +426,13 @@ classdef FGenMacros < handle
                             status = -1;
                     end
                     amplitude = str2double(amplitudeString);
-                    
+
                     % set amplitude at Fgen
                     obj.VisaIFobj.write(['VOLTAGE ' amplitudeString]);
                     % read back
                     response = obj.VisaIFobj.query('VOLTAGE?');
                     response = str2double(char(response));
-                    
+
                     % finally verify setting
                     if abs(amplitude - response) > 1e-4 || isnan(response)
                         status = -1;
@@ -445,12 +445,12 @@ classdef FGenMacros < handle
                                 num2str(response)  ' (' unit ')']);
                         end
                     end
-                    
+
                     % display actually set value at generator
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Amplitude = ' ...
                         num2str(response, '%g') ' ' unit '"']);
                 end
-                
+
                 % --- set offset ------------------------------------------
                 if ~isempty(offset)
                     % set parameter
@@ -475,13 +475,13 @@ classdef FGenMacros < handle
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Offset = ' ...
                         num2str(response, '%g') ' V"']);
                 end
-                
+
                 % --- set samplerate --------------------------------------
                 if ~isempty(samplerate)
                     % sample rate is not directly supported
                     % ==> get number of samples (number)
                     % ==> set frequency to samplerate/numofsamples
-                    
+
                     if isempty(frequency)
                         number = obj.VisaIFobj.query('DATA:ATTRIBUTE:POINTS?');
                         number = str2double(char(number));
@@ -499,7 +499,7 @@ classdef FGenMacros < handle
                             'frequency --> ignore and continue']);
                     end
                 end
-                
+
                 % --- set frequency ---------------------------------------
                 if ~isempty(frequency)
                     % set parameter
@@ -524,7 +524,7 @@ classdef FGenMacros < handle
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Frequency = ' ...
                         num2str(response, '%g') ' Hz"']);
                 end
-                
+
                 % --- set dutycycle ---------------------------------------
                 if ~isempty(dutycycle)
                     % check: duty cycle for square (default) or pulse?
@@ -571,7 +571,7 @@ classdef FGenMacros < handle
                             'DutyC. = ' num2str(response, '%g') ' %"']);
                     end
                 end
-                
+
                 % --- set symmetry ----------------------------------------
                 if ~isempty(symmetry)
                     % set parameter
@@ -594,15 +594,15 @@ classdef FGenMacros < handle
                     end
                     % display actually set value at generator
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Ramp: Symm. = ' ...
-                    num2str(response, '%g') ' %"']);
+                        num2str(response, '%g') ' %"']);
                 end
-                
+
                 % --- set transition --------------------------------------
                 if ~isempty(transition)
                     % limit input parameter (5ns ... 100ns)
                     transition = min(100e-9, transition);
                     transition = max(5e-9, transition);
-                    
+
                     % set parameter
                     obj.VisaIFobj.write(['FUNCTION:PULSE:TRANSITION ' ...
                         num2str(transition, '%g')]);
@@ -625,17 +625,17 @@ classdef FGenMacros < handle
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Pulse: EdgeTime = ' ...
                         num2str(response*1e9, '%g') ' ns"']);
                 end
-                
+
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         function [status, waveout] = arbWaveform(obj, varargin)
             % arbWaveform  : upload, download, list, select arbitrary
             % waveforms
@@ -646,12 +646,12 @@ classdef FGenMacros < handle
             %   'wavename' : 'xyz' (char)
             %   'wavedata' : vector of real (range -1 ... +1)
             %   (for future use???)   'filename' : 'xyz' (char)
-            
+
             % init outputs
             status  = NaN;
             % either list of wavenames (list) or wavedata (download)
             waveout = '';
-            
+
             % initialize all supported parameters
             channels    = {};
             mode        = '';
@@ -659,10 +659,10 @@ classdef FGenMacros < handle
             wavename    = '';
             wavedata    = [];
             %filename    = '';
-            
+
             override    = false;  % default submode @ upload
             allwaves    = true;   % default submode @ list
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -792,11 +792,11 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % download wavedata data from FGen
             if strcmp(mode, 'download')
                 % waveout is used for wavedata (nothing downloaded)
@@ -806,7 +806,7 @@ classdef FGenMacros < handle
                     'parameter is not supported ' ...
                     '--> ignore and continue']);
             end
-            
+
             % upload wavedata data to FGen
             if strcmp(mode, 'upload') && ~isempty(wavedata)
                 % set default when no wavename is defined
@@ -817,7 +817,7 @@ classdef FGenMacros < handle
                             'UNNAMED (default)']);
                     end
                 end
-                
+
                 % check length of wavedata
                 if length(wavedata) > 2^16
                     wavedata = wavedata(1:2^16);
@@ -825,25 +825,25 @@ classdef FGenMacros < handle
                         'length of wavedata is 65536 ' ...
                         '--> truncate and continue']);
                 end
-                
+
                 % convert to integers (14-bit)
                 wavedata = round((2^(14-1)-1) * wavedata);
-                
+
                 % clip wave data
                 wavedata = min( 8191, wavedata);
                 wavedata = max(-8191, wavedata);
-                
+
                 % convert to characters (list of comma separated values
                 % starting with a comma)
                 wavedata = num2str(wavedata, ',%d');
                 % remove spaces
                 wavedata = regexprep(wavedata, '\s+', '');
-                
+
                 % 1st step: upload wave data to volatile memory of generator
                 if obj.VisaIFobj.write(['DATA:DAC VOLATILE' wavedata])
                     status = -1;
                 end
-                
+
                 % get list of wavenames already stored at FGen
                 namelist = obj.VisaIFobj.query('DATA:NVOLATILE:CATALOG?');
                 % convert to characters
@@ -852,7 +852,7 @@ classdef FGenMacros < handle
                 namelist = strrep(namelist, '"', '');
                 % split (csv list of wave names)
                 namelist = split(namelist, ',');
-                
+
                 % check if wavename is already available
                 if any(strcmpi(namelist, wavename))
                     if ~override
@@ -879,20 +879,20 @@ classdef FGenMacros < handle
                         obj.VisaIFobj.write(['DATA:COPY ' wavename]);
                     end
                 end
-                
+
                 % wait for operation complete (can take a while)
                 obj.VisaIFobj.opc;
-                
+
                 % finally display actually set value at generator
                 if isnan(status)
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
                         wavename '"']);
                 else
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Upload: ' ...
-                       ' no success"']);
+                        ' no success"']);
                 end
             end
-            
+
             if strcmp(mode, 'list')
                 % get list of wavenames already stored at FGen
                 if allwaves
@@ -904,10 +904,10 @@ classdef FGenMacros < handle
                 namelist = char(namelist);
                 % remove all "
                 namelist = strrep(namelist, '"', '');
-                
+
                 % copy result to output variable
                 waveout  = namelist;
-                
+
                 % display results
                 if obj.ShowMessages
                     disp(['  available waveforms (submode = ' submode ...
@@ -916,7 +916,7 @@ classdef FGenMacros < handle
                     namelist = split(namelist, ',');
                     % sort list alphabetically
                     namelist = sort(namelist);
-                    
+
                     if isempty(namelist{1})
                         disp( '  <none>');
                     else
@@ -928,7 +928,7 @@ classdef FGenMacros < handle
                     disp( '  ATTENTION: max 4 user waveforms can be stored.');
                 end
             end
-            
+
             if strcmp(mode, 'delete')
                 % set default when no wavename is defined
                 if isempty(wavename)
@@ -946,7 +946,7 @@ classdef FGenMacros < handle
                 namelist = strrep(namelist, '"', '');
                 % split (csv list of wave names)
                 namelist = split(namelist, ',');
-                
+
                 % check if wavename is available
                 if any(strcmpi(namelist, wavename))
                     obj.VisaIFobj.write(['DATA:DELETE ' wavename]);
@@ -954,10 +954,10 @@ classdef FGenMacros < handle
                         wavename '"']);
                 elseif obj.ShowMessages
                     disp(['  Warning: wavename does not exist ' ...
-                                '--> ignore and continue']);
+                        '--> ignore and continue']);
                 end
             end
-            
+
             if strcmp(mode, 'select')
                 % set default when no wavename is defined
                 if isempty(wavename)
@@ -975,15 +975,15 @@ classdef FGenMacros < handle
                 namelist = strrep(namelist, '"', '');
                 % split (csv list of wave names)
                 namelist = split(namelist, ',');
-                
+
                 % select waveform only when wavename is available
                 if any(strcmpi(namelist, wavename))
                     % loop over channels
                     for cnt = 1:length(channels)
                         %channel = channels{cnt};   % 33220A has one channel only
-                        
+
                         obj.VisaIFobj.write(['FUNC:USER ' wavename]);
-                        
+
                     end
                     % display actually set value at generator
                     obj.VisaIFobj.write(['DISPLAY:TEXT "Wave: ' ...
@@ -995,25 +995,25 @@ classdef FGenMacros < handle
                     status = -1; % 'failed', but we can continue
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
-            
+
         end
-        
+
         function status = enableOutput(obj, varargin)
             % enableOutput  : enable output of specified channels
             %   'channel'   : '1' '1, 2'
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels = {};
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -1051,42 +1051,42 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % 33220A has one channel only
-                
+
                 % set output at Fgen
                 obj.VisaIFobj.write('OUTPUT ON');
-                
+
                 % read back actual setting and verify
                 response = obj.VisaIFobj.query('OUTPUT?');
                 if ~strcmpi(char(response), '1')
                     status = -1;
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         function status = disableOutput(obj, varargin)
             % disableOutput : disable output of specified channels
             %   'channel'   : '1' '1, 2'
-            
+
             % init output
             status = NaN;
-            
+
             % initialize all supported parameters
             channels = {};
-            
+
             for idx = 1:2:length(varargin)
                 paramName  = varargin{idx};
                 paramValue = varargin{idx+1};
@@ -1124,45 +1124,45 @@ classdef FGenMacros < handle
                         end
                 end
             end
-            
+
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
-            
+
             % loop over channels
             for cnt = 1:length(channels)
                 %channel = channels{cnt};   % 33220A has one channel only
-                
+
                 % set output at Fgen
                 obj.VisaIFobj.write('OUTPUT OFF');
-                
+
                 % read back actual setting and verify
                 response = obj.VisaIFobj.query('OUTPUT?');
                 if ~strcmpi(char(response), '0')
                     status = -1;
                 end
             end
-            
+
             % set final status
             if isnan(status)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
         end
-        
+
         % -----------------------------------------------------------------
         % actual generator methods: get methods (dependent)
         % -----------------------------------------------------------------
-        
+
         function errMsg = get.ErrorMessages(obj)
             % read error list from the generator’s error buffer
-            
+
             % config
             maxErrCnt = 20;  % size of error stack at 33220A
             errCell   = cell(1, maxErrCnt);
             cnt       = 0;
             done      = false;
-            
+
             % read error from buffer until done
             while ~done && cnt < maxErrCnt
                 cnt = cnt + 1;
@@ -1176,10 +1176,10 @@ classdef FGenMacros < handle
                     errCell{cnt} = errMsg;
                 end
             end
-            
+
             % remove empty cell elements
             errCell = errCell(~cellfun(@isempty, errCell));
-            
+
             % optionally display results
             if obj.ShowMessages
                 if ~isempty(errCell)
@@ -1192,19 +1192,19 @@ classdef FGenMacros < handle
                     disp('FGen error list is empty');
                 end
             end
-            
+
             % copy result to output
             errMsg = strjoin(errCell, '; ');
-            
+
         end
-        
+
     end
-    
+
     % ---------------------------------------------------------------------
     methods           % get/set methods
-        
+
         function showmsg = get.ShowMessages(obj)
-            
+
             switch lower(obj.VisaIFobj.ShowMessages)
                 case 'none'
                     showmsg = false;
@@ -1214,7 +1214,7 @@ classdef FGenMacros < handle
                     disp('FGenMacros: invalid state in get.ShowMessages');
             end
         end
-        
+
     end
-    
+
 end
