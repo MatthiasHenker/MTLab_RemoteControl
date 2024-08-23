@@ -4,16 +4,16 @@ classdef VisaIF < handle
     % This class defines functions for the communication with measurement
     % devices (Visa). This is a basic class providing standard functions
     % for writing commands to and reading values from measurement devices.
-    % This class is a wrapper for the Matlab 'visa' class coming with the
+    % This class is a wrapper for the Matlab 'visadev' class coming with the
     % Instrument Control Toolbox to provide more convenience. Current focus
     % is set on measurement devices with USB or TCPIP interface. Devices
-    % can be made accessible by adding device information to a config file.
+    % can be made accessible by adding device information to the config file.
     %
     % methods (static) of class 'VisaIF'
-    %  - listAvailableConfigFiles : list path of config files
+    %  - listAvailableConfigFiles : list path to all config files
     %
     %  - listContentOfConfigFiles : list all device information stored in
-    %                   config files
+    %                   the config files
     %
     %  - listAvailableVisaUsbDevices : list all connected USB-TMC devices
     %
@@ -26,8 +26,11 @@ classdef VisaIF < handle
     % methods (public) of class 'VisaIF':
     %   - VisaIF  : constructor of this class (same name as class)
     %     * use this function to create an object for your Visa device
-    %     * creates also an Visa object (visible in GUI of 'tmtool')
+    %     * measurement device has to be available, connection to device
+    %       will be opened by constructor
     %     * usage:
+    %         myDevice = VisaIF(device);
+    %         myDevice = VisaIF(device, interface);
     %         myDevice = VisaIF(device, interface, showmsg);
     %         myDevice = VisaIF({device, serialID}, interface, showmsg);
     %         myDevice = VisaIF(device, interface, {showmsg, enablelog});
@@ -35,7 +38,7 @@ classdef VisaIF < handle
     %         myDevice: object of class 'VisaIF' (mandatory output)
     %         device  : device name (char, mandatory input), use the
     %                   command 'VisaIF.listContentOfConfigFiles' or
-    %                   'VisaIF' to get a list of all accessible devices
+    %                   'VisaIF' to get a list of all known devices
     %         serialID: serial identifier of device with 'visa-usb'
     %                   interface (char, optional input), default value
     %                   is 1st found USB device, it's an ignored input for
@@ -56,9 +59,15 @@ classdef VisaIF < handle
     %                   use [] or '' for default
     %                   this parameter can also be changed later again,
     %                   see property myDevice.ShowMessages
+    %          enablelog : 0 or false        for disabled logging mode,
+    %                   1 or true            for enabled logging mode,
+    %                   (optional input: default value is false)
+    %                   this parameter can also be changed later again,
+    %                   see property myDevice.EnableCommandLog
     %
     %   - delete  : destructor of this class
-    %     * deletes VisaIF and visa object (and also execute close before)
+    %     * deletes 'VisaIF' and internal 'visadev' object (also closes
+    %       interface to device before)
     %     * usage:
     %           myDevice.delete
     %       without any input or output parameters
@@ -66,27 +75,38 @@ classdef VisaIF < handle
     % General Notes:
     %     * methods with an output parameter 'status' behave identically
     %     * status has the same meaning for all those methods
-    %         status   :  0 when okay
-    %                    -1 when something went wrong
+    %         status   : == 0 when okay
+    %                    != 0 when something went wrong
     %     * status output is optional
     %
-    %   - open    : opens the visa interface
-    %     * actual status of interface can be read via property
-    %       myDevice.CommStatus
-    %     * usage:
-    %           status = myDevice.open or simply myDevice.open
+    %   - open, close  : does nothing, methods will be removed in future,
+    %       interface to device will be opened/closed by constructor/destructor
     %
     %   - write   : send SCPI command to device
-    %     * the SCPI command must NOT return a response (set command)
+    %     * the SCPI command must NOT return a response (set command) or
+    %       the response is fetched by following read command
     %     * the SCPI command must be supported by device (see its manual)
+    %     * the SCPI command can be text or binary data
     %     * usage:
-    %           status = myDevice.write(VisaCommand)
+    %           status = myDevice.write(VisaCommand);
     %       with
     %           VisaCommand : SCPI command (char)
+    %
+    %   - read    : read SCPI response from device
+    %     * the SCPI response is treated as binary data (works for text and
+    %       binary data)
+    %     * method waits for response a specified period (see property Timeout)
+    %     * usage:
+    %           [VisaResponse, status]  = myDevice.read;
+    %       with
+    %           VisaResponse : response from device as binary (uint8)
+    %                   use char(VisaResponse) to read in text form
     %
     %   - query   : send SCPI command to device and read back its response
     %     * the SCPI command must return a response (get command)
     %     * the SCPI command must be supported by device (see its manual)
+    %     * The SCPI command and its response MUST be text (does not
+    %       support binary data!)
     %     * usage:
     %           [VisaResponse, status] = myDevice.query(VisaCommand)
     %       with
@@ -111,7 +131,7 @@ classdef VisaIF < handle
     %     * equivalent to myDevice.query('*OPC?')
     %     * means 'operation complete?'
     %     * returns '1' when all previous commands are executed
-    %     * works with most devices (except for e.g. Siglent-SPD3303X)
+    %     * works with nearly all devices (except for e.g. Siglent-SPD3303X)
     %     * usage:
     %           [opcMessage, status] = myDevice.opc
     %       with
@@ -121,16 +141,9 @@ classdef VisaIF < handle
     %     * the SCPI (set) command '*RST' is sent
     %     * equivalent to myDevice.write('*RST')
     %     * initiate a device reset (no feedback from device)
-    %     * works with most supported devices (except for e.g.
-    %       Siglent-SPD3303X)
+    %     * works with nearly all devices (except for e.g. Siglent-SPD3303X)
     %     * usage:
     %           status = myDevice.reset
-    %
-    %   - close   : closes the visa interface
-    %     * actual status of interface can be read via property
-    %       myDevice.CommStatus
-    %     * usage:
-    %           status = myDevice.close
     %
     % properties of class 'VisaIF':
     %   - with read/write access
@@ -139,7 +152,7 @@ classdef VisaIF < handle
     %                          'none', 0, false          for silent mode
     %     * EnableCommandLog : 1, true            to enable notifications
     %                          0, false (default) no command logging
-    %       (requires external VisaIFLogger and VisaIFLogEventData classes)
+    %       (requires additional VisaIFLogger and VisaIFLogEventData classes)
     %     * Timeout          : timeout in s
     %     * InputBufferSize  : size of input buffer
     %     * OutputBufferSize : size of output buffer
@@ -153,8 +166,11 @@ classdef VisaIF < handle
     %     * Device         : actually selected device (char)
     %     * Instrument     : type of instrument (char)
     %     * Identifier     : device response of *IDN? request (char)
-    %     * Vendor         : name of vendor (for sub classes)
-    %     * Product        : name of product family (for sub classes)
+    %     * Vendor         : name of vendor         (addresses required package)
+    %     * Product        : name of product family (addresses required package)
+    %     * VendorIdentified : reported vendor by device (USB only)
+    %     * ProductIdentified: reported model  by device (USB only)
+    %     * PreferredVisa  : name of used Visa driver (NI, RS or Keysight)
     %     * Name           : more readable than RsrcName (char)
     %     * RsrcName       : resource name required to create VisaObject
     %     * Alias          : alias name (if set in e.g. NI-MAX) (char)
@@ -163,25 +179,23 @@ classdef VisaIF < handle
     %     * ManufacturerID : vendor ID, for type visa-usb only (char)
     %     * ModelCode      : product ID, for type visa-usb only (char)
     %     * SerialNumber   : serial ID, for type visa-usb only (char)
-    %     * CommStatus     : current communication status open/close (char)
+    %     * CommStatus     : communication status, always stated as open (char)
     %     * SupportedDevices: table of supported devices (table of chars)
     %
     % example for usage of class 'VisaIF':
-    %   VisaIF.VisaIFVersion                % shows version
-    %   VisaIF.listAvailableVisaUsbDevices  % shows connected USB devices
-    %   VisaIF.listContentOfConfigFiles     % lists known devices
+    %   VisaIF.VisaIFVersion                % shows version of class
+    %   VisaIF.listAvailableVisaUsbDevices  % list all connected USB devices
+    %   VisaIF.listContentOfConfigFiles     % lists all known devices
     %
     %   FgenName = 'Agilent-33220A'; % or e.g. just '33220' or 'Agi'
     %   myGen    = VisaIF(FgenName);
     %
     %   disp(['Vendor: ' myGen.Vendor]);    % shows property 'Vendor'
     %
-    %   myGen.open;                         % opens interface
     %   myGen.write('FREQ 5231.789');       % set frequency in Hz
     %   myGen.query('FREQ?');               % query actually set frequency
     %   myGen.reset;                        % reset of measurement device
     %   ...
-    %   myGen.close;                        % close interface
     %   myGen.delete;                       % deletes object
     %
     % ---------------------------------------------------------------------
@@ -190,19 +204,13 @@ classdef VisaIF < handle
     %   'VisaIFDate'
     %
     % tested with
-    %   - Matlab (version 9.10 = 2021a update 7) and
-    %   - Instrument Control Toolbox (version 4.4)
+    %   - Matlab (version 24.1 = 2024a update 6) and
+    %   - Instrument Control Toolbox (version 24.1)
     %   - NI-Visa 2022 Q3 (download from NI, separate installation)
     %
-    % currently available measurement devices (lab in room S110):
-    %   - device = 'Tek-TDS1001C-EDU' with interface = 'visa-usb'
-    %        for Tektronix Scope (2 channels, 40MHz, 500MSa/s)
-    %   - device = 'Agilent-33220A'   with interface = 'visa-usb'
-    %        for Agilent Function Generator (20MHz)
-    %
-    % required setup (connection of visa device with computer)
-    %  - either connect computer with measurement device via USB or LAN
-    %  - measurement device must support visa
+    % required setup:
+    %  - connect computer with measurement device via either USB or LAN
+    %  - measurement device must support VISA
     %  - device information must be added to config file .\@VisaIF\*.csv
     %
     % known issues and planned extensions / fixes
@@ -210,17 +218,18 @@ classdef VisaIF < handle
     %                             (version 2.4.1) ==> winter term 2020/21
     %                             (version 2.4.3) ==> summer term 2021
     %                             (version 2.4.4) ==> winter term 2022/23
+    %                             (version 3.0.0) ==> winter term 2024/25
     %
     % development, support and contact:
-    %   - Constantin Wimmer (student, automation for VisaIFLogger class)
+    %   - Constantin Wimmer (student, automation)
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
 
     % ---------------------------------------------------------------------
-    % this VisaIF class is a wrapper for Matlab visa class for more
+    % this VisaIF class is a wrapper for Matlab 'visadev' class for more
     % convenience (Instrument Control Toolbox)
     %
-    % as introduction for basic visa class in Matlab see also instrhelp
+    % see also help of Instrument Control Toolbox
     %
     % how to create a VISA-USB or VISA-TCPIP object connected either to a
     % USBTMC (USB Test & Measurement Class) or TCPIP instrument using
@@ -228,29 +237,13 @@ classdef VisaIF < handle
     %
     % the VISA-Ressourcename can be obtained by using NI-MAX
     % or
-    % by using tmtool in Matlab
-    % or
-    % by using matlab command
-    % hwinfo = instrhwinfo('visa', 'ni')   % or 'rs'
-    % hwinfo.ObjectConstructorName
+    % by using 'visadevlist' in Matlab
     % result: e.g.
     % 'USB0::0xF4EC::0x1101::SDG6XBAC2R0003::INSTR' for SGD6022X
     % 'TCPIP0::192.168.178.11::INSTR'               for SGD6022X
-    % e.g. vFgen = visa('ni','TCPIP0::192.168.178.11::INSTR');
+    % e.g. vFgen = visadev('TCPIP0::192.168.178.11::INSTR');
     %
     % ---------------------------------------------------------------------
-
-
-
-    %% ToDos
-    % move from visa to visa dev
-    %
-    % update documentation
-    %
-    % test also with MAC computers
-
-
-
 
     properties(Constant = true)
         VisaIFVersion = '3.0.0';      % current version of VisaIF

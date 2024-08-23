@@ -152,17 +152,17 @@ classdef HandheldDMM < handle
     %   for version and release date see properties 'Version' and 'Date'
     %
     % tested with
-    %   - Matlab (version 9.10 = 2021a update 7) and additional
-    %   - optional Instrument Control Toolbox (version 4.0)
-    %   - optional NI-Visa 18.5 (download from NI, separate installation)
+    %   - Matlab (version 24.1 = 2024a update 6) and additional
     %
     % currently supported DMM types:
-    %   - UT61E by Uni-T: quite modern TrueRMS DMM, available at e.g.
+    %   - UT61E by Uni-T: TrueRMS DMM, available at e.g.
     %     Reichelt.de (summer 2019, about 85 EUR incl. cable)
     %     ATTENTION: cable has to be modified (USB-HID to USB-virtualCOM)
+    %   - UT161E by Uni-T: requires bidirectional serial interface
     %   - VC820 by Voltcraft: quite old, available second hand only
     %   - VC830 by Voltcraft: available at e.g. Conrad.de (summer 2019,
     %     about 89 EUR)
+    %   - VC920 by Voltcraft: quite old, available second hand only
     %
     % list of DMM which use the same type of cable and similar interface
     % protocol (it should be possible to extend this software to support
@@ -191,12 +191,17 @@ classdef HandheldDMM < handle
     %    => or implement a USB-HID to UART bridge
     %
     % known issues and planned extensions / fixes
-    %   - code and interface was restructured
+    %   - first releases without external packages
     %       * versions up to 1.1.2 (2019-10-01)
-    %       * versions from 2.0.0  (2022-08-04), e.g. connect intead of
-    %                                            open
-    %   - no bugs reported so far (version 2.0.0)
-    %   - add support of further DMMs available in labs of HTW Dresden
+    %   - code and interface was restructured to support external packages
+    %       * versions from 2.1.0  (2022-08-10),
+    %         update to newer 'serialport' instead of 'serial' for
+    %         communication with HandheldDMMs,
+    %         two methods were renamed: 'open' => 'connect' and 'close' =>
+    %         'disconnect'
+    %
+    %   - no bugs reported so far (version 2.1.0)
+    %   - maybe add support of further DMMs (on demand only)
     %
     % initial versions (v0.x.x) created by
     %   - Jannis Seeger     (student, communications)

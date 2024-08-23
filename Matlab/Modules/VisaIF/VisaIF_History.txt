@@ -5,6 +5,7 @@ Feature Requests:
   - VisaIFLogger: filter (SPCI regexp) should include write (request/set)
     and read (response) ==> search for request keyword does currently not
     list response value
+  - test also with MAC computers ==> errors were reported, details needed
 
 
 in preparation
