@@ -13,7 +13,7 @@ Release vx.x.x
 
 
 ---------------------------------------------------------------------------
-Release v3.0.0  (2024-09-xx) -  (same as VisaIF class)
+Release v3.0.0  (same as VisaIF class)
   - VisaIF                                             v3.0.0  (2024-08-22)
       for use with newer Matlab versions (minimum 2022) with 'visadev' 
       instead of 'visa' Matlab-class for communication with VISA devices

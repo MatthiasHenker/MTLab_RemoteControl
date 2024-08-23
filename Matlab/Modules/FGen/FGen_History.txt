@@ -10,11 +10,23 @@ Feature Requests:
 
 in preparation
 ---------------------------------------------------------------------------
-Release v1.0.x (same as FGen class) requires VisaIF v2.4.3 or later
+Release vX.X.X
 
 
 
 
+
+---------------------------------------------------------------------------
+Release v3.0.0 (same as FGen class) requires VisaIF v3.0.0 or later
+  - FGen                                              v3.0.0   (2024-08-22)
+      update to work with VisaIF 3.x.x (does NOT work with VisaIF 2.4.x)
+with support packages
+  - FGen.Agilent.Gen33220A.FGenMacros                 v3.0.0   (2024-08-23)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - FGen.Keysight.Gen33511B.FGenMacros                v3.0.0   (2024-08-23)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - FGen.Siglent.SDG6000X.FGenMacros                  v3.0.0   (2024-08-23)
+      update to work with VisaIF 2.4.x and 3.x.x
 
 ---------------------------------------------------------------------------
 Release v1.0.7 (same as FGen class) requires VisaIF v2.4.3 or later

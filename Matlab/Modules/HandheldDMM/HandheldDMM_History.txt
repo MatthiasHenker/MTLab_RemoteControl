@@ -2,18 +2,33 @@
 
 Feature Requests:
 ---------------------------------------------------------------------------
-  - add UT161E package
-  - add VC920 package
+  - extend UT161E package (only prerelease of support package is available)
 
 
 in preparation
 ---------------------------------------------------------------------------
-Release v2.0.1 (same as HandheldDMM class)
+Release vX.X.X
 
 
 
 
-
+---------------------------------------------------------------------------
+Release v2.1.0 (same as HandheldDMM class)
+  - HandheldDMM                                       v2.1.0   (2022-08-10)
+      initial version of extended class to support packages
+  - serialportDemo                                    v1.1.0   (2022-08-10)
+      method 'write' added
+with support packages
+  - HandheldDMM.UT161E.HandheldDMMMacros              v0.5.0   (2022-08-10)
+      initial version, prerelease, not fully featured
+  - HandheldDMM.UT61E.HandheldDMMMacros               v1.1.0   (2022-08-10)
+      initial version as support package
+  - HandheldDMM.VC820.HandheldDMMMacros               v1.1.0   (2022-08-10)
+      initial version as support package
+  - HandheldDMM.VC830.HandheldDMMMacros               v1.1.0   (2022-08-10)
+      initial version as support package
+  - HandheldDMM.VC920.HandheldDMMMacros               v1.1.0   (2022-08-10)
+      initial version as support package
 
 ---------------------------------------------------------------------------
 Release v2.0.0 (same as HandheldDMM class, 2022-08-04)

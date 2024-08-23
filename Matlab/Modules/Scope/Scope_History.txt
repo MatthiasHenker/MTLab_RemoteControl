@@ -13,10 +13,28 @@ Feature Requests:
 
 in preparation
 ---------------------------------------------------------------------------
-Release XXX
+Release vX.X.X
 
 
 
+
+---------------------------------------------------------------------------
+Release v3.0.0 (same as Scope class) requires VisaIF v3.0.0 or later
+  - Scope                                             v3.0.0   (2024-08-18)
+      update to work with VisaIF 3.x.x (does NOT work with VisaIF 2.4.x)
+with support packages
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v3.0.0   (2024-08-22)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - Scope.Keysight.DSOX1000.ScopeMacros               v3.0.0   (2024-08-23)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - Scope.RS.RTB2000.ScopeMacros                      v3.0.0   (2024-08-22)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - Scope.Rigol.DS2072A.ScopeMacros                   v3.0.0   (2024-08-23)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - Scope.Siglent.SDS2000X.ScopeMacros                v3.0.0   (2024-08-22)
+      update to work with VisaIF 2.4.x and 3.x.x
+  - Scope.Siglent.SDS1000X_E.ScopeMacros              v3.0.0   (2024-08-22)
+      update to work with VisaIF 2.4.x and 3.x.x
 
 ---------------------------------------------------------------------------
 Release v1.2.2 (same as Scope class) requires VisaIF v2.4.4 or later
