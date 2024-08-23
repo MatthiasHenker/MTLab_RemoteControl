@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
 
     properties(Constant = true)
-        MacrosVersion = '1.0.5';      % release version
-        MacrosDate    = '2021-03-10'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -30,7 +30,8 @@ classdef FGenMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
@@ -733,7 +734,7 @@ classdef FGenMacros < handle
                                         submode  = 'user';
                                         allwaves = false;
                                     case 'all'
-                                        submode  = 'all'
+                                        submode  = 'all';
                                     case {'', 'builtin'}
                                         submode  = 'all';
                                         if obj.ShowMessages
@@ -773,7 +774,7 @@ classdef FGenMacros < handle
                     case 'wavedata'
                         if ~isempty(paramValue)
                             if ischar(paramValue)
-                                wavedata = str2num(lower(paramValue));
+                                wavedata = str2num(lower(paramValue)); %#ok<ST2NM>
                             else
                                 wavedata = paramValue;
                             end

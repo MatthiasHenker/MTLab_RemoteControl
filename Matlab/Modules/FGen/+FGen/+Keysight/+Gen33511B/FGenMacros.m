@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
 
     properties(Constant = true)
-        MacrosVersion = '1.0.3';      % release version
-        MacrosDate    = '2021-03-11'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -30,7 +30,8 @@ classdef FGenMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
@@ -118,23 +119,12 @@ classdef FGenMacros < handle
             if obj.VisaIFobj.write('*CLS')
                 status = -1;
             end
-            % clear display
-            if obj.VisaIFobj.write('DISPLAY:TEXT:CLEAR')
+
+            % reconfigure device after reset
+            if obj.runAfterOpen()
                 status = -1;
             end
-            % set larger font size at screen (and smaller waveform preview)
-            if obj.VisaIFobj.write('DISPLAY:VIEW TEXT')
-                status = -1;
-            end
-            % turn display on (no effect when already on
-            if obj.VisaIFobj.write('DISPLAY ON')
-                status = -1;
-            end
-            % swap order of bytes ==> for upload of arb data in binary form
-            %(least-significant byte (LSB) of each data point is first)
-            if obj.VisaIFobj.write('format:border swapped')
-                status = -1;
-            end
+
             % XXX
             %if obj.VisaIFobj.write('XXX')
             %    status = -1;
@@ -768,7 +758,7 @@ classdef FGenMacros < handle
             waveout = '';
 
             % initialize all supported parameters
-            channels    = {};
+            channels    = {}; %#ok<NASGU>
             mode        = '';
             submode     = '';
             wavename    = '';
@@ -808,7 +798,7 @@ classdef FGenMacros < handle
                             end
                         end
                         % remove invalid (empty) entries
-                        channels = channels(~cellfun(@isempty, channels));
+                        channels = channels(~cellfun(@isempty, channels)); %#ok<NASGU>
                     case 'mode'
                         switch lower(paramValue)
                             case ''
@@ -914,7 +904,7 @@ classdef FGenMacros < handle
                     case 'wavedata'
                         if ~isempty(paramValue)
                             if ischar(paramValue)
-                                wavedata = str2num(lower(paramValue));
+                                wavedata = str2num(lower(paramValue)); %#ok<ST2NM>
                             else
                                 wavedata = paramValue;
                             end
@@ -1093,7 +1083,7 @@ classdef FGenMacros < handle
                             tmplist  = cell(length(response), 3);
                             tmplist(:, 1) = response;     % wave names
                             tmplist(:, 2) = {'volatile'}; % memory type
-                            resultlist    = [resultlist; tmplist];
+                            resultlist    = [resultlist; tmplist]; %#ok<AGROW>
 
                             % get size of free volatile memory (in samples)
                             response = obj.VisaIFobj.query( ...
@@ -1133,7 +1123,7 @@ classdef FGenMacros < handle
                                 tmplist(:, 2) = selectedsubmode;
                                 % sort list alphabetically
                                 tmplist = sortrows(tmplist);
-                                resultlist    = [resultlist; tmplist];
+                                resultlist    = [resultlist; tmplist]; %#ok<AGROW>
                             end
 
                         otherwise

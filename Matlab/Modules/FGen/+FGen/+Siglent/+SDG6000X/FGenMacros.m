@@ -4,8 +4,8 @@ classdef FGenMacros < handle
     % add device specific documentation (when sensible)
 
     properties(Constant = true)
-        MacrosVersion = '1.0.0';      % release version
-        MacrosDate    = '2021-03-16'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -30,7 +30,8 @@ classdef FGenMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
@@ -993,7 +994,7 @@ classdef FGenMacros < handle
                     case 'wavedata'
                         if ~isempty(paramValue)
                             if ischar(paramValue)
-                                wavedata = str2num(lower(paramValue));
+                                wavedata = str2num(lower(paramValue)); %#ok<ST2NM>
                             else
                                 wavedata = paramValue;
                             end
@@ -1103,7 +1104,7 @@ classdef FGenMacros < handle
                                 (1:length(response))','%d'));% id
                             tmplist(:, 2) = response;        % wavename
                             tmplist(:, 3) = selectedsubmode; % memory type
-                            resultlist    = [resultlist; tmplist];
+                            resultlist    = [resultlist; tmplist]; %#ok<AGROW>
                         case 'builtin'
                             % response is list of Mxx,wavename,Mxx, ...
                             % length(response) should be even
@@ -1124,7 +1125,7 @@ classdef FGenMacros < handle
                                 tmplist(:, 3) = selectedsubmode; % memory type
                                 % sort list alphabetically (ignore cases)
                                 [~, tidx]  = sortrows(lower(tmplist), 2);
-                                resultlist = [resultlist; tmplist(tidx, :)];
+                                resultlist = [resultlist; tmplist(tidx, :)]; %#ok<AGROW>
                             end
                         otherwise
                             % do nothing
@@ -1307,11 +1308,31 @@ classdef FGenMacros < handle
                 % actual download of waveform data
                 switch lower(submode)
                     case 'user'
-                        [response, statDwld] = obj.VisaIFobj.query( ...
-                            ['WVDT? USER,' wavename]);
+                        % version ID has to be >= 3.x.x
+                        if str2double(getfield(split(char( ...
+                                obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                            % split query command to separate write and read due to
+                            % binary response
+                            obj.VisaIFobj.write(['WVDT? USER,' wavename]);
+                            [response, statDwld] = obj.VisaIFobj.read;
+                        else
+                            % previous version does not need this workaround
+                            [response, statDwld] = obj.VisaIFobj.query( ...
+                                ['WVDT? USER,' wavename]);
+                        end
                     case 'builtin'
-                        [response, statDwld] = obj.VisaIFobj.query( ...
-                            ['WVDT? ' waveIdx]);
+                        % version ID has to be >= 3.x.x
+                        if str2double(getfield(split(char( ...
+                                obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                            % split query command to separate write and read due to
+                            % binary response
+                            obj.VisaIFobj.write(['WVDT? ' waveIdx]);
+                            [response, statDwld] = obj.VisaIFobj.read;
+                        else
+                            % previous version does not need this workaround
+                            [response, statDwld] = obj.VisaIFobj.query( ...
+                                ['WVDT? ' waveIdx]);
+                        end
                     otherwise
                         status  = -5;
                         waveout = [];
@@ -1505,7 +1526,7 @@ classdef FGenMacros < handle
                                                     % the parameter value
                                                     ParamValue = ...
                                                         ParamList{idx+1};
-                                                catch
+                                                catch %#ok<CTCH>
                                                     ParamValue = '';
                                                 end
                                             end
@@ -1513,7 +1534,7 @@ classdef FGenMacros < handle
                                         % verify values
                                         if isempty(regexpi(ParamValue, ...
                                                 ['^' wavename2{cnt} ...
-                                                '(.bin|.arb)?$']))
+                                                '(.bin|.arb)?$'], 'once'))
                                             % error (incorrect waveform)
                                             status = -1;
                                             disp(['FGen: ERROR - ' ...
@@ -1554,7 +1575,7 @@ classdef FGenMacros < handle
                                 % listed wave index always start with M,
                                 % but required index for wave select is
                                 % plain index (integer) only => remove 'M'
-                                if ~isempty(regexpi(waveIdx, '^M(\d)+$'))
+                                if ~isempty(regexpi(waveIdx, '^M(\d)+$', 'once'))
                                     waveIdx = waveIdx(2:end);
                                 else
                                     waveIdx = '';
@@ -1599,14 +1620,14 @@ classdef FGenMacros < handle
                                                     % the parameter value
                                                     ParamValue = ...
                                                         ParamList{idx+1};
-                                                catch
+                                                catch %#ok<CTCH>
                                                     ParamValue = '';
                                                 end
                                             end
                                         end
                                         % verify values
                                         if isempty(regexpi(ParamValue, ...
-                                                ['^' wavename '(\.bin|\.arb)?$']))
+                                                ['^' wavename '(\.bin|\.arb)?$'], 'once'))
                                             % error (incorrect waveform)
                                             status = -1;
                                             disp(['FGen: ERROR - ' ...
