@@ -34,7 +34,8 @@ classdef ScopeMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 

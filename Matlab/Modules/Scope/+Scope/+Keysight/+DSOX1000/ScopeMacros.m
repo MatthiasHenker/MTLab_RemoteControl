@@ -2,12 +2,13 @@ classdef ScopeMacros < handle
     % include device specific documentation when needed
     %
     % Keysight DSOX1000 series macros
+    % (for firmware: 01.20 (2019) ==> see myScope.identify)
 
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
 
     properties(Constant = true)
-        MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-04-12'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -36,7 +37,8 @@ classdef ScopeMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
@@ -1463,8 +1465,20 @@ classdef ScopeMacros < handle
             obj.VisaIFobj.write(':HARDcopy:LAYout PORTrait');
 
             % request actual binary screen shot data
-            bitMapData = obj.VisaIFobj.query([':DISPlay:DATA? ' ...
-                upper(fileFormat)]);
+            %
+            % version ID has to be >= 3.x.x
+            if str2double(getfield(split(char( ...
+                    obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                % split query command to separate write and read due to
+                % binary response
+                obj.VisaIFobj.write([':DISPlay:DATA? ' ...
+                    upper(fileFormat)]);
+                bitMapData = obj.VisaIFobj.read;
+            else
+                % previous version does not need this workaround
+                bitMapData = obj.VisaIFobj.query([':DISPlay:DATA? ' ...
+                    upper(fileFormat)]);
+            end
 
             % header received?
             if length(bitMapData) < 10
@@ -1899,7 +1913,18 @@ classdef ScopeMacros < handle
                     yZero = preamble(10);
 
                     % actual download of waveform data
-                    rawWaveData = obj.VisaIFobj.query(':WAVeform:DATA?');
+                    %
+                    % version ID has to be >= 3.x.x
+                    if str2double(getfield(split(char( ...
+                            obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                        % split query command to separate write and read due to
+                        % binary response
+                        obj.VisaIFobj.write(':WAVeform:DATA?');
+                        rawWaveData  = obj.VisaIFobj.read;
+                    else
+                        % previous version does not need this workaround
+                        rawWaveData = obj.VisaIFobj.query(':WAVeform:DATA?');
+                    end
 
                     if length(rawWaveData) < 10
                         disp(['Scope: Error - ''captureWaveForm'':' ...

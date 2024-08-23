@@ -6,8 +6,8 @@ classdef ScopeMacros < handle
     % (for Rigol firmware: 00.03.06 (2019-01-29) ==> see myScope.identify)
 
     properties(Constant = true)
-        MacrosVersion = '1.2.1';      % release version
-        MacrosDate    = '2021-04-12'; % release date
+        MacrosVersion = '3.0.0';      % release version
+        MacrosDate    = '2024-08-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -36,7 +36,8 @@ classdef ScopeMacros < handle
             % destructor
 
             if obj.ShowMessages
-                disp(['Object destructor called for class ' class(obj)]);
+                disp(['Object destructor called for class ''' ...
+                    class(obj) '''.']);
             end
         end
 
@@ -1100,7 +1101,7 @@ classdef ScopeMacros < handle
             end
         end
 
-        function status = configureZoom(obj, varargin)
+        function status = configureZoom(obj, varargin) %#ok<VANUS>
             % configureZoom   : configure zoom window
 
             status = 0;
@@ -1431,7 +1432,18 @@ classdef ScopeMacros < handle
             % -------------------------------------------------------------
 
             % request actual binary screen shot data
-            bitMapData = obj.VisaIFobj.query(':DISPlay:DATA?');
+            %
+            % version ID has to be >= 3.x.x
+            if str2double(getfield(split(char( ...
+                    obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                % split query command to separate write and read due to
+                % binary response
+                obj.VisaIFobj.write(':DISPlay:DATA?');
+                bitMapData = obj.VisaIFobj.read;
+            else
+                % previous version does not need this workaround
+                bitMapData = obj.VisaIFobj.query(':DISPlay:DATA?');
+            end
 
             % check data header
             headerChar = char(bitMapData(1));
@@ -1821,11 +1833,20 @@ classdef ScopeMacros < handle
                 %
                 % wavedata must downloaded in chunks with max. 2.5e5
                 % samples (when format is BYTE)
-                xstart = 1;
-                xstop  = min(xstart + 250e3 - 1, xlength);
-
+                xstart      = 1;
+                xstop       = min(xstart + 250e3 - 1, xlength);
+                cnt2        = 0;
+                NumSegments = ceil(xlength / 250e3);
 
                 while xstop <= xlength && xstart < xstop
+                    cnt2 = cnt2 + 1;
+                    if obj.ShowMessages
+                        disp(['  - Channel ' channel(end) ': ' ...
+                            'download waveform data ' ...
+                            num2str(cnt2, '%d') '/' ...
+                            num2str(NumSegments, '%d')]);
+                    end
+
                     % set addresses for data block to be read
                     obj.VisaIFobj.write([':WAVeform:STARt ' ...
                         num2str(xstart, '%d')]);
@@ -1833,7 +1854,19 @@ classdef ScopeMacros < handle
                         num2str(xstop, '%d')]);
 
                     % read data block
-                    data = obj.VisaIFobj.query(':WAVeform:DATA?');
+                    %
+                    % version ID has to be >= 3.x.x
+                    if str2double(getfield(split(char( ...
+                            obj.VisaIFobj.VisaIFVersion), '.'), {1})) >= 3
+                        % split query command to separate write and read due to
+                        % binary response
+                        obj.VisaIFobj.write(':WAVeform:DATA?');
+                        data  = obj.VisaIFobj.read;
+                    else
+                        % previous version does not need this workaround
+                        data = obj.VisaIFobj.query(':WAVeform:DATA?');
+                    end
+
                     % check and extract header: e.g. #41000binarydata with
                     % next 4 chars indicating number of bytes for actual data
                     if length(data) < 4
