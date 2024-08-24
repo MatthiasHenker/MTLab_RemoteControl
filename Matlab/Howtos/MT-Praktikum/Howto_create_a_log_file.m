@@ -1,5 +1,5 @@
 %% Howto create a log-file
-% 2022-08-05
+% 2024-08-24
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -9,7 +9,7 @@
 %
 % This sample script shows how to save all messages to a log-file.
 % For debugging or documentation it is sometimes sensible to save all
-% messages of the command window to a file. The simplest option is to use
+% messages of the command window to a file. A simple solution is to use
 % the 'diary' function of Matlab. All displayed output in the command
 % window can be mirrowed and saved to a file.
 %
@@ -32,19 +32,19 @@ end
 %% here we go
 
 % we start with some preparations (save the current time)
-TimeStampStart  = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
+TimeStampStart  = datetime('now', TimeZone = 'local', Format = 'yyyy-MM-dd__HH-mm-ss');
 
 % set diary filename
-diary(['myLogFile_' TimeStampStart '.txt']);
+diary(['myLogFile_' char(TimeStampStart) '.txt']);
 diary on;                     % start logging
 disp(char(45*ones(1,79)));    % line of '-' (ASCII-char 45 is '-')
 disp(mfilename('fullpath'));  % print m-filename first
-disp(['Test Script starts at: ' TimeStampStart]);
+disp(['Test Script starts at: ' char(TimeStampStart)]);
 disp(' ');
 
 % this is a placeholder for your actual code
-x = (1 : 0.5 : 3)
-y = log10(x)
+x = (1 : 0.5 : 3)   %#ok<NOPTS>
+y = log10(x)        %#ok<NOPTS>
 pause(1);
 
 % print out text and numbers
@@ -65,10 +65,10 @@ disp('Log-File Test Done.');
 disp(' ');
 
 % at the end of the file we stop logging
-TimeStampEnd = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
+TimeStampEnd = datetime('now', TimeZone = 'local', Format = 'yyyy-MM-dd__HH-mm-ss');
 %
-disp(['Test Script started at: ' TimeStampStart]);
-disp(['Test Script ended   at: ' TimeStampEnd]);
+disp(['Test Script started at: ' char(TimeStampStart)]);
+disp(['Test Script ended   at: ' char(TimeStampEnd)]);
 disp(char(45*ones(1,79)));    % line of '-'
 diary off;                    % stop logging
 
