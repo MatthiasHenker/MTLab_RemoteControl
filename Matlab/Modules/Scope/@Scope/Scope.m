@@ -2,21 +2,21 @@ classdef Scope < VisaIF
     % documentation for class 'Scope'
     % ---------------------------------------------------------------------
     % This class defines common methods for scope control. This class is a
-    % sub class of the super class 'VisaIF'. Type (in command window):
+    % subclass of the superclass 'VisaIF'. Type (in command window):
     % 'Scope' - to get a full list of accessible scopes which means that
-    %           their IP-addresses (for visa-tcpip) or USB IDs (for
-    %           visa-usb) are listed in config files
-    % 'Scope.listAvailablePackages' - to get a list of installed Scope
+    %           their IP-addresses (for visa-tcpip) or USB-IDs (for
+    %           visa-usb) are published in config files
+    % 'Scope.listAvailablePackages' - to get a list of installed scope
     %           packages.
     % Your scope can be controlled by the Scope class, when it is
-    % accessible and a suiting support package is installed.
+    % accessible and a matching support package is installed.
     %
-    % All public properties and methods from super class 'VisaIF' can also
-    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
+    % All public properties and methods from superclass 'VisaIF' can also
+    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.0).
     %
     % Use 'Scope.doc' for this help page.
     %
-    %   - Scope : constructor of sub class (class name)
+    %   - Scope : constructor of subclass (class name)
     %     * use this function to create an object for your scope
     %     * same syntax as for VisaIF class ==> see 'doc VisaIF'
     %     * default value of showmsg is 'few'
@@ -25,11 +25,11 @@ classdef Scope < VisaIF
     % NOTES:
     %     * the output parameter 'status' has the same meaning for all
     %       listed methods
-    %           status   :  0 when okay
-    %                      -1 when something went wrong
+    %           status   : == 0 when okay
+    %                      != 0 when something went wrong
     %     * all parameter names and values (varargin) are NOT case sensitive
-    %     * vargargin are input as pairs NAME, VALUE
-    %     * any number and order of NAME, VALUE pairs can be specified
+    %     * vargargin are input as pairs NAME = VALUE
+    %     * any number and order of NAME = VALUE pairs can be specified
     %     * not all parameters and values are supported by all scopes
     %     * check for warnings and errors
     %
@@ -43,16 +43,16 @@ classdef Scope < VisaIF
     %   - clear          : clear status at scope
     %     * send SCPI command '*CLS' to scope
     %     * usage:
-    %           status = myScope.clear  or  myScope.clear
+    %           status = myScope.clear  or just  myScope.clear
     %
     %   - lock & unlock  : lock/unlock all buttons at scope (some scopes)
     %     * usage:
-    %           status = myScope.lock or myScope.unlock
+    %           status = myScope.lock or just  myScope.lock
     %
     %   - configureInput : configure input of specified channels at scope
     %     * usage:
     %           status = myScope.configureInput(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %           'trace'   : enables or disables specified channel
@@ -85,7 +85,7 @@ classdef Scope < VisaIF
     %   - configureAcquisition : configure acquisition parameters
     %     * usage:
     %           status = myScope.configureAcquisition(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           'tDiv'    : positive numeric value, specifies the
     %                       horizontal (time) scale per division; input
     %                       value will be rounded internally,
@@ -120,7 +120,7 @@ classdef Scope < VisaIF
     %   - configureTrigger : configure trigger parameters
     %     * usage:
     %           status = myScope.configureTrigger(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           'mode'    : specify the relation between trigger events and
     %                       taking acquisitions;
     %                       'single'- wait for next trigger event, capture
@@ -158,7 +158,7 @@ classdef Scope < VisaIF
     %   - configureZoom : configure zoom window
     %     * usage:
     %           status = myScope.configureTrigger(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           'zoomFactor'  : specifies zoom factor (greater than 1),
     %                           default is 1 (dectivates zoom window)
     %                           value >= 2 activates zoom window
@@ -191,7 +191,7 @@ classdef Scope < VisaIF
     %       AutoscaleHorizontalSignalPeriods and AutoscaleVerticalScalingFactor
     %     * usage:
     %           status = myScope.autoscale(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           'mode'    : 'hor'  - (or 'horizontal') only horizontal
     %                                (tDiv) parameter will be adjusted
     %                       'vert' - (or 'vertical') only vertical (vDiv,
@@ -218,7 +218,7 @@ classdef Scope < VisaIF
     %                      file
     %     * usage:
     %           status = myScope.makeScreenShot(varargin)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %           filename: char array, specifying filename; optional;
     %                     file will be saved in current directory;
     %                     when no file extension is given then default is
@@ -240,7 +240,7 @@ classdef Scope < VisaIF
     %          result.channel   : specified channel/source   (char)
     %          result.parameter : specified parameter        (char)
     %          some scopes will report additional output fields
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %          'channel'  : specifies source for measurement
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       ATTENTION: will always be internally sorted in
@@ -294,7 +294,7 @@ classdef Scope < VisaIF
     %                                number of rows = 1
     %                                number of cols = same as for .volt
     %          wavedata.samplerate : sample rate in Sa/s (Hz)
-    %       with varargin: pairs of parameters NAME, VALUE
+    %       with varargin: pairs of parameters NAME = VALUE
     %          'channel'  : channel selector
     %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
     %                       optional parameter, default is all channels
@@ -385,38 +385,39 @@ classdef Scope < VisaIF
     %       overloading can occure and trigger stage will possibly fail
     %
     % ---------------------------------------------------------------------
-    % example for usage of class 'Scope':
-    %   myScope = Scope('TDS'); % create object (e.g. Tektronix TDS1001C)
+    % example for usage of class 'Scope': assuming Tektronix TDS1001C is listed
+    % in config file (run 'Scope.listContentOfConfigFiles')
+    %
+    %   myScope = Scope('TDS'); % create object and open interface
     %
     %   disp(['Version: ' myScope.ScopeVersion]); % show versions
     %   disp(['Version: ' myScope.VisaIFVersion]);
     %
-    %   myScope.open;                     % open interface
-    %   myScope.reset;                    % reset scope
+    %   myScope.reset;                    % reset scope (optional command)
     %
     %   myScope.configureInput( ...
-    %       'channel',  [1 2] , ...
-    %       'trace',    'on'  , ...
-    %       'vDiv',     0.05  , ...
-    %       'vOffset',  0.07  , ...
-    %       'coupling', 'dc'  , ...
-    %       'bwlimit',  'off' , ...
-    %       'inputdiv', 1);    % or 'probe'
+    %       channel   = [1 2] , ...
+    %       trace     = 'on'  , ...
+    %       vDiv      = 0.05  , ...
+    %       vOffset   = 0.07  , ...
+    %       coupling  = 'dc'  , ...
+    %       bwlimit   = 'off' , ...
+    %       inputdiv  = 1);
     %
-    %   % set up scope with 'configureAcquisition',  'configureTrigger'
+    %   % set up scope with methods 'configureAcquisition' and 'configureTrigger'
     %
     %   myScope.acqStop;
-    %   wavedata = myScope.captureWaveForm('channel', 'ch1');
+    %   wavedata = myScope.captureWaveForm(channel = 'ch1');
+    %   myScope.acqRun;
     %
-    %   myScope.makeScreenShot('filename', 'myScreenShot.bmp');
+    %   myScope.makeScreenShot(filename = 'myScreenShot.bmp');
     %
     %   % low level commands (inherited from super class 'VisaIF')
     %   % for supported SCPI commands see programmer guide of your scope
-    %   myScope.query('wfmpre:wfid?');         % list some settings
-    %   myScope.write('display:persistence 5'); % 5s
+    %   myScope.query('wfmpre:wfid?');          % depends on scope
+    %   myScope.write('display:persistence 5');
     %
-    %   myScope.close;                    % close interface
-    %   myScope.delete;                   % delete object
+    %   myScope.delete;                   % close interface and delete object
     %
     % ---------------------------------------------------------------------
     % HTW Dresden, faculty of electrical engineering
@@ -424,12 +425,12 @@ classdef Scope < VisaIF
     %   'ScopeDate'
     %
     % tested with
-    %   - Matlab (version 9.9 = 2020b update 4) and
-    %   - Instrument Control Toolbox (version 4.3)
-    %   - NI-Visa 19.5 (download from NI, separate installation)
+    %   - Matlab (version 24.1 = 2024a update 6) and
+    %   - Instrument Control Toolbox (version 24.1)
+    %   - NI-Visa 21.5 (download from NI, separate installation)
     %
     % known issues and planned extensions / fixes
-    %   - no bugs reported so far (version 1.2.0) ==> summer term 2021
+    %   - no severe bugs reported (version 3.0.0) ==> winter term 2024/25
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)

@@ -2,21 +2,21 @@ classdef FGen < VisaIF
     % documentation for class 'FGen'
     % ---------------------------------------------------------------------
     % This class defines common methods for generator control. This class
-    % is a sub class of the super class 'VisaIF'. Type (in command window):
+    % is a subclass of the superclass 'VisaIF'. Type (in command window):
     % 'FGen' - to get a full list of accessible generators which means that
-    %          their IP-addresses (for visa-tcpip) or USB IDs (for
-    %          visa-usb) are listed in config files
+    %          their IP-addresses (for visa-tcpip) or USB-IDs (for
+    %          visa-usb) are published in config files
     % 'FGen.listAvailablePackages' - to get a list of installed generator
     %           packages.
     % Your generator can be controlled by the FGen class, when it is
-    % accessible and a suiting support package is installed.
+    % accessible and a matching support package is installed.
     %
-    % All public properties and methods from super class 'VisaIF' can also
-    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 2.4.3).
+    % All public properties and methods from superclass 'VisaIF' can also
+    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.0).
     %
     % Use 'FGen.doc' for this help page.
     %
-    %   - FGen : constructor of sub class (class name)
+    %   - FGen : constructor of subclass (class name)
     %     * use this function to create an object for your generator
     %     * same syntax as for VisaIF class ==> see 'doc VisaIF'
     %     * default value of showmsg is 'few'
@@ -25,11 +25,11 @@ classdef FGen < VisaIF
     % NOTES:
     %     * the output parameter 'status' has the same meaning for all
     %       listed methods
-    %           status   :  0 when okay
-    %                      -1 when something went wrong
+    %           status   : == 0 when okay
+    %                      != 0 when something went wrong
     %     * all parameter names and values (varargin) are NOT case sensitive
-    %     * vargargin are input as pairs NAME, VALUE
-    %     * any number and order of NAME, VALUE pairs can be specified
+    %     * vargargin are input as pairs NAME = VALUE
+    %     * any number and order of NAME = VALUE pairs can be specified
     %     * not all parameters and values are supported by all generators
     %     * check for warnings and errors
     %
@@ -43,17 +43,17 @@ classdef FGen < VisaIF
     %   - clear          : clear status at generator
     %     * send SCPI command '*CLS' to generator
     %     * usage:
-    %           status = myFGen.clear  or  myFGen.clear
+    %           status = myFGen.clear  or just  myFGen.clear
     %
-    %   - lock & unlock  : lock/unlock all buttons at generator
+    %   - lock & unlock  : lock/unlock all buttons at generator (some generators)
     %     * usage:
-    %           status = myFGen.lock or myFGen.unlock
+    %           status = myFGen.lock or just  myFGen.lock
     %
     %   - configureOutput : configure output of specified channels at
     %     generator
     %     * usage:
     %           status = myFGen.configureOutput(varargin)
-    %       with optional varargin: pairs of parameters NAME, VALUE
+    %       with optional varargin: pairs of parameters NAME = VALUE
     %           'channel'    : specifies channel(s) to be configured
     %                          [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                          optional parameter, default is 'ch1'
@@ -103,7 +103,7 @@ classdef FGen < VisaIF
     %                      internally downscaled by 2^(#numBITSofDAC-1)-1
     %           waveout  = when 'mode' = 'list'
     %                      character array with comma separated wavenames
-    %       with optional varargin: pairs of parameters NAME, VALUE
+    %       with optional varargin: pairs of parameters NAME = VALUE
     %           'channel' : specifies channel(s) to be configured when
     %                       'mode' is set to 'select',
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
@@ -147,7 +147,7 @@ classdef FGen < VisaIF
     %   - enableOutput  : enable output of specified channels at generator
     %     * usage:
     %           status = myFGen.enableOutput(varargin)
-    %       with optional varargin: pairs of parameters NAME, VALUE
+    %       with optional varargin: pairs of parameters NAME = VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                       optional parameter, default is 'ch1'
@@ -155,7 +155,7 @@ classdef FGen < VisaIF
     %   - disableOutput : disable output of specified channels at generator
     %     * usage:
     %           status = myFGen.disableOutput(varargin)
-    %       with optional varargin: pairs of parameters NAME, VALUE
+    %       with optional varargin: pairs of parameters NAME = VALUE
     %           'channel' : specifies channel(s) to be configured
     %                       [1 2], 'ch1, ch2', '{'1', 'ch2'} ...
     %                       optional parameter, default is 'ch1'
@@ -172,45 +172,44 @@ classdef FGen < VisaIF
     %     * none
     %
     % ---------------------------------------------------------------------
-    % example for usage of class 'FGen':
-    %   myFGen = FGen('33220'); % create object (e.g. Agilent 33220A)
+    % example for usage of class 'FGen': assuming Agilent 33220A is listed
+    % in config file (run 'FGen.listContentOfConfigFiles')
+    %
+    %   myFGen = FGen('33220'); % create object and open interface
     %
     %   disp(['Version: ' myFGen.FGenVersion]);   % show versions
     %   disp(['Version: ' myFGen.VisaIFVersion]);
     %
-    %   myFGen.open;                     % open interface
+    %   myFGen.configureOutput( ...
+    %       waveform  = 'sin' , ...
+    %       outputImp = 50    );
+    %   myFGen.configureOutput( ...
+    %       frequency = 1.2e3 , ...
+    %       amplitude = 2     , ...
+    %       unit      = 'Vpp' );
+    %   myFGen.configureOutput( ...
+    %       offset    = -0.5  );
     %
-    %   myFGen.configureOutput(     ...
-    %       'waveform'    , 'sin' , ...
-    %       'outputImp'   , 50    );
-    %   myFGen.configureOutput(     ...
-    %       'frequency'   , 1.2e3 , ...
-    %       'amplitude'   , 2     , ...
-    %       'unit'        , 'Vpp' );
-    %   myFGen.configureOutput(     ...
-    %       'offset'      , -0.5  );
-    %
-    %   myFGen.enableOutput;    % or myFGen.enableOutput('channel', 1);
+    %   myFGen.enableOutput;    % or myFGen.enableOutput(channel = 1);
     %
     %   % arb waveform commands
     %   myFGen.arbWaveform(          ...
-    %       'mode'    , 'upload'   , ...
-    %       'wavedata', [-1:0.01:1], ...
-    %       'wavename', 'ramp201' );
+    %       mode      = 'upload'   , ...
+    %       wavedata  = [-1:0.01:1], ...
+    %       wavename  = 'ramp201pts' );
     %   myFGen.arbWaveform(          ...
-    %       'mode'    , 'select'   , ...
-    %       'wavename', 'ramp201' );
+    %       mode      = 'select'   , ...
+    %       wavename  = 'ramp201pts' );
     %   myFGen.configureOutput(      ...
-    %       'waveform', 'arb'      );
+    %       waveform  = 'arb'      );
     %
     %   % low level commands (inherited from super class 'VisaIF')
     %   % for supported SCPI commands see programmer guide of your
     %   % generator (here an example for Agilent 33220A)
     %   myFGen.write('freq 1234.5'); % set frequency to 1234.5 Hz
-    %   myFGen.query('freq?');       % request frequency
+    %   myFGen.query('freq?');       % request actual frequency
     %
-    %   myFGen.close;                    % close interface
-    %   myFGen.delete;                   % delete object
+    %   myFGen.delete;                   % close interface and delete object
     %
     % ---------------------------------------------------------------------
     % HTW Dresden, faculty of electrical engineering
@@ -218,12 +217,12 @@ classdef FGen < VisaIF
     %   'FGenDate'
     %
     % tested with
-    %   - Matlab (version 9.9 = 2020b update 4) and
-    %   - Instrument Control Toolbox (version 4.3)
-    %   - NI-Visa 19.5 & 20.0 (download from NI, separate installation)
+    %   - Matlab (version 24.1 = 2024a update 6) and
+    %   - Instrument Control Toolbox (version 24.1)
+    %   - NI-Visa 21.5 (download from NI, separate installation)
     %
-    % known issues
-    %   - no bugs reported so far (version 1.0.5) ==> summer term 2021
+    % known issues and planned extensions / fixes
+    %   - no severe bugs reported (version 3.0.0) ==> winter term 2024/25
     %
     % planned extensions / fixes
     %   - support modulation, sweep, burst, ...
@@ -233,7 +232,7 @@ classdef FGen < VisaIF
     %   - Matthias Henker   (professor)
     % ---------------------------------------------------------------------
 
-    % potential new property in arbWaveform:
+    % think about new property in arbWaveform:
     %           'filename': file name specifying wave data at host computer
     %                         for mode = upload:
     %                           when no wavedata are specified then data
