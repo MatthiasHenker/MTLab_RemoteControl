@@ -22,8 +22,8 @@
 % some config
 
 ModuleName = 'HandheldDMM';  % name of class file
-%VersionID  = '2.1.0_2022-08-10'; % should match name of tag in git (version control)
-VersionID  = 'x.y.z';
+VersionID  = '2.1.0_2022-08-10_refresh'; % should match name of tag in git (version control)
+%VersionID  = 'x.y.z';
 
 % copy released files also to Support directory?
 copyFilesToSupportDir = 1;   % true (1) or false (0)
