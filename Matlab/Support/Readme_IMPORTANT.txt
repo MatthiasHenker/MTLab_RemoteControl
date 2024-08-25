@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# 2024-08-23
+# 2024-08-25
 # Prof. Matthias Henker (HTW Dresden, Germany)
 # ----------------------------------------------------------------------------
 
@@ -19,7 +19,7 @@ ACTIONS:
   ==> Matlab will find these files now
 
 # ----------------------------------------------------------------------------
-VisaIF       : VisaIF             class    v3.0.0   (2024-08-22)
+VisaIF       : VisaIF             class    v3.0.1   (2024-08-25)
   - addons   : VisaDemo           class    v3.0.0   (2024-08-18)
                VisaIFLogger       class    v3.0.0   (2024-08-20)
                VisaIFLogEventData class    v2.0.1   (2021-01-09)

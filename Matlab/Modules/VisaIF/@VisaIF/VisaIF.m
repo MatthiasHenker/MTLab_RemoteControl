@@ -246,8 +246,8 @@ classdef VisaIF < handle
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
-        VisaIFVersion = '3.0.0';      % current version of VisaIF
-        VisaIFDate    = '2024-08-22'; % release date
+        VisaIFVersion = '3.0.1';      % current version of VisaIF
+        VisaIFDate    = '2024-08-25'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -1099,6 +1099,7 @@ classdef VisaIF < handle
         end
 
         function PreferredVisa = get.PreferredVisa(obj)
+            % in case several VISA drivers are installed (NI, RS, Keysight)
             PreferredVisa = obj.VisaObject.PreferredVisa;
         end
 

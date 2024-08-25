@@ -1,10 +1,14 @@
-function varargout = listAvailableVisaUsbDevices
+function varargout = listAvailableVisaUsbDevices(showmsg)
 % returns a cell array of available (connected) visa-usb devices
 % function call
 %   VisaIF.listAvailableVisaUsbDevices
 %   visaUsbDeviceList = VisaIF.listAvailableVisaUsbDevices
 %
 % for use within VisaIF (minimum version 3.x.x, Matlab minimum 2022)
+
+arguments (Input)
+    showmsg (1,1) {mustBeNumericOrLogical} = false;
+end
 
 className   = mfilename('class');
 
@@ -15,11 +19,22 @@ else
     varargout  = cell(1, nargout);
 end
 
+% show all results when results are not stored in an output variable
+if nargin == 0 && nargout == 0
+    showmsg = true;
+else
+    showmsg = logical(showmsg);
+end
+
 numOfUsbDevices = 0;
 visaUsbDevices  = {};
 
 % list available VISA resources
-resourceList      = visadevlist(Timeout = 2);
+try
+    resourceList  = visadevlist(Timeout = 5);
+catch
+    resourceList  = [];
+end
 numOfAvailableRes = size(resourceList, 1); % num of rows
 
 for cnt = 1 : numOfAvailableRes
@@ -32,8 +47,8 @@ for cnt = 1 : numOfAvailableRes
     end
 end
 
-% either return results in output variables or display results
-if nargout == 0
+% optionally display results
+if showmsg
     % read in config table to check if USB device is in list
     cfgTable = VisaIF.listContentOfConfigFiles;
 
@@ -67,11 +82,11 @@ if nargout == 0
             disp(['      SerialNumber   (SID): ' char(RsrcCell{4})]);
         end
     end
-elseif nargout == 1
-    % silent mode when called with outputs
-    if numOfUsbDevices > 0
-        varargout(1) = {visaUsbDevices};
-    end
+end
+
+% return result in output variable on demand
+if nargout == 1 && numOfUsbDevices > 0
+    varargout(1) = {visaUsbDevices};
 end
 
 end

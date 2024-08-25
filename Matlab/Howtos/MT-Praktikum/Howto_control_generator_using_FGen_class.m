@@ -1,5 +1,5 @@
 %% Howto create an FGen object and control a signal generator remotely
-% 2022-08-05
+% 2024-08-25
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -7,7 +7,7 @@
 % ---------------------------------------------------------------------
 % This is a simple sample script within a series of howto-files.
 %
-% ATTENTION: 'Fgen' (version 1.0.7 or higher) and 'VisaIF' (version 2.4.3
+% ATTENTION: 'Fgen' (version 3.0.0 or higher) and 'VisaIF' (version 3.0.1
 %            or higher) class files are required
 %
 % This sample script is dealing with the creation of a FGen object and
@@ -39,10 +39,10 @@ end
 %   - the FGen class provides some high-level SPCI-command macros for
 %     typical actions like selecting waveform, setting amplitude,
 %     DC-offset, frequency and so on
-%   - this enables you to create powerful scripts for full automated tests
-%   - For full functionality an Agilent 33220A generator has to connected
-%     to your computer. Normally, you won't have such a generator at home.
-%   - Thus, we provide a demo mode for first tests at home.
+%   - this enables you to create powerful scripts for automated tests
+%   - For full functionality e.g. an Agilent 33220A generator has to be
+%     connected to the computer. Normally, you won't have such a generator at
+%     home. Thus, a demo mode is provided for first tests at home.
 %   - ATTENTION: the demo mode supports very few macros only
 %       * methods: reset, identify, opc
 %       * methods: configureOutput('frequency', VALUE)
@@ -50,46 +50,42 @@ end
 %         and parameters in demo-mode --> read messages in command window
 
 % you can check if there is a generator connected via USB and turned on
-FGen.listAvailableVisaUsbDevices; % take a look on your command window
+USBDeviceList = FGen.listAvailableVisaUsbDevices(true); % show results
 
-% is a signal generator connected to PC or do want to use the Demo-mode?
-runDemoMode = true;  % true (demo) or false (with connected generator)
-if runDemoMode
+% which function generator is to be controlled remotely?
+FGenType = 'Agilent-33220A';   % used in the lab (room S110)
+
+% SELECT: true (demo) or false (control actually connected generator)
+runDemoMode = true;
+if runDemoMode || isempty(USBDeviceList)
     interface = 'demo';
 else
     interface = 'visa-usb'; %#ok<UNRCH>
 end
 
-% which function generator is used?
-FGenType = 'Agilent-33220A';   % used in the lab (room S110)
-
-% create object (constructor) --> same as for VisaIF class
+% -------------------------------------------------------------------------
+% create object (constructor) - same inputs as for VisaIF or Scope classes
 myFGen = FGen(FGenType, interface);
 
 % how much information should be printed out? ('none', 'few', or 'all')
 %myFGen.ShowMessages = 'all'; % default is 'few'
 
-% open the interface
-myFGen.open;
-
-% a reset at the beginning will set the generator to default state
+% optionally perform a reset to set the generator to default state
 %myFGen.reset;  % reset is not necessary in most cases
 
 % -------------------------------------------------------------------------
 % some initial configuration first
 
-waveform  = 'sine';  % sine wave
-amplitude = 2;       % 2 Vpp
-unit      = 'Vpp';   % also available options are: 'Vrms', Vpp', 'dBm'
-offset    = 0.5;     % in V
-load      = inf;     % output impedance = High-Z
-
-% configure generator (it is more readable this way)
-myFGen.configureOutput('outputimp', load);     % set output impedance
-myFGen.configureOutput('waveform' , waveform); % set waveform type
-myFGen.configureOutput('offset'   , offset);   % set DC-offset
-myFGen.configureOutput('amplitude', amplitude, ...
-    'unit'     , unit);     % set amplitude
+% configure generator (output parameters can be set all at once or splitted up)
+%
+% set expected impedance of load (normally 50 Ohms or High-Z = inf)
+myFGen.configureOutput(outputimp = inf);
+% set waveform type - available options are: 'sine', 'rect',  ...
+myFGen.configureOutput(waveform  = 'sine');
+% set amplitude     - available options are: 'Vrms', Vpp', 'dBm'
+myFGen.configureOutput(amplitude = 2, unit = 'Vpp');
+% set DC-offset     - always in 'V'
+myFGen.configureOutput(offset    = 0.5);
 
 % -------------------------------------------------------------------------
 % run a loop to sequentially set different frequencies
@@ -112,17 +108,16 @@ myFGen.enableOutput; % enable signal output
 for cnt = 1 : NumFreq
     % print out loop counter to show progress
     disp(['Loop counter: ' num2str(cnt) ' of ' num2str(NumFreq)]);
-    
+
     % set N-th frequency value at generator
     myFGen.configureOutput('frequency', frequencies(cnt));
-    
+
     % wait a moment to see progress (e.g. at display of generator)
     pause(0.5); % in s
 end
 
 % -------------------------------------------------------------------------
 % finally close interface and delete object again
-myFGen.close;
 myFGen.delete;
 
 disp('Generator Test Done.');
