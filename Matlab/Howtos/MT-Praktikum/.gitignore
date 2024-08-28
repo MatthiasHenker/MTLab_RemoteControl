@@ -1,6 +1,11 @@
 myLog*.txt
 *.bmp
+*.BMP
 *.tiff
+*.TIFF
 *.png
+*.PNG
 *.csv
+*.CSV
 *.mat
+*.MAT

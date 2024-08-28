@@ -10,8 +10,8 @@ classdef ScopeMacros < handle
     % Tektronix TDS1000, TDS 2000 series macros
 
     properties(Constant = true)
-        MacrosVersion = '3.0.0';      % release version
-        MacrosDate    = '2024-08-22'; % release date
+        MacrosVersion = '3.0.1';      % release version
+        MacrosDate    = '2024-08-26'; % release date
         %
         % ? num of supported channels and so on ...
     end
@@ -106,6 +106,10 @@ classdef ScopeMacros < handle
             if obj.VisaIFobj.write('factory')
                 status = -1;
             end
+            % reset procedure takes a while
+            % ==> wait a moment to avoid a timeout error of interface
+            pause(4);
+
             % set SCPI response header style to 'off' again
             if obj.VisaIFobj.write('header off')
                 status = -1;

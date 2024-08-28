@@ -7,8 +7,8 @@ classdef ScopeMacros < handle
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
 
     properties(Constant = true)
-        MacrosVersion = '3.0.0';      % release version
-        MacrosDate    = '2024-08-23'; % release date
+        MacrosVersion = '3.0.1';      % release version
+        MacrosDate    = '2024-08-28'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -18,6 +18,10 @@ classdef ScopeMacros < handle
         AcquisitionState                  char
         TriggerState                      char
         ErrorMessages                     char
+    end
+
+    properties(Dependent, SetAccess = private, GetAccess = private)
+        DataAvailable                     logical
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -49,9 +53,11 @@ classdef ScopeMacros < handle
 
             % add some device specific commands:
             % lock buttons at scope when remote control is active
-            if obj.VisaIFobj.write(':SYSTem:LOCK ON')
-                status = -1;
-            end
+            % ==> it's more convenient to have buttons unlocked, because
+            %     there is no unlock button at scope
+            % if obj.VisaIFobj.write(':SYSTem:LOCK ON')
+            %     status = -1;
+            % end
             % ...
 
             % wait for operation complete
@@ -141,42 +147,21 @@ classdef ScopeMacros < handle
             status = NaN;
 
             % execute autoset command
+            % config: use current acquisition mode
             if obj.VisaIFobj.write(':AUToscale:AMODE CURRent')
                 status = -1;
             end
-
+            % config: run autoset on all channels (not only the active
+            % ones)
+            if obj.VisaIFobj.write(':AUToscale:CHANnels ALL')
+                status = -1;
+            end
+            % actual autoset
             if obj.VisaIFobj.write(':AUToscale')
                 status = -1;
             end
 
             % wait until done
-            obj.VisaIFobj.opc;
-
-            % set trigger source taking active channels into consideration
-            if str2double(char(obj.VisaIFobj.query(...
-                    ':STATus? CHANnel1'))) % channel 1 is active
-                TrigSource = '1';
-            elseif str2double(char(obj.VisaIFobj.query(...
-                    ':STATus? CHANnel2'))) % channel 2 is active
-                TrigSource = '2';
-            else
-                TrigSource = '1'; % none active, set channel 1 anyway
-            end
-
-            if obj.VisaIFobj.write([':TRIGger:EDGE:SOURce CHANnel',...
-                    TrigSource])
-                status = -1;
-            end
-
-            obj.VisaIFobj.opc;
-
-            % automatically adjust trigger, use edge triggering as common
-            % case
-            if obj.VisaIFobj.write(...
-                    ':TRIGger:SWEep NORMal;MODE EDGE;LEVel:ASETup')
-                status = -1;
-            end
-
             obj.VisaIFobj.opc;
 
             if isnan(status)
@@ -1349,18 +1334,45 @@ classdef ScopeMacros < handle
 
             % horizontal scaling (tDiv)
             if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
-                % use trigger source for frequency measurements
-                trigSrc  = obj.VisaIFobj.query(':trigger:source?');
-                trigSrc  = char(trigSrc);
+                % init
+                measFreq = NaN;
 
-                if startsWith(upper(trigSrc), 'CHAN') || ...
-                        startsWith(upper(trigSrc), 'EXT')
-                    % measure frequency
-                    measFreq = obj.VisaIFobj.query([':measure:counter? ' ...
-                        trigSrc]);
-                    measFreq = str2double(char(measFreq));
+                % measurement request will possibly not be answered
+                %
+                % request acquisition status information before
+                acqRunning  = strcmpi(obj.AcquisitionState, 'running');
+                response    = char(obj.VisaIFobj.query(':TRIGger:SWEep?'));
+                acqModeAuto = strcmpi(response, 'auto');
+                if acqRunning && acqModeAuto
+                    % use trigger source for frequency measurements
+                    trigSrc  = obj.VisaIFobj.query(':trigger:source?');
+                    trigSrc  = char(trigSrc);
+                    if startsWith(upper(trigSrc), 'CHAN') || ...
+                            startsWith(upper(trigSrc), 'EXT')
+                        try
+                            % measure frequency
+                            measFreq = obj.VisaIFobj.query([':measure:counter? ' ...
+                                trigSrc]);
+                        catch %#ok<CTCH>
+                            disp(['Scope: Warning - Unterminated query ' ...
+                                'in ''autoscale'' method.']);
+                            % okay again? if not an error will cause final exit
+                            obj.VisaIFobj.opc; % can end up in final error
+                            % we can go on
+                            %                            disp(['Scope: Warning - ''runMeasurement'' ' ...
+                            %                                'method was canceled.']);
+                            %                            meas.status   = -1;
+                            %                            meas.errormsg = 'ScopeMacro: measurement request aborted.';
+                            %                            return  % exit
+                        end
+                        measFreq = str2double(char(measFreq));
+                    elseif obj.ShowMessages
+                        disp(['Scope: Warning - Neither channel 1 or 2 ' ...
+                            'nor external is set as trigger source.']);
+                    end
                 else
-                    measFreq = NaN;
+                    disp(['Scope: Warning - Either acquisition was not ' ...
+                        'stopped or acquisition mode is not set to ''AUTO''.']);
                 end
 
                 if ~isnan(measFreq)
@@ -1547,7 +1559,7 @@ classdef ScopeMacros < handle
             %
             meas.overload  = NaN;
             meas.underload = NaN;
-            meas.errorid   = NaN;
+            meas.errorid   = inf; % ~errorid is false when errorid ~= 0
             meas.errormsg  = '';
 
             % default values
@@ -1733,13 +1745,39 @@ classdef ScopeMacros < handle
                 param2 = [param2 ','];
             end
 
-            % run actual measurement
-            [value, statQuery] = obj.VisaIFobj.query([...
-                ':MEASURE:' parameter '? ' param2 channel]);
+            % run actual measurement (but avoid timeout)
+            %
+            % request acquisition status information
+            acqRunning  = strcmpi(obj.AcquisitionState, 'running');
+            response    = char(obj.VisaIFobj.query(':TRIGger:SWEep?'));
+            acqModeAuto = strcmpi(response, 'auto');
+            if acqRunning && acqModeAuto
+                try
+                    [value, statQuery] = obj.VisaIFobj.query([...
+                        ':MEASURE:' parameter '? ' param2 channel]);
+                catch %#ok<CTCH>
+                    disp(['Scope: Warning - Unterminated query ' ...
+                        'in ''runMeasurement'' method.']);
+                    % okay again? if not an error will cause final exit
+                    obj.VisaIFobj.opc; % can end up in final error
+                    % we can go on
+                    disp(['Scope: Warning - ''runMeasurement'' ' ...
+                        'method has failed.']);
+                    meas.status   = -1;
+                    meas.errormsg = 'ScopeMacro: measurement request aborted.';
+                    return  % exit
+                end
+            else
+                value     = [];
+                statQuery = -1;
+                disp(['Scope: Warning - Either acquisition was not ' ...
+                    'stopped or acquisition mode is not set to ''AUTO''.']);
+                disp(['Scope: Warning - ''runMeasurement'' ' ...
+                    'method was canceled.']);
+            end
 
             if statQuery ~= 0
                 meas.status = -1;
-                meas.value  = NaN;
                 return  % exit
             else
                 meas.value  = str2double(char(value));
@@ -1872,6 +1910,17 @@ classdef ScopeMacros < handle
             % -------------------------------------------------------------
             % actual code
             % -------------------------------------------------------------
+
+            % continue only when data are available
+            % otherwise exit ==> to avoid timeout @ waveform download
+            if ~obj.DataAvailable
+                if obj.ShowMessages
+                    disp(['Scope: Warning - ''captureWaveForm'' ' ...
+                        'method was canceled.']);
+                end
+                waveData.status = -1;
+                return
+            end
 
             % some common configuration first
             obj.VisaIFobj.write(':WAVeform:FORMat BYTE');
@@ -2029,6 +2078,34 @@ classdef ScopeMacros < handle
                 else
                     trigState = '';
                 end
+            end
+        end
+
+        function dataAvailable = get.DataAvailable(obj)
+            % init output
+            dataAvailable = false;
+
+            % request status information
+            acqStopped  = strcmpi(obj.AcquisitionState, 'stopped');
+            response    = char(obj.VisaIFobj.query(':TRIGger:SWEep?'));
+            acqModeAuto = strcmpi(response, 'auto');
+            if acqStopped || acqModeAuto
+                try
+                    response = char(obj.VisaIFobj.query(':WAVeform:POINts?'));
+                catch %#ok<CTCH>
+                    response = '0';
+                    disp('Scope: Warning - Unterminated query.');
+                    % okay again? if not an error will cause final exit
+                    obj.VisaIFobj.opc;
+                end
+                if str2double(response) > 0
+                    dataAvailable = true;
+                elseif obj.ShowMessages
+                    disp('Scope: Warning - No data were available.');
+                end
+            else
+                disp(['Scope: Warning - Either acquisition was not ' ...
+                    'stopped or acquisition mode is not set to ''AUTO''.']);
             end
         end
 

@@ -1,5 +1,5 @@
 %% Howto create a Scope object and control a scope remotely
-% 2022-08-05
+% 2024-08-28
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -7,7 +7,7 @@
 % ---------------------------------------------------------------------
 % This is a simple sample script within a series of howto-files.
 %
-% ATTENTION: 'Scope' (version 1.2.1 or higher) and 'VisaIF' (version 2.4.3
+% ATTENTION: 'Scope' (version 3.0.0 or higher) and 'VisaIF' (version 3.0.1
 %            or higher) class files are required
 %
 % This sample script is dealing with the creation of a Scope object and
@@ -40,8 +40,9 @@ end
 %     typical actions like selecting voltage divider, time base,
 %     download waveform, making a screenshot and so on
 %   - this enables you to create powerful scripts for full automated tests
-%   - For full functionality a Textronix TDS1001/2001 scope has to connected
-%     to your computer. Normally, you won't have such a scope at home.
+%   - For full functionality an e.g. Textronix TDS1001/2001 scope has to be
+%     connected to the computer. Normally, you won't have such a scope
+%     at home. Thus, a demo mode is provided for first tests at home.
 %   - Thus, we provide a demo mode for first tests at home.
 %   - ATTENTION: the demo mode supports very few macros only
 %       * methods: reset, identify, opc
@@ -49,31 +50,34 @@ end
 %         and parameters in demo-mode --> read messages in command window
 
 % you can check if there is a scope connected via USB and turned on
-Scope.listAvailableVisaUsbDevices; % take a look on your command window
+USBDeviceList = Scope.listAvailableVisaUsbDevices(true); % show results
 
-% is a scope connected to PC or do want to use the Demo-mode?
-runDemoMode = true;  % true (demo) or false (with connected scope)
-if runDemoMode
+% SELECT: true (demo) or false (control actually connected scope)
+runDemoMode = false; % true or false
+if runDemoMode || isempty(USBDeviceList)
     interface = 'demo';
 else
-    interface = 'visa-usb'; %#ok<UNRCH>
+    interface = 'visa-usb';
 end
 
-% which scope is used?
-ScopeType = 'Tek-TDS';   % used in the lab (room S110)
+% which scope is used? available scopes in the lab (room S 110)
+ScopeType = 'TDS';   % Tektronix TDS 1000X
+%ScopeType = 'SDS';   % Siglent SDS1202X-E
+%ScopeType = 'DSO';   % Keysight DSOX1102A
 
-% create object (constructor) --> same as for VisaIF class
+% -------------------------------------------------------------------------
+% create object (constructor) and open interface
 myScope = Scope(ScopeType, interface);
 
-myScope.open;     % open the interface
-%myScope.reset;   % optionally reset the scope (set to default state)
+% optionally perform a reset to set the generator to default state
+myScope.reset;   % reset can be helpful get scope to a known state
 
 % -------------------------------------------------------------------------
 % some initial configuration first
 
 % it is often sensible to use the autoset functionality of the scope as
 % good starting point for further more detailed configurations
-% ATTENTION: - always use 'autoset' before all other configurations,
+% ATTENTION: - always use 'autoset' before ALL OTHER configurations,
 %              because autoset configures (overwrites) lots of settings
 %            - fur further adjustments use 'autoscale' instead of 'autoset'
 %              to avoid unwanted changes in configuration (e.g. trigger)
@@ -86,17 +90,17 @@ myScope.autoset;   % same as pressing autoset button at scope
 channels = [1 2];   % or channels = {'ch1', 'ch2'};
 
 % general settings of input and trigger parameters (fine tuning)
-myScope.configureInput(          ...
-    'channel'    , channels    , ...  % select channel(s) to configure
-    'trace'      , 'on'        , ...  % turn on selected channel(s)
-    'coupling'   , 'DC'        , ...  % DC-coupling of input signal
-    'inputdiv'   , 1           , ...  % cable does 1:1 (default is 10)
-    'bwlimit'    , true        );     % 20MHz low pass filter reduces noise
-myScope.configureTrigger( ...
-    'type'       , 'risingedge', ...  % default (after reset)
-    'source'     , 'ch1'       , ...  % or ch2
-    'coupling'   , 'DC'        , ...  % or AC
-    'level'      , 0           );     % depends on input signal
+myScope.configureInput(      ...
+    channel  = channels    , ...  % select channel(s) to configure
+    trace    = 'on'        , ...  % turn on selected channel(s)
+    coupling = 'DC'        , ...  % DC-coupling of input signal
+    inputdiv = 1           , ...  % cable does 1:1 (default is 10)
+    bwlimit  = true        );     % 20MHz low pass filter reduces noise
+myScope.configureTrigger(    ...
+    type     = 'risingedge', ...  % or 'fallingedge'
+    source   = 'ch1'       , ...  % or 'ch2' (alternatively just 1 or 2)
+    coupling = 'DC'        , ...  % or 'AC'
+    level    = 0.5         );     % depends on offset of input signal
 
 % now adjust vertical (voltage) and horizontal (time) scaling as fine
 % tuning ==> very helpful when signal at scope input has changed
@@ -114,17 +118,17 @@ myScope.autoscale;                    % configurable macro
 % -------------------------------------------------------------------------
 % some helpful methods: screenshot
 
-% make a screenshot and save as BMP- or TIFF-file
+% make a screenshot and save as BMP-, PNG- or TIFF-file
 % (supported file formats/extensions depend on scope)
-myScope.makeScreenShot('filename', 'myScreenShot.tiff');
+myScope.makeScreenShot(filename = 'myScreenShot'); % use default file extension
 
 % -------------------------------------------------------------------------
 % some helpful methods: download wave data
 
 % save waveform data to host (same as on scope screen)
-myScope.acqStop;                                         % stop
-wavedata = myScope.captureWaveForm('channel', channels); % save
-myScope.acqRun;                                          % run again
+myScope.acqStop;                                        % stop
+wavedata = myScope.captureWaveForm(channel = channels); % download data
+myScope.acqRun;                                         % run again
 %
 % plot acquired scope data
 if wavedata.status == 0   % download was successful
@@ -138,24 +142,23 @@ if wavedata.status == 0   % download was successful
 end
 
 % -------------------------------------------------------------------------
-% some helpful methods: request measurement value(s)
+% some more helpful methods: request measurement value(s)
 
 % most scopes support measurements like mean value, max- and min-value ...
 myMeas_1 = myScope.runMeasurement( ...
-    'channel'  , 1          , ...
-    'parameter', 'maximum'  );
+    channel   =  1       , ...
+    parameter = 'maximum');
 % the result is a struct (see 'help struct') containing several fields
 % ==> in most cases only the actual measurement value is of interest
 maxValue = myMeas_1.value;
 
 % alternatively you can directly access the 'value' field only
 phaseValue = myScope.runMeasurement( ...
-    'channel'  , [1 2]      , ...
-    'parameter', 'phase'    ).value;
+    channel   = [1 2]  , ...
+    parameter = 'phase').value;
 
 % -------------------------------------------------------------------------
 % finally close interface and delete object again
-myScope.close;
 myScope.delete;
 
 disp('Scope Test Done.');

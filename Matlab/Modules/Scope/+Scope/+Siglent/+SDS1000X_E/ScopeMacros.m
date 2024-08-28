@@ -22,8 +22,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
 
     properties(Constant = true)
-        MacrosVersion = '3.0.0';      % release version
-        MacrosDate    = '2024-08-22'; % release date
+        MacrosVersion = '3.0.1';      % release version
+        MacrosDate    = '2024-08-26'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -87,6 +87,15 @@ classdef ScopeMacros < handle
             % no idea why
             % workaround: disable buzzer permanently
             if obj.VisaIFobj.write('BUZZER OFF')
+                status = -1;
+            end
+
+            % set memory depth for acquisition to 70k (interleaved) or
+            % 140k (non interleaved) ==> only one command is accepted
+            if obj.VisaIFobj.write('memory_size 140k')
+                status = -1;
+            end
+            if obj.VisaIFobj.write('memory_size 70k')
                 status = -1;
             end
 
@@ -1475,6 +1484,8 @@ classdef ScopeMacros < handle
 
             % horizontal scaling: adjust tDiv
             if strcmpi(mode, 'horizontal') || strcmpi(mode, 'both')
+                % time for settlement
+                pause(0.1);
                 % request trigger frequency
                 response = obj.VisaIFobj.query('CYMOMETER?');
                 % format of response is xxx without unit
@@ -1501,13 +1512,13 @@ classdef ScopeMacros < handle
                 end
             end
 
-            % Siglent scope is quite slow, additional wait is sensible
-            pause(0.05);
             % wait for operation complete
             obj.VisaIFobj.opc;
 
             % vertical scaling: adjust vDiv, vOffset
             if strcmpi(mode, 'vertical') || strcmpi(mode, 'both')
+                % Siglent scope is quite slow, additional wait is sensible
+                pause(0.1);
                 for cnt = 1:length(channels)
                     % check if channel is active
                     response = obj.VisaIFobj.query(['C' channels{cnt} ...
@@ -1520,9 +1531,6 @@ classdef ScopeMacros < handle
                     loopcnt  = 0;
                     maxcnt   = 9;
                     while loopcnt < maxcnt
-                        % time for settlement
-                        pause(0.05);
-
                         % request current vDiv setting
                         vDiv = obj.VisaIFobj.query( ...
                             ['C' channels{cnt} ':VOLT_DIV?']);
@@ -1590,16 +1598,25 @@ classdef ScopeMacros < handle
                             status = -11;
                         end
 
+                        % time for settlement
+                        pause(0.1);
+
                         % wait for completion
                         obj.VisaIFobj.opc;
 
-                        % update loop counter
-                        loopcnt = loopcnt + 1;
-
-                        if ~adcMax && ~adcMin && loopcnt ~= maxcnt
+                        if (loopcnt == maxcnt - 2) || (~adcMax && ...
+                                ~adcMin && loopcnt >= 1 ...
+                                && loopcnt <= maxcnt - 2)
                             % shorten loop when no clipping ==> do a
                             % final loop run to ensure proper scaling
                             loopcnt = maxcnt - 1;
+                            % but insert an extra wait before last loop
+                            % ==> time for settlement
+                            % ==> this SDS1202X-E scope is really slow
+                            pause(2);
+                        else
+                            % update loop counter
+                            loopcnt = loopcnt + 1;
                         end
                     end
                 end
