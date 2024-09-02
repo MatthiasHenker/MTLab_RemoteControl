@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-02
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -38,7 +38,7 @@ end
 %  - initialize all data to plot with zeros (or something else)
 %  - plot initial data and add labels and so on to beautify plot
 %  - activate automatic update of graph on data change (linkdata)
-%  - now the figure will update its plot data when you modify your data
+%  - now the figure will update the plot when you modify your data
 %  ==> Matlab will notice when your data has changed and update also your
 %      plots
 
@@ -50,10 +50,10 @@ x  = (0 : 0.1 : 8);
 
 % the actual y-values to plot are not known at the beginning
 % we initialize all y-values as zeros
-y = zeros(1, length(x));
+y = zeros(size(x));  % same size as your x-data
 
 % at the beginning we initialize the figure window
-fig2  = figure(2);
+fig2    = figure(2);
 myplot2 = plot(x, y, ':b*');     % plot initial curve (all zeros)
 
 % add labels, scale axes and so on
@@ -66,7 +66,7 @@ ylim('auto');
 grid minor;
 
 % and now we turn on automatic update of graphs on data changes
-myplot2(1).XDataSource = 'x';
+myplot2(1).XDataSource = 'x';  % name of the variables holding the data
 myplot2(1).YDataSource = 'y';
 linkdata(fig2, 'on');
 

@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-02
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -49,7 +49,7 @@ y = zeros(size(x));
 
 % at the beginning we initialize the figure window
 fig1 = figure(1);
-hold off;              % previous plots will be deleted and overwritten
+hold off;              % previous plots will be overwritten (= erased)
 plot(x, y, ':m*');     % plot initial curve (all data values are zeros)
 
 % now we run a loop over x-vector
@@ -62,7 +62,7 @@ for cnt = 1 : length(x)
     % make a short pause (otherwise it is to fast to see the updates)
     pause(0.1); % 0.1s
     
-    % update figure (actually it will be erased)
+    % update figure (actually previous plot will be overwritten = erased)
     figure(fig1);      % only required when you have more than one figure
     plot(x, y, ':m*'); % overwrite previous plot (because of 'hold off')
     

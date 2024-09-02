@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-02
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -47,19 +47,19 @@ x  = (0 : 0.1 : 8);
 
 % the actual y-values to plot are not known at the beginning
 % we initialize all y-values as zeros
-y = zeros(1, length(x));
+y = zeros(size(x));
 
 % at the beginning we initialize the figure window
-fig3   = figure(3);
+fig4   = figure(4);
 myline = animatedline; % with empty plot data at the beginning
 
 % beautify figure
 myline.Color           = [0.9 0.1 0.2]; % e.g. as RGB triplet
 myline.LineStyle       = '-.';
 myline.Marker          = 'o';
-myline.MarkerSize      = 10;
-myline.MarkerFaceColor = 'g';           % e.g. as color name
-myline.MarkerEdgeColor = [0 0 1];       % or as RGB triplet
+myline.MarkerSize      = 3;
+myline.MarkerFaceColor = 'g';           % e.g. as color name (g = green)
+myline.MarkerEdgeColor = [0 0 1];       % or as RGB triplet  (  = blue)
 %
 title(['my figure with periodic updates (alternative option ' ...
     'using animatedline-command)']);

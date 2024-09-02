@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-02
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -53,13 +53,13 @@ x  = (0 : 0.1 : 8);
 
 % the actual y-values to plot are not known at the beginning
 % we initialize all y-values as zeros
-y = zeros(1, length(x));
+y = zeros(size(x));
 
 % at the beginning we initialize the figure window
 fig3  = figure(3);
 myplot3 = plot(x, y, ':b*');     % plot initial curve (all zeros)
 % ATTENTION: the x- and y-data are copied to the plot-object now
-% the original x- and y-data vectors are of interest anymore for the plots
+% the original x- and y-data vectors are not of interest anymore
 
 % add labels, scale axes and so on
 title(['my figure with periodic updates (alternative option ' ...
@@ -79,6 +79,7 @@ for cnt = 1 : length(x)
     
     % instead of storing the new values in the y-data vector we write the
     % new data values directly to the plot-object
+    % ==> we modify the plot data
     myplot3(1).YData(cnt) = newvalue;
     
     % optionally make a pause (otherwise it's to fast to see the updates)
