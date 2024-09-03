@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -47,14 +47,13 @@ y_meas = A* sin(F * x_meas + Phase) + 0.2 * randn(size(x_meas));
 
 % plot measurement values: only show data points, but do not connect points
 figure(1);
-plot(x_meas, y_meas, 'r*');
+plot(x_meas, y_meas, 'r*', DisplayName = 'measurement values');
 grid on;
 title('Example 3');
 xlabel('x values')
 ylabel('y values');
 xlim auto;       % optionally scale x- and y-axis
 ylim auto;
-zoom on;         % click into figure window will zoom in at default
 
 % your problem: you expect a sine wave (y = A* sin(F * x + Phase) but your
 % measurement values do not fit to a perfect sine wave
@@ -75,22 +74,26 @@ myFitFunc = @(A, F, Phase, x) (A* sin(F*x + Phase));
 % now create fit object with your data and options
 % Note: data vectors have to be column vectors ==> use x' to transpose
 myFit = fit(x_meas', y_meas', myFitFunc, ...
-    'StartPoint', [1 2 -45*pi/180]);  % you need some good start values
+    StartPoint = [1 2 -45*pi/180]);  % you need some good start values
 % show results
 disp(myFit);
 
 % plot best fitting curve in your diagram
 figure(1);
 % define plot range
-x_range = (min(x_meas) : 1e-2 : max(x_meas));
+x_range = (floor(min(x_meas)) : 1e-2 : ceil(max(x_meas)));
 hold on;
+
 % original undistorted curve  : y = f(x) with original coefficients
-plot(x_range, myFitFunc(A, F, Phase, x_range), '--g');
+plot(x_range, myFitFunc(A, F, Phase, x_range), '--g', DisplayName = 'original curve');
+
 % estimated best fitting curve: y = f(x) with fitted coefficients
-plot(x_range, myFitFunc(myFit.A, myFit.F, myFit.Phase, x_range), ':b');
+plot(x_range, myFitFunc(myFit.A, myFit.F, myFit.Phase, x_range), ':b', ...
+    DisplayName = 'best fitting curve');
+
 hold off;
 % add a legend
-legend('measurement values', 'original curve', 'best fitting curve');
+legend(Location = 'best');
 
 %% this is the end
 

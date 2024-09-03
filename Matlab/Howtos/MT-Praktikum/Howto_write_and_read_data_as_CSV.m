@@ -1,5 +1,5 @@
 %% Howto save data as CSV-file (and read in the data later again)
-% 2024-07-12
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -23,7 +23,7 @@
 %   * relevant Matlab keywords are
 %     - writematrix / readmatrix
 %     - writetable  / readtable
-%     - csvwrite    / csvread
+%     - csvwrite    / csvread    (obsolete)
 %
 % just start this script (short cut 'F5') and get inspired
 
@@ -50,12 +50,10 @@ y2 = 1.3 * log10(5*x + 0.1);
 % ==> there are different ways to save data
 % ==> here we only deal with the use of CSV-files (data in text form)
 
-% definition of a filename
-FileNameBase  = 'myDataFile';
-TimeStamp     = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
-FileExtension = '.csv';
-% merge all parts
-FileName_1    = [FileNameBase '_' TimeStamp '__1' FileExtension];
+% define filename with timestamp to distinguish different files
+TimeStamp    = datetime('now', TimeZone = 'local', Format = 'yyyy-MM-dd__HH-mm-ss');
+FileName_row = ['myDataFile_with_row_vectors_'    char(TimeStamp) '.csv'];
+FileName_col = ['myDataFile_with_column_vectors_' char(TimeStamp) '.csv'];
 
 % we combine all data to a single matrix
 % option 1: 1st row for x-data
@@ -63,16 +61,14 @@ FileName_1    = [FileNameBase '_' TimeStamp '__1' FileExtension];
 %           3rd row for y2-data
 myData = [x ; y1 ; y2];
 % and write data to file (values separated by ';')
-writematrix(myData, FileName_1, 'Delimiter', ';');
+writematrix(myData, FileName_row, Delimiter = ';');
 
 % option 2: 1st column for x-data
 %           2nd column for y1-data
 %           3rd column for y2-data
 myData = [x' y1' y2'];
-% define a new file name to prevent overwriting first file
-FileName_2    = [FileNameBase '_' TimeStamp '__2' FileExtension];
-% and write data to file (values separated by ';')
-writematrix(myData, FileName_2, Delimiter = ';');
+% save to another file to prevent overwriting first file
+writematrix(myData, FileName_col, Delimiter = ';');
 
 % you can also include headers with names of variables
 % ==> see 'doc table' and 'doc writetable'
@@ -90,11 +86,11 @@ writematrix(myData, FileName_2, Delimiter = ';');
 
 %% finally we want to read in the data again (option 1)
 
-% clear some data
+% clear all previous data
 clear myData x y*;
 
 % read file (option 1)
-myData = readmatrix(FileName_1, Delimiter = ';');
+myData = readmatrix(FileName_row, Delimiter = ';');
 % and extract data
 x  = myData(1, :);    % 1st row
 y1 = myData(2, :);    % 2nd row
@@ -112,7 +108,7 @@ disp(y2(1:5));
 clear myData x y*;
 
 % read file (option 2)
-myData = readmatrix(FileName_2, Delimiter = ';');
+myData = readmatrix(FileName_col, Delimiter = ';');
 % and extract data
 x  = myData(:, 1)';   % 1st column
 y1 = myData(:, 2)';   % 2nd column
@@ -124,6 +120,10 @@ disp( x(1:5));
 disp(y1(1:5));
 disp(y2(1:5));
 
+% final statement: which option is better?
+disp('Writing data in column vectors to CSV-files is the better option!');
+disp('  - maximum length of line in text files is no problem then.');
+disp('  - it is easier to read when you check content of CSV-files.');
 disp('Howto Script Done.');
 
 return % end of file

@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -35,7 +35,7 @@ if CleanMatlab  % set to true/false to enable/disable cleaning
 end
 
 % -------------------------------------------------------------------------
-%% example 1 (shortest form, for more details see example 2)
+%% example 1 (shortest script, for more details see example 2)
 
 % your noisy measurement values ==> you can replace them by your own data
 x_meas = [ 0.1 0.4 0.7 1.2 1.3 1.4 1.8 2.1 2.5 2.6  2.8  3.2  3.6  3.8];
@@ -44,10 +44,10 @@ y_meas = [-0.1 0.5 0.1 0.3 0.4 1.1 1.9 3.6 5.4 8.1 13.8 19.8 34.6 39.8];
 % plot measurement values: only show data points, but do not connect points
 figure(1);
 plot(x_meas, y_meas, 'r*', ...
-    'LineWidth'  , 1     , ...
-    'DisplayName', 'measurement values');
+    LineWidth   = 1      , ...
+    DisplayName = 'measurement values');
 grid on;
-%title('Example 1');
+
 title('Curve fitting: fit to exponential function y(x) = A*exp(B*x)');
 xlabel('x values')
 ylabel('y values');
@@ -55,34 +55,35 @@ ylabel('y values');
 % your problem: find best fitting curve of type y = A*exp(B*x)
 %
 % as first step define your wanted curve as symbolic equation
-%  - use 'x' for your data (y = f(x))
+%  - use 'x' independent variable (y = f(x))
 %  - all other variables are the unknown coefficients you are searching for
 myFType = fittype('A*exp(B*x)');    % ==> adjust definition to your needs
 
 % now create fit object with your data and curve definition
 % Notes: 
 %   - data vectors have to be column vectors ==> use x' to transpose
-%   - Matlab will output a warning that no starting point for the
-%   coefficients are given ==> see also files *_2.m and *_3.m
+%   - Matlab will output a warning that no starting point is given for the
+%     coefficients ==> see also files *_2.m and *_3.m for more details
 myFit = fit(x_meas', y_meas', myFType);
 % show results
 disp(myFit);
 
-% plot best fitting curve in your diagram
+% now plot the best fitting curve into your diagram
 figure(1);
 % define plot range (like x_meas but equally spaced with small steps)
-x_range = (floor(min(x_meas)) : 0.1 : ceil(max(x_meas)));
+x_range = (0 : 0.01 : 4);
 
 % evaluate best fitting curve for your x values
-y_fit_curve = feval(myFit, x_range);
+y_fitted = feval(myFit, x_range);
 
 hold on;
-plot(x_range, y_fit_curve, '--b', ...
-    'LineWidth'  , 1            , ...
-    'DisplayName', sprintf('best fitting curve with A=%g and B=%g', myFit.A, myFit.B));
+plot(x_range, y_fitted, '--b', ...
+    LineWidth   = 1             , ...
+    DisplayName = sprintf('best fitting curve with A=%g and B=%g', ...
+    myFit.A, myFit.B));
 hold off;
 % add a legend
-legend('Location', 'northwest')
+legend('Location', 'northwest');
 
 %% this is the end
 

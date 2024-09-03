@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -43,14 +43,13 @@ y_meas = [-6.6 -4.5 -3.6 -0.9 -0.8  1.4  4.1  3.9  7.6  8.4  9.1 10.4];
 
 % plot measurement values: only show data points, but do not connect points
 figure(1);
-plot(x_meas, y_meas, 'r*');
+plot(x_meas, y_meas, 'r*', DisplayName = 'measurement values');
 grid on;
 title('Example 2');
 xlabel('x values')
 ylabel('y values');
 xlim auto;       % optionally scale x- and y-axis
 ylim auto;
-zoom on;         % click into figure window will zoom in at default
 
 % your problem: you expect a linear curve (y = m*x + n) but your
 % measurement values do not fit to a perfect line
@@ -60,7 +59,7 @@ zoom on;         % click into figure window will zoom in at default
 % ==> with the curve fitting toolbox even newbies can solve this problem
 
 % as first step define your wanted curve as symbolic equation
-%  - use 'x' for your data (y = f(x))
+%  - use 'x' as independent variable (y = f(x))
 %  - all other variables are the unknown coefficients you are searching for
 myFType = fittype('m*x + n');    % ==> adjust definition to your needs
 %
@@ -94,12 +93,12 @@ figure(1);
 % define plot range
 x_range = (-1: 0.1 : 3);
 % evaluate best fitting curve for your x values (plot range)
-y_fit_curve = feval(myFit, x_range);
+y_fitted = feval(myFit, x_range);
 hold on;
-plot(x_range, y_fit_curve, '--b');
+plot(x_range, y_fitted, '--b', DisplayName = 'best fitting curve');
 hold off;
 % add a legend
-legend('measurement values', 'best fitting curve');
+legend(Location = 'best');
 
 %% this is the end
 

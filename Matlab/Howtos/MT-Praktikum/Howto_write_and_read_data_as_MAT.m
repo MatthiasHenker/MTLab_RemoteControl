@@ -1,5 +1,5 @@
 %% Howto save data as MAT-file (and read in the data later again)
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -46,12 +46,9 @@ y2 = 1.3 * log10(5*x + 0.1);
 % ==> there are different ways to save data
 % ==> here we only deal with the use of MAT-files (Matlab data)
 
-% definition of a filename
-FileNameBase  = 'myDataFile';
-TimeStamp     = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
-FileExtension = '.mat';
-% merge all parts
-FileName      = [FileNameBase '_' TimeStamp FileExtension];
+% define filename with timestamp to distinguish different files
+TimeStamp = datetime('now', TimeZone = 'local', Format = 'yyyy-MM-dd__HH-mm-ss');
+FileName  = ['myDataFile_' char(TimeStamp) '.mat'];
 
 % and save data in file (list all variables you want to save)
 save(FileName, 'x', 'y1', 'y2')
@@ -74,7 +71,7 @@ load(FileName);
 
 % here are the data vectors again (show first elements only)
 disp('first values of read data:');
-disp( x(1:5));
+disp( x(1:5));   %#ok<SUSENS>
 disp(y1(1:5));
 disp(y2(1:5));
 

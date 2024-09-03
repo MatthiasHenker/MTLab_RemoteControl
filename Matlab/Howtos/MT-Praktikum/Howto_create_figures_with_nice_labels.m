@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2024-07-12
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -35,90 +35,77 @@ end
 SaveFigures = true;  % true or false
 
 % -------------------------------------------------------------------------
-%% at the beginning a simple figure with two curves
+%% at the beginning we create a simple figure with a plot of two curves
 
 % define plot range of parameter x
-x  = (0 : 0.05 : 10); % coarse steps    ==> faster computations
-%x = (0 : 0.001 : 10); % very fine steps ==> looks better in plots
+%x  = (0 : 0.05 : 5); % coarse steps    ==> faster computations
+x = (0 : 0.001 : 5); % very fine steps ==> looks better in plots
 
-% define some parameters
-M1 = 2;
-M2 = M1 + 1;
-
-% define two functions to plot
-y1 = cos(M1*pi*x);
-y2 = sin(M2*pi*x);
-
+% define two functions to plot:  y1 = f1(x) and y2 = f2(x)
+y1 = 2* cos(3.5*pi*x) + 12.5;
+y2 = 3* sin(5.5*pi*x) +  7.5;
 
 % now create a figure and plot both functions
 % plot command with two mandatory arguments for x and y data
-%   third argument mit plot options is optional 
-%       'r-*' means red ('r') color, solid ('-') line, 
-%                   and asterix ('*') to mark data points
+%   third argument mit plot options is optional
+%       e.g. 'r-*' means red ('r') color, solid ('-') line,
+%                  and asterix ('*') to mark data points
 %   you can add even more options in the way
 %       ParameterName = ParameterValue
 %       here with Diplayname which is used for a legend
-fig1 = figure(1);    % create a figure window
-plot(x, y1, '-r*', DisplayName = 'cos curve');  % plot 1st curve
-hold on;             % prevent overwritting of 1st plot
-plot(x, y2, '--b', DisplayName = 'sin curve');  % plot 2nd curve
-hold off;            % allow overwritting again (when script is rerun)
 
-% there are also many alternatives to 'plot' command:
+% create new figure window  (or push to foreground when already existing)
+% ==> next plot command will be done in current figure (in foreground)
+% ==> you can select where to plot when several figures exist
+myFig = figure(1);  % figure counter: 1, 2, 3 ...
+
+% plot 1st curve
+plot(x, y1, '-r', DisplayName = 'connector A');
+
+% prevent overwritting the 1st plot
+hold on;
+
+% plot 2nd curve
+% ==> plot will be added to previous plot   when 'hold on'
+% ==> plot will overwrite previous plot     when 'hold off'
+plot(x, y2, '-g', DisplayName = 'connector B');
+
+% allow overwritting again ==> next plot command will start new plot again
+hold off;
+
+% beautify figure
+grid on;             % show grid lines (or 'grid minor', grid off' ...)
+xlim auto;           % select plot range for x-axis automatically
+ylim([-0.2  15.2]);  % define a specific plot range for y-axis
+
+% finally add axis labeling, title, and a legend to distinguish the curves
+title('Current Consumtion of Test Circuit');
+xlabel('Time (in s)' );
+ylabel('Currents (in A)');
+legend(Location = 'Best'); % or a specific Location = 'NorthEast' ...
+
+%% finally we want to save the figures to file
+% figure will be saved as shown on screen ==> check readability of text
+
+if SaveFigures
+    FileName = './myFigure_01.png';  % or *.bmp, *.tiff, *.jpg ...
+    exportgraphics(myFig, FileName);
+end
+
+% -------------------------------------------------------------------------
+%% instead of the 'plot' command you can also try out some other styles:
 % semilogx  - Semi-log scale plot for x-axis
 % semilogy  - same but            for y-axis
 % loglog    - log scale plot for both axes
 % stem      - plot discrete sequence data
-% ... see Matlab Documentation - Category 'Graphics' with lots of figures
-% and examples
-
-% now finalize and beautify figure
-title('my first figure');
-xlabel('x-axis (unit)');
-ylabel('y-axis (unit)');
-legend(Location = 'Best'); % or specific Location= 'NorthEast'
-
-grid minor;          % show a fine grid (or 'grid on', grid off')
-xlim auto;           % scale x- and y-axis separately
-ylim([min(y1)-0.1 max(y1)+0.1]);
-zoom on;             % click into figure window will zoom in at default
-
-%% now we want to change some properties of the figure
-
-% background color
-fig1.Color = [0.8 0.9 0.7]; % as RGB triplet
-
-% change title of figure window
-fig1.Name  = 'Howto create a nice figure';
-
-%% we also can change even more properties
-
-axes1 = fig1.CurrentAxes; % get axes object of figure
-
-% now change some properties of axes
-axes1.FontSize                = 14;
-axes1.FontWeight              = 'bold';
-axes1.TitleFontSizeMultiplier = 2.5;
-axes1.TickDir                 = 'out';
-axes1.TickLength              = [0.01 0.01];
-axes1.XColor                  = [0.9 .1 .6];     % as RGB-triplet
-
-%% finally we want to save the figure to file
-% (figure will be saved as shown on screen)
-
-% enlarge figure before for finer resolution to 80% x 80% of screen size
-fig1.Units    = 'Normalized';
-fig1.Position = [0.1 0.1 0.8 0.8];
-
-% and save file (alternatives are .emf, .jgp, ...)
-if SaveFigures
-    FileName = './myFigure_01';
-    saveas(fig1, [FileName '.png']);
-end
+% ...
+% type 'doc' in command window to open the HELP CENTER
+% go to category 'Documentation Home' =>  'Matlab' => 'Graphics'
+% with lots of information about creating figures with helpful examples
 
 
 %% this is the end
 
-disp('Figure Test Done.');
+disp('Demontration howto create a figure with  done.');
 
 return % end of file

@@ -1,5 +1,5 @@
 %% Howto create a HandheldDMM object and read values from DMM
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -7,7 +7,7 @@
 % ---------------------------------------------------------------------
 % This is a simple sample script within a series of howto-files.
 %
-% ATTENTION: 'HandheldDMM' class file (and addons) are required
+% ATTENTION: 'HandheldDMM' class and package files are required
 %
 % This sample script is dealing with the creation of a HandheldDMM object
 % and reading values from a connected DMM.
@@ -52,7 +52,7 @@ port    = 'demo';  % no DMM connected ==> DEMO mode
 %port    = 'COM5';
 
 % verbose or silent mode?
-showMsg = true; % 0 or false to disable display messages
+showMsg = true; % true = enable massages or false = disable messages
 
 % create object (constructor)
 myDMM  = HandheldDMM(type, port, showMsg);
@@ -65,7 +65,7 @@ NumValues = 30;
 
 % initialize vectors for the results
 timeVector = (0 : NumValues-1) * myDMM.SamplePeriod;
-dataVector = zeros(1, NumValues);
+dataVector = zeros(size(timeVector));
 
 % remove all previous data from input buffer
 myDMM.flush;

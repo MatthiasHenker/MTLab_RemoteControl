@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2024-03-27
+% 2024-09-02
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -39,9 +39,9 @@ x  = (0 : 0.05 : 10); % coarse steps    ==> faster computations
 %x = (0 : 0.001 : 10); % very fine steps ==> looks better in plots
 
 % define some parameters
-a = 2;
+a =   2;
 b = -13;
-c = 7;
+c =   7;
 
 % define a function to plot
 y = a*x.^2 + b*x + c;
@@ -60,21 +60,21 @@ grid on;             % show grid
 % and examples
 
 % now finalize and beautify figure
-title('my amazing figure');
+%title(''); % no title
 xlabel('x-axis (with units)');
 ylabel('y-axis (with units)');
-legend(Location = 'north');
+legend(Location = 'southeast');
 
 
 %% now we want to change some properties of the figure
 
 % it is also possible to move the axis labels to the right and top side 
-fig1_axes = gca;         % save handle to current axes object
-fig1_axes.XAxisLocation = 'top';
-fig1_axes.YAxisLocation = 'right';
+axes_of_fig1 = gca;         % save handle to current axes object
+axes_of_fig1.XAxisLocation = 'top';
+axes_of_fig1.YAxisLocation = 'right';
 
 % optionally is ia also possible to change the tick labels
-xticks(0:pi:3*pi);
+xticks(0 : pi : 3*pi);
 xticklabels({'0','\pi','2\pi','3\pi'});
 
 %% this is the end

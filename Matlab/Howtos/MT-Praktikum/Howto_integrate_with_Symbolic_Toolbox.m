@@ -1,5 +1,5 @@
 %% Howto use the Symbolic Math Toolbox to calculate an integral
-% 2022-08-05
+% 2024-09-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -31,54 +31,55 @@ end
 % -------------------------------------------------------------------------
 %% here we go
 
-% define some numeric values
-a = 2;                    % in unit (m, s, kg or whatever)
-b = 0.3;                  % in unit ...
-
 % the following variables should be symbolic with certain assumptions
-syms c d real
-syms e   integer
+syms a b x real; % all variables are real values
 
 % define an expression with numeric and symbolic values
-f = a*c*sin(e*d) + b;
+f = a*sin(b*x);
+
 % show the defined expression
 disp('The expression ''f'' is defined as:');
 pretty(f);
 
 % calculate an indefinite integral
-myInt = int(f, d);
+f_int = int(f, x);
 % or alternatively the definite integral in the interval (1, 3)
-%myInt = int(f, d, 1, 3);
+%f_integrated = int(f, x, 1, 3);
+
 % show result
-disp('The solution for the symbolic integral ''myInt'' is:');
-pretty(myInt);
+disp('The solution for the symbolic integral ''f_integrated'' is:');
+pretty(f_int);
 
 % the integral still contain symbolic values which can be replaced by
 % different numeric values as examples
-% substitute (replace) symbol c by numerical value -2.1
-% substitute (replace) symbol e by numerical value  5
-% substitute (replace) symbol d by numerical vector (-2 : 0.1 : 10)
-c_num     = -2.1;
-e_num     = 5;
-d_num     = (-2 : 0.05 : 10);
-f_num     = double(subs(f,     {c, e, d}, {c_num, e_num, d_num}));
+% substitute (replace) symbol a by a numerical value   (amplitude)
+% substitute (replace) symbol b by a numerical value   (frequency)
+% substitute (replace) symbol x by a numerical vector  (x-values)
+a_num     =  1;
+b_num     =  1;
+x_num     = (-2 : 0.01 : 10);
+f_num     = double(subs(f,     {a, b, x}, {a_num, b_num, x_num}));
 %
 % and substitute these variables also in integral
-myInt_num = double(subs(myInt, {c, e, d}, {c_num, e_num, d_num}));
+f_int_num = double(subs(f_int, {a, b, x}, {a_num, b_num, x_num}));
 
-% Important notes: the variables f and myInt still contain symbolic values
-% whereas the variables f_num and myInt_num are numeric and can be
-% redefined with different substitutions for the variables c, d, and e
+% Important notes: the variables f and f_int still contain symbolic values
+% whereas the variables f_num and f_int_num are numeric and can be
+% redefined with different substitutions for the variables a, b, and x
 
 % show diagram with original function and its (indefinite) integral
 myFig = figure(1);
-plot(d_num, f_num, '-g', 'LineWidth', 1.5);
+plot(x_num, f_num,     '-g', LineWidth = 1.5, ...
+    DisplayName = 'original function f (sin)');
 hold on;
-plot(d_num, myInt_num, '-r', 'LineWidth', 1.5);
+plot(x_num, f_int_num, '-r', LineWidth = 1.5, ...
+    DisplayName = 'indefinite integral (cos)');
 hold off;
+
 title('Demonstrate power of Symbolic Math Toolbox');
-xlabel('variable d');
-ylabel('original function f and indefinite integral');
+xlabel('independent variable ''x''');
+ylabel('dependent variable ''y''');
+legend(Location = 'best');
 grid on;
 
 
