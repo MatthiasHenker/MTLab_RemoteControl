@@ -1,7 +1,7 @@
 % Howto create a daq-object and acquire data from multiple channels
 %
-% This script runs a measurement of two voltages simultaniously in fore-
-% ground and visualise them. A NI-DAQ device like NI-USB-6001 is required
+% This script uses a NI-DAQ device for measuring two voltages
+% simultaniously in foreground and visualise them.
 % Voltage 1:  A0 (Single Ended)
 % Voltage 2:  A7 (Single Ended)
 %
@@ -42,7 +42,7 @@ readDuration = seconds(10);   % in s
 % Number of samples per second, in Sa/s (or Hz)
 samplerate = 100;   % for NI-USB-6001: maximum is 20e3 / numOfChannels
 % Total number of values to read ( = time to record * samplerate)
-numValues = seconds(readDuration) * samplerate;
+numValues  = seconds(readDuration) * samplerate;
 
 %% 2. Discover Available Devices
 % 2.1) list all available DAQ devices of National Instruments™
@@ -58,7 +58,7 @@ if (isempty(DeviceList))
 end
 
 % 2.2) display more details of the connected device
-devIdx     = 1;         % change when more than one device is connected
+devIdx     = 1;         % adapt when more than one device is connected
 deviceInfo = DeviceList.DeviceInfo(devIdx);
 
 disp('Display detailed information about selected DAQ-device:');
@@ -68,14 +68,17 @@ disp(deviceInfo);
 % 3.1) create NI DAQ interface object
 DAQBox = daq('ni');
 
-% 3.2) Add channels (to the 'DAQBox')
+% 3.2) Add and configure channels (to the 'DAQBox')
 % channelhandle = DAQBox.addinput(deviceID, channelID, measurementType)
-ch0  = DAQBox.addinput(deviceInfo.ID, 'ai0', 'Voltage');
-ch1  = DAQBox.addinput(deviceInfo.ID, 'ai7', 'Voltage');
+% returns optionally a channel-handle or its index in channellist
+ch0         = DAQBox.addinput(deviceInfo.ID, 'ai0', 'Voltage');
+[ch1, idx1] = DAQBox.addinput(deviceInfo.ID, 'ai7', 'Voltage');
 
 % Set the channel terminal configuration as 'SingleEnded' (measure to GND)
 ch0.TerminalConfig = 'SingleEnded';
 ch1.TerminalConfig = 'SingleEnded';
+% alternatively configure the channel settings using its index.
+%DAQBox.Channels(idx1).TerminalConfig = 'SingleEnded';
 
 % Show the channel config
 disp('Display configuration of selected channels:');
@@ -119,7 +122,7 @@ saveData = true; % true or false
 
 if saveData
     % save actual acqired data and timestamp of start
-    save('DAQ_Data.mat', 'TimeTable', 'datetime_start');
+    save('myDAQ_Data.mat', 'TimeTable', 'datetime_start');
 end
 
 %--------------------------------------------------------------------------

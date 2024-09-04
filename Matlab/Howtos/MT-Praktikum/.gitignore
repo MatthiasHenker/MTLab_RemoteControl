@@ -9,3 +9,5 @@ myLog*.txt
 *.CSV
 *.mat
 *.MAT
+*.fig
+*.FIG
