@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2024-09-03
+% 2024-09-07
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -35,15 +35,14 @@ end
 SaveFigures = true;  % true or false
 
 % -------------------------------------------------------------------------
-%% at the beginning we create a simple figure with a plot of two curves
+%% at the beginning we create a simple figure with a plot of a single curve
 
 % define plot range of parameter x
 %x  = (0 : 0.05 : 5); % coarse steps    ==> faster computations
 x = (0 : 0.001 : 5); % very fine steps ==> looks better in plots
 
-% define two functions to plot:  y1 = f1(x) and y2 = f2(x)
-y1 = 2* cos(3.5*pi*x) + 12.5;
-y2 = 3* sin(5.5*pi*x) +  7.5;
+% define  function to plot:  y = f(x)
+y = 2* cos(3.5*pi*x) + 12.5;
 
 % now create a figure and plot both functions
 % plot command with two mandatory arguments for x and y data
@@ -59,29 +58,18 @@ y2 = 3* sin(5.5*pi*x) +  7.5;
 % ==> you can select where to plot when several figures exist
 myFig = figure(1);  % figure counter: 1, 2, 3 ...
 
-% plot 1st curve
-plot(x, y1, '-r', DisplayName = 'connector A');
-
-% prevent overwritting the 1st plot
-hold on;
-
-% plot 2nd curve
-% ==> plot will be added to previous plot   when 'hold on'
-% ==> plot will overwrite previous plot     when 'hold off'
-plot(x, y2, '-g', DisplayName = 'connector B');
-
-% allow overwritting again ==> next plot command will start new plot again
-hold off;
+% plot 1st curve (r = red, g = green, b = blue, k = black, m = magenta ...)
+plot(x, y, '-r', DisplayName = 'curve: y = f(x)', LineWidth= 2);
 
 % beautify figure
 grid on;             % show grid lines (or 'grid minor', grid off' ...)
 xlim auto;           % select plot range for x-axis automatically
-ylim([-0.2  15.2]);  % define a specific plot range for y-axis
+ylim([9  16]);      % define a specific plot range for y-axis
 
 % finally add axis labeling, title, and a legend to distinguish the curves
-title('Current Consumtion of Test Circuit');
-xlabel('Time (in s)' );
-ylabel('Currents (in A)');
+title('My title of this diagram');
+xlabel('x-axis' );
+ylabel('y-axis');
 legend(Location = 'Best'); % or a specific Location = 'NorthEast' ...
 
 %% finally we want to save the figures to file
@@ -106,6 +94,6 @@ end
 
 %% this is the end
 
-disp('Demontration howto create a figure with  done.');
+disp('Demontration howto create a figure with nice labels is done.');
 
 return % end of file
