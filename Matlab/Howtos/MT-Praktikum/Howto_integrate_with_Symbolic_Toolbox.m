@@ -32,9 +32,14 @@ end
 %% here we go
 
 % the following variables should be symbolic with certain assumptions
-syms a b x real; % all variables are real values
+syms b x real; % all variables are real values
+
+% and we also have known numeric values for variables
+a = 2;
 
 % define an expression with numeric and symbolic values
+% a       - is numeric and known
+% b and x - are symbolic and there actual values are not known yet
 f = a*sin(b*x);
 
 % show the defined expression
@@ -52,16 +57,15 @@ pretty(f_int);
 
 % the integral still contain symbolic values which can be replaced by
 % different numeric values as examples
-% substitute (replace) symbol a by a numerical value   (amplitude)
-% substitute (replace) symbol b by a numerical value   (frequency)
-% substitute (replace) symbol x by a numerical vector  (x-values)
-a_num     =  1;
-b_num     =  1;
+%            variable 'a' is already a numerical value   (amplitude)
+% substitute (replace) symbol 'b' by a numerical value   (frequency)
+% substitute (replace) symbol 'x' by a numerical vector  (x-values)
+b_num     =  0.75;
 x_num     = (-2 : 0.01 : 10);
-f_num     = double(subs(f,     {a, b, x}, {a_num, b_num, x_num}));
+f_num     = double(subs(f,     {b, x}, {b_num, x_num}));
 %
 % and substitute these variables also in integral
-f_int_num = double(subs(f_int, {a, b, x}, {a_num, b_num, x_num}));
+f_int_num = double(subs(f_int, {b, x}, {b_num, x_num}));
 
 % Important notes: the variables f and f_int still contain symbolic values
 % whereas the variables f_num and f_int_num are numeric and can be
