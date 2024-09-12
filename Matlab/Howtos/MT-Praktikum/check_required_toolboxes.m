@@ -5,25 +5,31 @@
 %
 % Matthias Henker, HTW Dresden
 
-% clear workspace
-clear;
-close all;
-clc;
+%% preparations -----------------------------------------------------------
 
-%% configuration part (adapt to your needs) ------------------------------------
+% clear workspace
+if true    % set to false when you want to keep your old data in workspace
+    clear;
+    close all;
+    clc;
+end
 
 % script should be run in directory holding this script ==> change dir
 currentFilePath = fileparts(mfilename('fullpath'));
 cd(currentFilePath);
 
+%% configuration part (adapt to your needs !!!) ---------------------------
+
 % now list all Howto-files of this directory ==> adapt to your needs
 % these files will be checked (dependencies on files and licenses)
+%
 myFolderInfo = dir('Howto_*.m');  % several files
+%
 % or a specific one
 %myFolderInfo = dir('Howto_create_figures_with_swapped_labels.m');
 
 
-%% actual code -----------------------------------------------------------------
+%% actual code ------------------------------------------------------------
 
 disp('Check dependencies on files and licenses: ...')
 
@@ -33,8 +39,8 @@ fileList    = {};
 productList = [];
 
 for cnt = 1 : numOfFiles
-    disp([' - File ' num2str(cnt, '%02d') '/' num2str(numOfFiles, '%d') ': ' ...
-        myFolderInfo(cnt).name]);
+    disp([' - File ' num2str(cnt, '%02d') '/' num2str(numOfFiles, '%d') ...
+        ': ' myFolderInfo(cnt).name]);
 
     % check dependencies and save results
     [fList, pList] = matlab.codetools.requiredFilesAndProducts( ...
