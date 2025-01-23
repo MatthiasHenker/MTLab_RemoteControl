@@ -1,5 +1,5 @@
 %% Howto create a pointer diagram
-% 2025-01-22
+% 2025-01-23
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -8,7 +8,12 @@
 % This is an advanced sample script within a series of howto-files.
 %
 % This sample script is dealing with the symbolic solution of an equation
-% system for a real transformer and its illustration.
+% system for a linear circuit with resistors, inductors, and capacitors
+% (as example: a real transformer) and its illustration with a pointer
+% diagram.
+%
+% tested with Matlab 2024b
+% required toolboxes: 'Symbolic Math Toolbox'
 %
 % just start this script (short cut 'F5') and get inspired
 
@@ -29,23 +34,28 @@ disp('Solving equations system for real transformer ...');
 % calculate all currents and voltages of a real transformer
 
 % 1st step: Define all variables as symbols and make some assumptions
+% see schematic of circuit '***.pdf' for details
 % (small letter for symbols and capital letter for numeric values)
 %
 % voltages in V as complex amplitudes
-syms u_1 u_2_acute u_LR2_acute u_R2_acute  complex; %#ok<NASGU>
-syms u_L2_acute u_h u_LR1 u_R1 u_L1        complex; %#ok<NASGU>
+syms u_1 u_2_acute u_LR2_acute u_R2_acute ; % complex values as default
+syms u_L2_acute u_h u_LR1 u_R1 u_L1       ;
 % currents in A as complex amplitudes
-syms i_1 i_2_acute i_0 i_Fe i_mu           complex;
+syms i_1 i_2_acute i_0 i_Fe i_mu          ;
 % resistor values in Ohm as positive reals
-syms r_1 r_2_acute r_Fe r_a_acute          positive real;
+syms r_1 r_2_acute r_Fe                   positive real;
 % reactance values of inductors in Ohm as positive reals
-syms x_L1 x_L2_acute x_mu x_La_acute       positive real;
+syms x_L1 x_L2_acute x_mu                 positive real;
+% impedance value of external load
+syms r_a_acute                            positive real;
+syms x_a_acute                            real;
 
 % thus, we have:
-%   - 9 voltages
-%   - 5 currents
-%   - 4 resistance values (3 for transformer + 1 for load Z_a = Ra+i*Xa)
-%   - 4 reactance values  (3 for transformer + 1 for load Z_a = Ra+i*Xa)
+%   - 9 (complex) voltages
+%   - 5 (complex) currents
+%   - 3 (real)    resistance values for transformer
+%   - 3 (real)    reactance values for transformer
+%   - 2 (real)    impedance values (Re & Im part) for load
 % in total: 22 variables
 
 % 2nd step: Define all equations (see schematic)
@@ -61,7 +71,7 @@ eq09 =  u_h         ==      r_Fe * i_Fe;
 eq10 =  u_h         == 1i * x_mu * i_mu;
 eq11 =  u_1         ==        u_LR1 + u_h;
 eq12 =  u_h         ==  u_LR2_acute + u_2_acute;
-eq13 =  u_2_acute   == (r_a_acute + 1i * x_La_acute) * i_2_acute;
+eq13 =  u_2_acute   ==  (r_a_acute + 1i*x_a_acute) * i_2_acute;
 eq14 =  r_1         ==     r_2_acute;
 eq15 =  x_L1        ==     x_L2_acute;
 
@@ -69,56 +79,68 @@ eq15 =  x_L1        ==     x_L2_acute;
 eq_sys = [eq01, eq02, eq03, eq04, eq05, eq06, eq07, eq08, eq09, eq10, ...
     eq11, eq12, eq13, eq14, eq15];
 
-% all equations form a linear system of equations with 22 variables
-% assuming that all equations are linear independent we can eliminate
-% (N-1) variables out of N equations ==> N = 15 in our case
-%
-% now we can eliminate some dependent variables
-%  - 2 internal parameter values (because R1 = R2´ and L1 = L2´)
+% all equations form a linear system of equations with 21 variables
+% we can eliminate some dependent variables
+%  - 2 internal parameter values (see eq14 & eq15: R1 = R2´ and L1 = L2´)
 reduced_eq_sys = eliminate(eq_sys, [x_L2_acute, r_2_acute]);
+
+% we will have 22 - 2 = 20 remaining variables in our equation system
+%   - all 9 voltages and 5 currents are unknown
+% additionally the parameter values are specified yet
+%   - 4 resistance and reactance values of transformer and
+%   - 2 impedance values of load (real and imaginary part)
+%
+% we want to solve this equation system as a function
+%  - of the input voltage U_1 (unequal to zero) and
+%  - of the tranformer parameters and
+%  - of the load parameters
+assumeAlso(u_1 ~= 0);
+% optionally display all made assumtions
+disp(append("  Assumptions made: ", join(string(assumptions), ', ')));
+%
+solution = solve(reduced_eq_sys, ...
+    [u_2_acute, u_LR2_acute, u_R2_acute, u_L2_acute, u_h, u_LR1, u_R1, ...
+    u_L1, i_1, i_2_acute, i_0, i_Fe, i_mu], 'ReturnConditions', true);
+
+requiredConditions = simplify(solution.conditions);
+disp('  Following conditions must be hold: ');
+for cnt = 1 : length(requiredConditions)
+    disp(append("    (", num2str(cnt, '%02d'), ") ", ...
+        string(requiredConditions(cnt))));
+end
 
 % now define some parameter values of the transformer
 %  - 6 out of 6 remaining resistance and reactance values
-% and insert these numerical values in our equation system
+% and insert these numerical values in our solution
 R_1        =   60; % in Ohm
 X_L1       =   40;
 R_Fe       = 6000;
 X_mu       = 3600;
-% and for load parameters (Attention: Z_a´ = ü^2 * Z_a)
-R_a_acute  = 500; % in Ohm
-X_La_acute = 100;
 
-% we will have 22 - 8 = 14 remaining variables in our equation system then
-% thus, all 9 voltages and 5 currents are still unknown
-final_eq_sys = subs(reduced_eq_sys, ...
-    {r_1, x_L1, r_Fe, x_mu, r_a_acute, x_La_acute}, ...
-    {R_1, X_L1, R_Fe, X_mu, R_a_acute, X_La_acute});
-
-% how many independent equations are left?
-disp(['  number of independent equations: ' num2str(length(final_eq_sys))]);
-
-% solve this equation system as a function of the input voltage U_1
-%  - we assume an input voltage unequal to zero
-assume(u_1 ~= 0);
-solution = solve(final_eq_sys, ...
-    [u_2_acute, u_LR2_acute, u_R2_acute, u_L2_acute, u_h, u_LR1, u_R1, ...
-    u_L1, i_1, i_2_acute, i_0, i_Fe, i_mu], 'ReturnConditions', true);
-
-required_conditions = simplify(solution.conditions);
-disp(['  Following conditions must be hold: ' char(required_conditions)]);
+% our solution depends on input voltage U_1 and the load parameters Z_a
+disp('  Specifying some numerical parameter values.');
+contrainedSolution = subs(solution, ...
+    {r_1, x_L1, r_Fe, x_mu}, ...
+    {R_1, X_L1, R_Fe, X_mu});
 
 % Now we can check if all returned conditions can be met.
-if isAlways(required_conditions)
+if isAlways(contrainedSolution.conditions)
     disp('  Assuming U_1~=0 then all conditions are met.');
 else
     disp('  It is not possible to prove that all conditions have been met.');
 end
 disp('done');
 
-% output values for defined input voltage
-%   optionally rotate U_1 for nicer plot (angle = 0°)
-U_1          = 220               *exp(1i*pi/180 * 0);  % in V
-results      = subs(solution, u_1, U_1);
+% -------------------------------------------------------------------------
+% finally specify input voltage
+% and load parameters (Attention: Z_a´ = ü^2 * Z_a)
+%   - X_a > 0 for inductive load
+%   - X_a < 0 for capacitive load
+U_1        = 220;    % in V
+R_a_acute  = 500;    % in Ohm
+X_a_acute  = 100;
+results    = subs(contrainedSolution, ...
+    {u_1, r_a_acute, x_a_acute}, {U_1, R_a_acute, X_a_acute});
 %
 % upscale all currents
 iScaleFactor = 1e3;                            % in mA instead of A
@@ -219,15 +241,15 @@ hold off;
 axis equal;
 grid on;
 legend(Location = "bestoutside");
-title("Pointer diagram for transformer");
+title("Pointer diagram for real transformer");
 xlabel("real part (voltages in V, currents in mA)");
 ylabel("imaginary part");
 zoom on;
 
 % enlarge diagram (0..1) for screen range
 myFig.Units    = 'Normalized';
-% 40% x 60% of screen size and moving on screen
-myFig.Position = [0.3 0.2 0.4 0.6];
+% 40% x 50% of screen size and moving on screen
+myFig.Position = [0.3 0.25 0.4 0.5];
 
 % alternative file extensions are .emf and .jpg
 FileName = "Howto_create_pointer_diagram.png";
