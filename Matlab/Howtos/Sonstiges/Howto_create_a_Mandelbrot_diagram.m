@@ -13,14 +13,14 @@ selectPlotArea = 1;           % adapt to your needs
 
 switch selectPlotArea
     case 1    % smaller window (right hand side)
-        xRange  = linspace(-0.8, 0.6, 2000); % X - plot range (real)
-        yRange  = linspace(-1.1, 0.0, 2000); % Y - plot range (imaginay)
+        xRange  = linspace(-0.9, 0.55, 2000);  % X - plot range (real)
+        yRange  = linspace(-1.15, 0.0, 2000);  % Y - plot range (imaginay)
     case 2    % smaller window (left hand side
-        xRange  = linspace(-1.5, -1.2, 2000); % X - plot range (real)
-        yRange  = linspace(0, -0.3, 2000); % Y - plot range (imaginay)
+        xRange  = linspace(-1.5, -1.2, 2000);  % X - plot range (real)
+        yRange  = linspace(-0.3, 0, 2000);     % Y - plot range (imaginay)
     otherwise % default (full plot)
-        xRange  = linspace(-2.2, 1.6, 2000); % X - plot range (real)
-        yRange  = linspace(-1.5, 1.5, 2000); % Y - plot range (imaginay)
+        xRange  = linspace(-2.2, 1.6, 2000);   % X - plot range (real)
+        yRange  = linspace(-1.5, 1.5, 2000);   % Y - plot range (imaginay)
 end
 
 % ---- actual code -------------------------------------------------------------
