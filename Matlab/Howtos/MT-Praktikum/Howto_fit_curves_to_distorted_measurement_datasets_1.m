@@ -1,5 +1,5 @@
-%% Howto create figures
-% 2024-09-03
+%% Howto fit curves to measurement data
+% 2025-07-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -83,7 +83,7 @@ plot(x_range, y_fitted, '--b', ...
     myFit.A, myFit.B));
 hold off;
 % add a legend
-legend('Location', 'northwest');
+legend(Location = 'northwest');
 
 %% this is the end
 
