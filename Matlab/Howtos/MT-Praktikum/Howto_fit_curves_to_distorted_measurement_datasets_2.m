@@ -1,5 +1,5 @@
-%% Howto create figures
-% 2024-09-03
+%% Howto fit curves to measurement data
+% 2025-07-03
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -43,7 +43,7 @@ y_meas = [-6.6 -4.5 -3.6 -0.9 -0.8  1.4  4.1  3.9  7.6  8.4  9.1 10.4];
 
 % plot measurement values: only show data points, but do not connect points
 figure(1);
-plot(x_meas, y_meas, 'r*', DisplayName = 'measurement values');
+plot(x_meas, y_meas, 'r*', DisplayName= 'measurement values');
 grid on;
 title('Example 2');
 xlabel('x values')
@@ -95,10 +95,10 @@ x_range = (-1: 0.1 : 3);
 % evaluate best fitting curve for your x values (plot range)
 y_fitted = feval(myFit, x_range);
 hold on;
-plot(x_range, y_fitted, '--b', DisplayName = 'best fitting curve');
+plot(x_range, y_fitted, '--b', DisplayName= 'best fitting curve');
 hold off;
 % add a legend
-legend(Location = 'best');
+legend(Location= 'best');
 
 %% this is the end
 
