@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------------------------------------
-// 2024-08-20
-// config file listing all available Visa measurement devices in room/lab S110
+// 2025-07-07
+// config file listing all available Visa measurement devices in rooms/labs like S110, S106
 // required columns
 //   Device     : char array as unique identifier
 //   Instrument : one of the following classes: Scope, DMM, FGen, DCPwr, ACPwr, Swtch, PwrMeter, SpecAn, 
@@ -41,6 +41,8 @@ Keysight-DSOX1202A;; Keysight ;; DSOX1000     ;; Scope      ;; visa-usb  ;; USB0
 # InBufSize : longest command is download of captured waveform data  ==> approx. 1.4MB (in chunks) + some overhead
 Siglent-SDS1202X-E;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-usb  ;; USB0::0xF4ED::0xEE3A::\w+  ;;      10e3 ;;   1.5e6
 Siglent-SDS1202X-E;; Siglent  ;; SDS1000X_E   ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.15     ;;      10e3 ;;   1.5e6
+# scope borrowed from room Z 441 (Henker)
+Siglent-SDG6022X  ;; Siglent  ;; SDG6000X     ;; FGen       ;; visa-usb  ;; USB0::0xF4EC::0x1101::\w+  ;;   20.01e6 ;;  20.01e6
 #
 #
 # Rigol Scope
@@ -63,3 +65,9 @@ Agilent-33220A   ;; Agilent   ;; Gen33220A    ;; FGen       ;; demo      ;; USB0
 Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; visa-usb  ;; USB0::0x0957::0x2707::\w+  ;;     2.1e6 ;;   100e3
 Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; demo      ;; USB0::0x0957::0x2707::demo ;;     2.1e6 ;;   100e3
 #
+#
+# SMU Keithley 2450 (SN: 04616887) located in room S106
+# OutBufSize: longest command is ??? ==> 1MByte as starting point (should be more than enough buffer)
+# InBufSize : longest command is ??? ==> same as OutBufSize
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-usb  ;; USB0::0x05E6::0x2450::\w+  ;;       1e6 ;;     1e6
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-tcpip;; TCPIP0::192.168.178.51     ;;       1e6 ;;     1e6
