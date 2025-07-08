@@ -66,7 +66,7 @@ Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; visa-usb  ;; USB0
 Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; demo      ;; USB0::0x0957::0x2707::demo ;;     2.1e6 ;;   100e3
 #
 #
-# SMU Keithley 2450 (SN: 04616887) located in room S106
+# SMU Keithley 2450                 (SID = 04616887)  located in room S106
 # OutBufSize: longest command is ??? ==> 1MByte as starting point (should be more than enough buffer)
 # InBufSize : longest command is ??? ==> same as OutBufSize
 Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-usb  ;; USB0::0x05E6::0x2450::\w+  ;;       1e6 ;;     1e6
