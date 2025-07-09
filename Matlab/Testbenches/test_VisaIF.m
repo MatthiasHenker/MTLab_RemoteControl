@@ -15,6 +15,11 @@ FgenName  = 'Agilent-33220A';
 FgenID    = '';
 %FgenID    = 'MY44022964';
 
+% Siglent DMM
+DmmName  = 'Siglent-SDM3045X';
+DmmID    = '';
+%DmmID    = 'SDM34FBC7R0240';
+
 % demo mode or with real hardware?
 %interface = 'demo';
 %interface = 'visa-usb';
@@ -32,14 +37,23 @@ disp(['Version of VisaIFLogger      : ' VisaIFLogger.VisaIFLoggerVersion]);
 %VisaIF.listAvailableVisaUsbDevices;
 
 %myScope = VisaIF({ScopeName, ScopeID}, interface);
-myScope = VisaIF(ScopeName, 'demo', 0);
-myScope.EnableCommandLog = true;
+%myScope = VisaIF(ScopeName, 'demo', 0);
+%myScope.EnableCommandLog = true;
 
-myFgen  = VisaIF(FgenName,  'demo', 0);
-myFgen.EnableCommandLog  = true;
+%myFgen  = VisaIF(FgenName,  'demo', 0);
+%myFgen.EnableCommandLog  = true;
+
+myDmm   = VisaIF(DmmName,  'visa-tcpip', 0);
+myDmm.EnableCommandLog  = true;
 
 myLog = VisaIFLogger();
 %myLog.ShowMessages = 0;
+
+myDmm.identify;
+
+myDmm.delete;
+myLog.delete;
+return
 
 % myFgen.delete;
 % myScope.delete;
