@@ -4,7 +4,7 @@ clear variables;
 close all;
 clc;
 
-SMUName = '2450';        % Keithley SMU
+SMUName = 'KEITHLEY-2450';
 
 %interface = 'visa-usb';
 interface = 'visa-tcpip';
@@ -30,9 +30,9 @@ disp(' ');
 
 % -------------------------------------------------------------------------
 % print out some information
-SMU.listAvailableConfigFiles;
-SMU.listContentOfConfigFiles;
-SMU.listAvailableVisaUsbDevices;
+%SMU.listAvailableConfigFiles;
+%SMU.listContentOfConfigFiles;
+%SMU.listAvailableVisaUsbDevices;
 SMU.listAvailablePackages;
 
 %mySMU = SMU({SMUName, SMUID}, interface);
@@ -45,6 +45,8 @@ mySMU = SMU(SMUName, interface, showmsg);
 
 % display details (properties) of SMU object
 mySMU
+
+return
 
 mySMU.clear;
 mySMU.reset;

@@ -1,145 +1,150 @@
-   % documentation for class 'SMU'
-    % ---------------------------------------------------------------------
-    % This class defines common methods for Source Measure Unit (SMU) control.
-    % This class is a subclass of the superclass 'VisaIF'. Type (in command window):
-    % 'SMU.listContentOfConfigFiles' - to get a full list of accessible SMUs which means that
-    %         their IP-addresses (for visa-tcpip) or USB-IDs (for visa-usb)
-    %         are published in config files
-    % 'SMU.listAvailablePackages' - to get a list of installed SMU packages.
-    % Your SMU can be controlled by the SMU class when it is accessible and
-    % a matching support package is installed.
-    %
-    % All public properties and methods from superclass 'VisaIF' can also
-    % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.0).
-    %
-    % Use 'SMU.doc' for this help page.
-    %
-    %   - SMU : constructor of subclass (class name)
-    %     * use this function to create an object for your SMU
-    %     * same syntax as for VisaIF class ==> see 'doc VisaIF'
-    %     * default value of showmsg is 'few'
-    %     * overloads VisaIF
-    %
-    % NOTES:
-    %     * the output parameter 'status' has the same meaning for all
-    %       listed methods
-    %           status   : == 0 when okay
-    %                      != 0 when something went wrong
-    %     * all parameter names and values (varargin) are NOT case sensitive
-    %     * varargin are input as pairs NAME = VALUE
-    %     * any number and order of NAME = VALUE pairs can be specified
-    %     * not all parameters and values are supported by all SMUs
-    %     * check for warnings and errors
-    %
-    % additional methods (static) of class 'SMU':
-    %   - listAvailablePackages : print out a list of installed SMU
-    %                      support packages (macros)
-    %     * usage:
-    %           SMU.listAvailablePackages
-    %
-    % additional methods (public) of class 'SMU':
-    %   - clear          : clear status at SMU
-    %     * send SCPI command '*CLS' to SMU
-    %     * usage:
-    %           status = mySMU.clear  or just  mySMU.clear
-    %
-    %   - configureSource : configure the source function and parameters
-    %     * usage:
-    %           status = mySMU.configureSource(varargin)
-    %       with varargin: pairs of parameters NAME = VALUE
-    %           'function' : 'voltage' or 'current'
-    %           'level'    : source level in volts or amps (numeric)
-    %           'limit'    : compliance limit (current for voltage source,
-    %                        voltage for current source, numeric)
-    %           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
-    %
-    %   - configureMeasure : configure the measurement function
-    %     * usage:
-    %           status = mySMU.configureMeasure(varargin)
-    %       with varargin: pairs of parameters NAME = VALUE
-    %           'function' : 'voltage', 'current', or 'resistance'
-    %           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
-    %           'nplc'     : number of power line cycles (e.g., 0.01 to 10)
-    %
-    %   - outputEnable   : enable the SMU output
-    %     * usage:
-    %           status = mySMU.outputEnable
-    %
-    %   - outputDisable  : disable the SMU output
-    %     * usage:
-    %           status = mySMU.outputDisable
-    %
-    %   - measure        : perform a measurement
-    %     * usage:
-    %           result = mySMU.measure(varargin)
-    %       with output
-    %           result.status : status = 0 for okay, -1 for error
-    %           result.value  : measured value (double)
-    %           result.unit   : unit of measurement ('V', 'A', 'Ohm')
-    %           result.function : measurement function ('voltage', 'current', 'resistance')
-    %
-    % additional properties of class 'SMU':
-    %   - with read access only
-    %     * SMUVersion    : version of this class file (char)
-    %     * SMUDate       : release date of this class file (char)
-    %     * MacrosVersion : version of support package class (char)
-    %     * MacrosDate    : release date of support package class (char)
-    %     * OutputState   : current output state ('on' or 'off')
-    %
-    % ---------------------------------------------------------------------
-    % example for usage of class 'SMU': assuming Keithley 2450 is listed
-    % in config file (run 'SMU.listContentOfConfigFiles')
-    %
-    %   mySMU = SMU('Keithley-2450'); % create object and open interface
-    %
-    %   disp(['Version: ' mySMU.SMUVersion]); % show versions
-    %   disp(['Version: ' mySMU.VisaIFVersion]);
-    %
-    %   mySMU.reset; % reset SMU (optional command)
-    %
-    %   mySMU.configureSource( ...
-    %       'function', 'voltage', ...
-    %       'level', 5, ...
-    %       'limit', 0.1);
-    %
-    %   mySMU.configureMeasure( ...
-    %       'function', 'current', ...
-    %       'range', 'auto');
-    %
-    %   mySMU.outputEnable;
-    %   result = mySMU.measure;
-    %   mySMU.outputDisable;
-    %
-    %   mySMU.delete; % close interface and delete object
-    %
-    % ---------------------------------------------------------------------
-    % HTW Dresden, faculty of electrical engineering
-    %   for version and release date see properties 'SMUVersion' and
-    %   'SMUDate'
-    %
-    % tested with
-    %   - Matlab (version 24.1 = 2024a update 6)
-    %   - Instrument Control Toolbox (version 24.1)
-    %   - NI-Visa 21.5 (download from NI, separate installation)
-    %
-    % known issues and planned extensions / fixes
-    %   - no severe bugs reported (version 1.0.0) ==> winter term 2024/25
-    %
-    % development, support and contact:
-    %   - Constantin Wimmer (student, automation)
-    %   - Matthias Henker (professor)
-    % ---------------------------------------------------------------------
+% documentation for class 'SMU'
+% ---------------------------------------------------------------------
+% This class defines common methods for Source Measure Unit (SMU)
+% control. This class is a subclass of the superclass 'VisaIF'.
+% Type (in command window):
+% 'SMU' - to get a full list of accessible SMUs which means that
+%         their IP-addresses (for visa-tcpip) or USB-IDs (for visa-usb)
+%         are published in config files
+% 'SMU.listAvailablePackages' - to get a list of installed SMU packages.
+% Your SMU can be controlled by the SMU class when it is accessible and
+% a matching support package is installed.
+%
+% All public properties and methods from superclass 'VisaIF' can also
+% be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.2).
+%
+% Use 'SMU.doc' for this help page.
+%
+%   - SMU : constructor of subclass (class name)
+%     * use this function to create an object for your SMU
+%     * same syntax as for VisaIF class ==> see 'doc VisaIF'
+%     * default value of showmsg is 'few'
+%     * overloads VisaIF
+%
+% NOTES:
+%     * the output parameter 'status' has the same meaning for all
+%       listed methods
+%           status   : == 0 when okay
+%                      != 0 when something went wrong
+%     * all parameter names and values (varargin) are NOT case sensitive
+%     * varargin are input as pairs NAME = VALUE
+%     * any number and order of NAME = VALUE pairs can be specified
+%     * not all parameters and values are supported by all SMUs
+%     * check for warnings and errors
+%
+% additional methods (static) of class 'SMU':
+%   - listAvailablePackages : print out a list of installed SMU
+%                      support packages (macros)
+%     * usage:
+%           SMU.listAvailablePackages
+%
+% additional methods (public) of class 'SMU':
+%   - clear          : clear status at SMU
+%     * send SCPI command '*CLS' to SMU
+%     * usage:
+%           status = mySMU.clear  or just  mySMU.clear
+%
+%   - configureSource : configure the source function and parameters
+%     * usage:
+%           status = mySMU.configureSource(varargin)
+%       with varargin: pairs of parameters NAME = VALUE
+%           'function' : 'voltage' or 'current'
+%           'level'    : source level in volts or amps (numeric)
+%           'limit'    : compliance limit (current for voltage source,
+%                        voltage for current source, numeric)
+%           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
+%
+%   - configureMeasure : configure the measurement function
+%     * usage:
+%           status = mySMU.configureMeasure(varargin)
+%       with varargin: pairs of parameters NAME = VALUE
+%           'function' : 'voltage', 'current', or 'resistance'
+%           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
+%           'nplc'     : number of power line cycles (e.g., 0.01 to 10)
+%
+%   - outputEnable     : enable the SMU output
+%     * usage:
+%           status = mySMU.outputEnable
+%
+%   - outputDisable    : disable the SMU output
+%     * usage:
+%           status = mySMU.outputDisable
+%
+%   - measure          : perform a measurement
+%     * usage:
+%           result = mySMU.measure(varargin)
+%       with output
+%           result.status : status = 0 for okay, -1 for error
+%           result.value  : measured value (double)
+%           result.unit   : unit of measurement ('V', 'A', 'Ohm')
+%           result.function : measurement function ('voltage',
+%                           'current', 'resistance')
+%
+% additional properties of class 'SMU':
+%   - with read access only
+%     * SMUVersion    : version of this class file (char)
+%     * SMUDate       : release date of this class file (char)
+%     * MacrosVersion : version of support package class (char)
+%     * MacrosDate    : release date of support package class (char)
+%     * OutputState   : current output state ('on' or 'off')
+%
+% ---------------------------------------------------------------------
+% example for usage of class 'SMU': assuming Keithley 2450 is listed
+% in config file (run 'SMU.listContentOfConfigFiles')
+%
+%   mySMU = SMU('Keithley-2450'); % create object and open interface
+%
+%   disp(['Version: ' mySMU.SMUVersion]); % show versions
+%   disp(['Version: ' mySMU.VisaIFVersion]);
+%
+%   mySMU.reset; % reset SMU (optional command)
+%
+%   mySMU.configureSource( ...
+%       function = 'voltage', ...
+%       level    = 5, ...
+%       limit    = 0.1);
+%
+%   mySMU.configureMeasure( ...
+%       'function', 'current', ...
+%       'range', 'auto');
+%
+%   mySMU.outputEnable;
+%   result = mySMU.measure;
+%   mySMU.outputDisable;
+%
+%   mySMU.delete; % close interface and delete object
+%
+% ---------------------------------------------------------------------
+% HTW Dresden, faculty of electrical engineering
+%   for version and release date see properties 'SMUVersion' and
+%   'SMUDate'
+%
+% tested with
+%   - Matlab                            (2024b update 6 = version 24.2)
+%   - Instrument Control Toolbox                         (version 24.2)
+%   - Instrument Control Toolbox Support Package for National
+%     Instruments VISA and ICP Interfaces                (version 24.2)
+%
+% known issues and planned extensions / fixes
+%   - no severe bugs reported (version 1.0.2) ==> winter term 2025/26
+%
+% development, support and contact:
+%   - ShanShan Chan (student, E124b Information and Electronics)
+%   - Matthias Henker (professor)
+% ---------------------------------------------------------------------
 
- classdef SMU < VisaIF
+classdef SMU < VisaIF
     properties(Constant = true)
-        SMUVersion    = '1.0.1';      % updated release version
-        SMUDate       = '2025-05-05'; % updated release date
+        SMUVersion    = '1.0.2';      % updated release version
+        SMUDate       = '2025-07-09'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosVersion
         MacrosDate
         OutputState
+        % ...
+        ErrorMessages
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -157,30 +162,25 @@
             VisaIF.doc(className);
         end
 
-        % function listContentOfConfigFiles
-        %     % Display the contents of VISAIF_HTW_Labs.csv filtered for SMUs
-        %     [~, configTable] = VisaIF.filterConfigFiles('', 'SMU', '');
-        %     if isempty(configTable)
-        %         fprintf('No SMUs found in VISAIF_HTW_Labs.csv.\n');
-        %     else
-        %         fprintf('Available SMUs in VISAIF_HTW_Labs.csv:\n');
-        %         disp(configTable);
-        %     end
-        % end
-
     end
+
+
+    % ToDo
+    % ErrorMessages
+    % lock, unlock
+    % OutputState
+
+
+
 
     % ---------------------------------------------------------------------
     methods
 
         function obj = SMU(device, interface, showmsg)
-            % Constructor for an SMU object
-            % Inputs:
-            %   device    : Device name (e.g., 'Keithley-2450')
-            %   interface : Interface type (e.g., 'visa-tcpip', optional)
-            %   showmsg   : Message display level ('none', 'few', 'all', optional)
+            % constructor for a SMU object (same variables as for VisaIF
+            % except for missing last "hidden" parameter instrument)
 
-            % Check number of input arguments
+            % check number of input arguments
             narginchk(0, 3);
 
             % Set default values
@@ -194,63 +194,66 @@
                 device = '';
             end
 
-            % Create object via superclass VisaIF
-            className = mfilename('class'); % 'SMU'
-            instrument = className;
+            % -------------------------------------------------------------
+            className  = mfilename('class');
+
+            % create object: inherited from superclass 'VisaIF'
+            instrument = className; % see VisaIF.SupportedInstrumentClasses
             obj = obj@VisaIF(device, interface, showmsg, instrument);
 
-            % Validate device selection
+            % validate device selection
             if isempty(obj.Device)
-                error('SMU: Initialization failed. No matching SMU device found for "%s". Run SMU.listContentOfConfigFiles to see available devices.', device);
+                error(['SMU: Initialization failed. No matching SMU ' ...
+                    'device found for "%s". ' ...
+                    'Run SMU.listContentOfConfigFiles to see ' ...
+                    'available devices.'], device);
             end
 
-            % Build path to device-specific macros
-            fString = [className '.' obj.Vendor '.' obj.Product '.' className 'Macros'];
+            % build up path to selected device package directory
+            fString = [ ...
+                className    '.' ...
+                obj.Vendor   '.' ...
+                obj.Product  '.' ...
+                className 'Macros'];
             fHandle = str2func(fString);
 
-            % Create macros object
+            % create object with actual macros for selected device
             try
                 obj.MacrosObj = fHandle(obj);
-            catch ME
-                error('SMU: Failed to load support package %s: %s', fString, ME.message);
+                clear fHandle;
+            catch %#ok<CTCH>
+                error('No support package available for: %s', fString);
             end
 
-            % Execute post-open macro
+            % execute device specific macros after opening connection
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute post-open macro');
             end
-            try
-                if ~isscalar(obj.MacrosObj.runAfterOpen) || obj.MacrosObj.runAfterOpen
-                    error('SMU: Initial configuration failed: %s', num2str(obj.MacrosObj.runAfterOpen));
-                end
-            catch ME
-                error('SMU: runAfterOpen failed: %s', ME.message);
+            if obj.MacrosObj.runAfterOpen
+                error('Initial configuration of SMU failed.');
             end
         end
 
         function delete(obj)
-            % Destructor
+            % destructor
 
-            % Execute device-specific macros before closing connection
+            % execute device specific macros before closing connection
             if ~strcmpi(obj.ShowMessages, 'none') && ~isempty(obj.DeviceName)
                 disp([obj.DeviceName ':']);
                 disp('  execute pre-close macro');
             end
 
-            % Only run delete when object exists
+            % only run delete when object exists
             if ~isempty(obj.MacrosObj)
-                try
-                    if ~isscalar(obj.MacrosObj.runBeforeClose) || obj.MacrosObj.runBeforeClose
-                        error('SMU: Reconfiguration before closing connection failed.');
-                    end
-                    obj.MacrosObj.delete;
-                catch ME
-                    warning(ME.identifier,'SMU: Failed to execute pre-close macro or delete MacrosObj: %s', ME.message);
+                if obj.MacrosObj.runBeforeClose
+                    error('Reconfiguration of SMU before closing connecting failed.');
                 end
+                % delete MacroObj
+                obj.MacrosObj.delete;
             end
 
-            % Regular deletion of this class object follows now
+            % regular deletion of this class object follows now
         end
 
         % -----------------------------------------------------------------
@@ -258,29 +261,31 @@
         % -----------------------------------------------------------------
 
         function status = reset(obj)
-            % Override reset method (inherited from superclass VisaIF)
-            % Restore default settings at SMU
+            % override reset method (inherited from superclass VisaIF)
+            % restore default settings at SMU
 
-            % Init output
+            % init output
             status = NaN;
+
+            % do not execute "standard" reset method from super class
+            % reset@VisaIF(obj)
+
+            % optionally clear buffers (for visa-usb only)
+            obj.clrdevice;
 
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  execute reset macro');
             end
 
-            % Execute device-specific macros for reset
-            try
-                if ~isscalar(obj.MacrosObj.reset) || obj.MacrosObj.reset
-                    status = -1;
-                end
-            catch ME
-                error('SMU: reset macro failed: %s', ME.message);
+            % execute device specific macros for reset
+            if obj.MacrosObj.reset
+                status = -1;
             end
 
-            % Set final status
+            % set final status
             if isnan(status)
-                % No error so far ==> set to 0 (fine)
+                % no error so far ==> set to 0 (fine)
                 status = 0;
             end
 
@@ -290,7 +295,7 @@
         end
 
         % -----------------------------------------------------------------
-        % Actual SMU methods: actions without input parameters
+        % actual SMU methods: actions without input parameters
         % -----------------------------------------------------------------
 
         function status = clear(obj)
@@ -362,7 +367,7 @@
         % -----------------------------------------------------------------
         % Actual SMU methods: actions with varargin parameters
         % -----------------------------------------------------------------
-        
+
         function status = configureSenseMode(obj, varargin)
             % Configure sense mode (2-wire or 4-wire)
             % Expected varargin: 'function', 'mode'
@@ -461,7 +466,7 @@
                 disp('  measure failed');
             end
         end
-    
+
         function [voltages, currents] = VoltageLinearSweep(obj, start, stop, numPoints, delay)
             % Perform a linear sweep, delegated to device-specific macros
             % Inputs:
@@ -567,17 +572,6 @@
                 end
             catch ME
                 error('SMU: Failed to get MacrosDate: %s', ME.message);
-            end
-        end
-
-        function launchGUI(obj)
-        % Launch the SMU.Keithley.Model2450.SMUInterface GUI with the current SMU object
-            try
-                app = SMU.Keithley.Model2450.SMUInterface(obj);
-                % Keep the app alive until the GUI is closed
-                uiwait(app.UIFigure);
-            catch ME
-                error('Failed to launch GUI: %s', ME.message);
             end
         end
 
