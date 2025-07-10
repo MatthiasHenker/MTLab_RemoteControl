@@ -135,8 +135,8 @@
 
 classdef SMU < VisaIF
     properties(Constant = true)
-        SMUVersion    = '1.0.2';      % updated release version
-        SMUDate       = '2025-07-09'; % updated release date
+        SMUVersion    = '0.9.0';      % updated release version
+        SMUDate       = '2025-07-10'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -371,6 +371,11 @@ classdef SMU < VisaIF
         function status = configureSenseMode(obj, varargin)
             % Configure sense mode (2-wire or 4-wire)
             % Expected varargin: 'function', 'mode'
+
+            % if ~strcmpi(obj.VisaIFobj.ShowMessages, 'none')
+            %     disp([obj.DeviceID ': Configuring source parameters']);
+            % end
+
             status = obj.MacrosObj.configureSenseMode(varargin{:});
         end
 
@@ -418,6 +423,10 @@ classdef SMU < VisaIF
                 params = obj.checkParams(varargin, 'configureMeasure');
             end
 
+            % if ~strcmpi(obj.VisaIFobj.ShowMessages, 'none')
+            %     disp([obj.DeviceID ': Configuring measurement parameters']);
+            % end
+
             % Execute device-specific macro
             try
                 status = obj.MacrosObj.configureMeasure(params{:});
@@ -448,6 +457,10 @@ classdef SMU < VisaIF
             else
                 params = obj.checkParams(varargin, 'measure');
             end
+
+            % if ~strcmpi(obj.VisaIFobj.ShowMessages, 'none')
+            %     disp([obj.DeviceID ': Performing measurement']);
+            % end
 
             % Execute device-specific macro
             try
@@ -520,61 +533,34 @@ classdef SMU < VisaIF
         end
 
         % -----------------------------------------------------------------
-        % Actual SMU methods: get methods (dependent)
+        % actual SMU methods: get methods (dependent)
         % -----------------------------------------------------------------
 
         function outputState = get.OutputState(obj)
-            % Get output state
-            %   'on' or 'off'
-            try
-                if ~isprop(obj.MacrosObj, 'OutputState')
-                    error('SMU: MacrosObj does not define OutputState property.');
-                end
-                outputState = obj.MacrosObj.OutputState;
-                if ~ischar(outputState) && ~isstring(outputState)
-                    error('SMU: Invalid OutputState type returned by MacrosObj.');
-                end
-            catch ME
-                error('SMU: Failed to get OutputState: %s', ME.message);
-            end
+            % get output state:
+            %   0 for 'off',
+            %   1 for 'on'
+            %  -1 for unknown state (error)
 
-            % Optionally display results
+            outputState = obj.MacrosObj.OutputState;
+
+            % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
+                switch outputState
+                    case 0    , outputStateDisp = 'off';
+                    case 1    , outputStateDisp = 'on';
+                    otherwise , outputStateDisp = 'unknown state (error)';
+                end
                 disp([obj.DeviceName ':']);
-                disp(['  output state = ' outputState]);
+                disp(['  output state = ' outputStateDisp]);
             end
         end
 
-        function version = get.MacrosVersion(obj)
-            % Get method of property (dependent)
-            try
-                if ~isprop(obj.MacrosObj, 'MacrosVersion')
-                    error('SMU: MacrosObj does not define MacrosVersion property.');
-                end
-                version = obj.MacrosObj.MacrosVersion;
-                if ~ischar(version) && ~isstring(version)
-                    error('SMU: Invalid MacrosVersion type returned by MacrosObj.');
-                end
-            catch ME
-                error('SMU: Failed to get MacrosVersion: %s', ME.message);
-            end
+        function errMsg = get.ErrorMessages(obj)
+            % read error list from the generator’s error buffer
+            errMsg = obj.MacrosObj.ErrorMessages;
         end
-
-        function date = get.MacrosDate(obj)
-            % Get method of property (dependent)
-            try
-                if ~isprop(obj.MacrosObj, 'MacrosDate')
-                    error('SMU: MacrosObj does not define MacrosDate property.');
-                end
-                date = obj.MacrosObj.MacrosDate;
-                if ~ischar(date) && ~isstring(date)
-                    error('SMU: Invalid MacrosDate type returned by MacrosObj.');
-                end
-            catch ME
-                error('SMU: Failed to get MacrosDate: %s', ME.message);
-            end
-        end
-
+        
     end
 
     % ---------------------------------------------------------------------
@@ -709,5 +695,32 @@ classdef SMU < VisaIF
         end
 
     end
+
+
+
+    % ---------------------------------------------------------------------
+    methods(Static, Access = private)
+
+        %outVars = checkParams(inVars, command, showmsg)
+
+    end
+
+    % ---------------------------------------------------------------------
+    methods           % get/set methods
+
+        function version = get.MacrosVersion(obj)
+            % get method of property (dependent)
+
+            version = obj.MacrosObj.MacrosVersion;
+        end
+
+        function date = get.MacrosDate(obj)
+            % get method of property (dependent)
+
+            date = obj.MacrosObj.MacrosDate;
+        end
+
+    end
+
 end
 
