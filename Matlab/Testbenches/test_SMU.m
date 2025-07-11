@@ -46,10 +46,21 @@ mySMU = SMU(SMUName, interface, showmsg);
 % display details (properties) of SMU object
 mySMU
 
-return
-
 mySMU.clear;
 mySMU.reset;
+
+mySMU.LimitCurrentValue
+mySMU.LimitCurrentValue = 0.5;
+mySMU.LimitCurrentValue
+
+
+mySMU.LimitVoltageValue
+mySMU.LimitVoltageValue = 5.6;
+mySMU.LimitVoltageValue
+
+
+%mySMU.configureSenseMode(funct= 'current', mode= '4WIRE');
+
 
 
 % still unknown

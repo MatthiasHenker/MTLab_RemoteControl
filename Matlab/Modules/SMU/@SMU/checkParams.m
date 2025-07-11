@@ -26,9 +26,9 @@ narginchk(1,3);
 if isempty(inVars)
     inVars = {};
 elseif ~iscell(inVars) || ~isvector(inVars)
-    error('Scope: invalid state.');
+    error('SMU: invalid state.');
 elseif mod(length(inVars), 2) ~= 0
-    disp(['Scope: Warning - Odd number of parameters. ' ...
+    disp(['SMU: Warning - Odd number of parameters. ' ...
         'Ignore last input.']);
 end
 
@@ -42,31 +42,12 @@ end
 
 % -------------------------------------------------------------------------
 % initialize all parameter values (empty)
-channel      = ''; % configureInput, runMeasurement, captureWaveForm, autoscale
-trace        = ''; % configureInput
-impedance    = ''; % configureInput
-vDiv         = ''; % configureInput
-vOffset      = ''; % configureInput
-coupling     = ''; % configureInput, configureTrigger
-inputDiv     = ''; % configureInput
-bwLimit      = ''; % configureInput
-invert       = ''; % configureInput
-skew         = ''; % configureInput
-unit         = ''; % configureInput
-tDiv         = ''; % configureAcquisition
-sampleRate   = ''; % configureAcquisition
-maxLength    = ''; % configureAcquisition
-mode         = ''; % configureAcquisition, configureTrigger, autoscale
-numAverage   = ''; % configureAcquisition
-type         = ''; % configureTrigger
-source       = ''; % configureTrigger
-level        = ''; % configureTrigger
-delay        = ''; % configureTrigger
-parameter    = ''; % runMeasurement
-fileName     = ''; % makeScreenShot
-darkMode     = ''; % makeScreenShot
-zoomFactor   = ''; % configureZoom
-zoomPosition = ''; % configureZoom
+func         = ''; % configureSource, configureMeasure
+level        = ''; % configureSource
+limit        = ''; % configureSource
+range        = ''; % configureSource, configureMeasure
+nplc         = ''; % configureMeasure
+fileName     = ''; % tbd.
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -83,7 +64,7 @@ for nArgsIn = 2:2:length(inVars)
         % {'0', '1'} ["0", "1"], '0, 1', [0 1] [false true ] ==> '0, 1'
         if ~isvector(paramValue)
             paramValue = '';
-            disp(['Scope: Invalid type of ''' paramName '''. ' ...
+            disp(['SMU: Invalid type of ''' paramName '''. ' ...
                 'Ignore input.']);
         elseif ischar(paramValue)
             paramValue = upper(paramValue);
@@ -98,104 +79,26 @@ for nArgsIn = 2:2:length(inVars)
         % copy coerced parameter value to the right variable
         switch lower(char(paramName))
             % list of supported parameters
-            case {'channel', 'channels', 'chan'}
-                % channel: equivalent settings are (not case sensitive)
-                % 'CH1', {'CH1'}, "CH1", '1', "1", 1, true  ==> '1'
-                % 'CH1, CH2', '1, 2', [1 2]                 ==> '1, 2'
-                % any channel number in range 0 .. 99 is allowed
-                % channel ids will be sorted in ascending order
-                % duplicates will be removed
-                %
-                % check format and accept valid input only
-                if ~isempty(regexp(paramValue, ...
-                        '^\s*(CH|)\d{1,2}\s*((,|;)\s*(CH|)\d{1,2}\s*)*$', ...
-                        'once'))
-                    % remove optional 'CH':  'CH1, CH3' ==> '1, 3'
-                    channel = replace(paramValue, {'CH', ';'}, {'', ','});
-                    % sort in ascending order and remove duplicates
-                    channel = regexprep(num2str(unique( ...
-                        str2num(channel)), '%d '), '\s+', ', ');
-                end
-            case {'trace'}
-                % trace: accept all scalar values [+-a-zA-Z0-9.] no spaces
+            case {'funct', 'func', 'fun'}
+                % accept all scalar values [+-a-zA-Z0-9.] no spaces
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    trace        = paramValue;
+                    func = paramValue;
                 end
-            case {'impedance', 'imp'}
+            case {'level', 'lvl'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    impedance    = paramValue;
+                    level = paramValue;
                 end
-            case {'vdiv'}
+            case {'limit', 'lim'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    vDiv         = paramValue;
+                    limit = paramValue;
                 end
-            case {'voffset', 'voff', 'voffs'}
+            case {'range', 'rng'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    vOffset      = paramValue;
+                    range = paramValue;
                 end
-            case {'coupling', 'coupl', 'coup'}
+            case {'nplc'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    coupling     = paramValue;
-                end
-            case {'inputdiv', 'probe'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    inputDiv     = paramValue;
-                end
-            case {'bwlimit'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    bwLimit      = paramValue;
-                end
-            case {'invert', 'inv'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    invert       = paramValue;
-                end
-            case {'skew'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    skew         = paramValue;
-                end
-            case {'unit'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    unit         = paramValue;
-                end
-            case {'tdiv'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    tDiv         = paramValue;
-                end
-            case {'samplerate', 'srate'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    sampleRate   = paramValue;
-                end
-            case {'maxlength', 'maxlen'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    maxLength    = paramValue;
-                end
-            case {'mode'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    mode         = paramValue;
-                end
-            case {'numaverage', 'numavg'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    numAverage   = paramValue;
-                end
-            case {'type'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    type         = paramValue;
-                end
-            case {'source', 'src', 'sourc'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    source       = paramValue;
-                end
-            case {'level', 'lev', 'lvl'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    level        = paramValue;
-                end
-            case {'delay', 'dly'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    delay        = paramValue;
-                end
-            case {'parameter', 'param'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    parameter    = paramValue;
+                    nplc = paramValue;
                 end
             case {'filename', 'fname'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-\\/:]+$', 'once'))
@@ -205,115 +108,47 @@ for nArgsIn = 2:2:length(inVars)
                         fileName = '';
                     end
                 end
-            case {'darkmode', 'dark'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    darkMode     = paramValue;
-                end
-            case {'zoomfactor', 'zoomfact'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    zoomFactor   = paramValue;
-                end
-            case {'zoomposition', 'zoompos'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    zoomPosition = paramValue;
-                end
             otherwise
-                disp(['Scope: Warning - Parameter name ''' ...
+                disp(['SMU: Warning - Parameter name ''' ...
                     paramName ''' is unknown. ' ...
                     'Ignore parameter.']);
         end
     else
-        disp(['Scope: Parameter names have to be ' ...
+        disp(['SMU: Parameter names have to be ' ...
             'character arrays. Ignore input.']);
     end
 end
 
 % -------------------------------------------------------------------------
-% copy only command relevant parameters
+% copy command-relevant parameters
 switch command
-    case 'configureInput'
+    case 'configureSource'
         outVars = { ...
-            'channel'     , channel      , ...
-            'trace'       , trace        , ...
-            'impedance'   , impedance    , ...
-            'vDiv'        , vDiv         , ...
-            'vOffset'     , vOffset      , ...
-            'coupling'    , coupling     , ...
-            'inputDiv'    , inputDiv     , ...
-            'bwLimit'     , bwLimit      , ...
-            'invert'      , invert       , ...
-            'skew'        , skew         , ...
-            'unit'        , unit         };
-    case 'configureAcquisition'
+            'function' , func, ...
+            'level'    , level, ...
+            'limit'    , limit, ...
+            'range'    , range };
+    case 'configureMeasure'
         outVars = { ...
-            'tDiv'        , tDiv         , ...
-            'sampleRate'  , sampleRate   , ...
-            'maxLength'   , maxLength    , ...
-            'mode'        , mode         , ...
-            'numAverage'  , numAverage   };
-    case 'configureTrigger'
-        outVars = { ...
-            'mode'        , mode         , ...
-            'type'        , type         , ...
-            'source'      , source       , ...
-            'coupling'    , coupling     , ...
-            'level'       , level        , ...
-            'delay'       , delay        };
-    case 'configureZoom'
-        outVars = { ...
-            'zoomFactor'  , zoomFactor   , ...
-            'zoomPosition', zoomPosition };
-    case 'autoscale'
-        outVars = { ...
-            'channel'     , channel      , ...
-            'mode'        , mode         };
-    case 'makeScreenShot'
-        outVars = { ...
-            'fileName'    , fileName     , ...
-            'darkMode'    , darkMode     };
-    case 'runMeasurement'
-        outVars = { ...
-            'channel'     , channel      , ...
-            'parameter'   , parameter    };
-    case 'captureWaveForm'
-        outVars = { ...
-            'channel'     , channel      };
+            'function' , func, ...
+            'range'    , range, ...
+            'nplc'     , nplc };
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
-            'channel'     , channel      , ...
-            'trace'       , trace        , ...
-            'impedance'   , impedance    , ...
-            'vDiv'        , vDiv         , ...
-            'vOffset'     , vOffset      , ...
-            'coupling'    , coupling     , ...
-            'inputDiv'    , inputDiv     , ...
-            'bwLimit'     , bwLimit      , ...
-            'invert'      , invert       , ...
-            'skew'        , skew         , ...
-            'unit'        , unit         , ...
-            'tDiv'        , tDiv         , ...
-            'sampleRate'  , sampleRate   , ...
-            'maxLength'   , maxLength    , ...
-            'mode'        , mode         , ...
-            'numAverage'  , numAverage   , ...
-            'type'        , type         , ...
-            'source'      , source       , ...
-            'level'       , level        , ...
-            'delay'       , delay        , ...
-            'parameter'   , parameter    , ...
-            'fileName'    , fileName     , ...
-            'darkMode'    , darkMode     , ...
-            'zoomFactor'  , zoomFactor   , ...
-            'zoomPosition', zoomPosition };
-        % copy only non-empty parameter name+value pairs to output
+            'function' , func, ...
+            'level'    , level, ...
+            'limit'    , limit, ...
+            'range'    , range, ...
+            'nplc'     , nplc , ...
+            'filename' , fileName};
         outVars = cell(0);
-        idx     = 1;
-        for cnt = 1 : 2 : length(allVars)
+        idx = 1;
+        for cnt = 1:2:length(allVars)
             if ~isempty(allVars{cnt+1})
                 outVars{idx}   = allVars{cnt};
                 outVars{idx+1} = allVars{cnt+1};
-                idx            = idx+2;
+                idx = idx + 2;
             end
         end
 end

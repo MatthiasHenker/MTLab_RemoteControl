@@ -13,7 +13,7 @@
 % All public properties and methods from superclass 'VisaIF' can also
 % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.2).
 %
-% Use 'SMU.doc' for this help page.
+% Use 'SMU.doc' or 'doc SMU' for help page.
 %
 %   - SMU : constructor of subclass (class name)
 %     * use this function to create an object for your SMU
@@ -44,6 +44,17 @@
 %     * usage:
 %           status = mySMU.clear  or just  mySMU.clear
 %
+%   - outputEnable     : enable the SMU output
+%     * usage:
+%           status = mySMU.outputEnable
+%
+%   - outputDisable    : disable the SMU output
+%     * usage:
+%           status = mySMU.outputDisable
+%
+% ToDo
+%
+%
 %   - configureSource : configure the source function and parameters
 %     * usage:
 %           status = mySMU.configureSource(varargin)
@@ -62,14 +73,6 @@
 %           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
 %           'nplc'     : number of power line cycles (e.g., 0.01 to 10)
 %
-%   - outputEnable     : enable the SMU output
-%     * usage:
-%           status = mySMU.outputEnable
-%
-%   - outputDisable    : disable the SMU output
-%     * usage:
-%           status = mySMU.outputDisable
-%
 %   - measure          : perform a measurement
 %     * usage:
 %           result = mySMU.measure(varargin)
@@ -86,16 +89,20 @@
 %     * SMUDate       : release date of this class file (char)
 %     * MacrosVersion : version of support package class (char)
 %     * MacrosDate    : release date of support package class (char)
-%     * OutputState   : current output state ('on' or 'off')
+%     * OutputState   : current output state (1 = 'on' or 0 = 'off')
+%     * ErrorMessages : content of error logging buffer
+%   - with read/write access
+%     * LimitCurrentValue : safety limit, max current in A
+%     * LimitVoltageValue : safety limit, max voltage in V
 %
 % ---------------------------------------------------------------------
-% example for usage of class 'SMU': assuming Keithley 2450 is listed
-% in config file (run 'SMU.listContentOfConfigFiles')
+% example for usage of class 'SMU': assuming Keithley 2450
 %
-%   mySMU = SMU('Keithley-2450'); % create object and open interface
+%   SMU.listContentOfConfigFiles;   % list all known devices
+%   mySMU = SMU('Keithley-2450');   % create object and open interface
 %
-%   disp(['Version: ' mySMU.SMUVersion]); % show versions
-%   disp(['Version: ' mySMU.VisaIFVersion]);
+%   disp(['Version of SMU class   : ' mySMU.SMUVersion]);
+%   disp(['Version of VisaIF class: ' mySMU.VisaIFVersion]);
 %
 %   mySMU.reset; % reset SMU (optional command)
 %
@@ -126,25 +133,32 @@
 %     Instruments VISA and ICP Interfaces                (version 24.2)
 %
 % known issues and planned extensions / fixes
-%   - no severe bugs reported (version 1.0.2) ==> winter term 2025/26
+%   - no severe bugs reported (version 1.0.0) ==> winter term 2025/26
 %
 % development, support and contact:
 %   - ShanShan Chan (student, E124b Information and Electronics)
 %   - Matthias Henker (professor)
-% ---------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+% ToDo
+%   configureXXX, measure commands
 
 classdef SMU < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-07-10'; % updated release date
+        SMUDate       = '2025-07-11'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosVersion
         MacrosDate
         OutputState
-        % ...
         ErrorMessages
+    end
+
+    properties(Dependent)
+        LimitCurrentValue             % in A
+        LimitVoltageValue             % in V
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -164,14 +178,12 @@ classdef SMU < VisaIF
 
     end
 
+    % ---------------------------------------------------------------------
+    methods(Static, Access = private)
 
-    % ToDo
-    % ErrorMessages
-    % lock, unlock
-    % OutputState
+        outVars = checkParams(inVars, command, showmsg)
 
-
-
+    end
 
     % ---------------------------------------------------------------------
     methods
@@ -295,28 +307,51 @@ classdef SMU < VisaIF
         end
 
         % -----------------------------------------------------------------
-        % actual SMU methods: actions without input parameters
+        % additional methods for SMU
         % -----------------------------------------------------------------
 
         function status = clear(obj)
-            % Clear status at SMU
+            % clear status at SMU
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp('  clear status');
             end
 
-            % Execute device-specific macro
-            try
-                status = obj.MacrosObj.clear;
-                if ~isscalar(status)
-                    error('SMU: clear macro returned non-scalar status.');
-                end
-            catch ME
-                error('SMU: clear macro failed: %s', ME.message);
-            end
+            % execute device specific macro
+            status = obj.MacrosObj.clear;
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  clear failed');
+            end
+        end
+
+        function status = lock(obj)
+            % lock all buttons at SMU
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  lock all buttons at SMU');
+            end
+
+            % execute device specific macro
+            status = obj.MacrosObj.lock;
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  lock failed');
+            end
+        end
+
+        function status = unlock(obj)
+            % unlock all buttons at SMU
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  unlock all buttons at SMU');
+            end
+
+            % execute device specific macro
+            status = obj.MacrosObj.unlock;
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  unlock failed');
             end
         end
 
@@ -364,9 +399,11 @@ classdef SMU < VisaIF
             end
         end
 
-        % -----------------------------------------------------------------
-        % Actual SMU methods: actions with varargin parameters
-        % -----------------------------------------------------------------
+
+
+
+
+
 
         function status = configureSenseMode(obj, varargin)
             % Configure sense mode (2-wire or 4-wire)
@@ -532,9 +569,64 @@ classdef SMU < VisaIF
             end
         end
 
-        % -----------------------------------------------------------------
-        % actual SMU methods: get methods (dependent)
-        % -----------------------------------------------------------------
+    end
+
+    % ---------------------------------------------------------------------
+    methods           % get/set methods (dependent)
+
+        function limit = get.LimitCurrentValue(obj)
+            limit = obj.MacrosObj.LimitCurrentValue;
+        end
+
+        function set.LimitCurrentValue(obj, limit)
+
+            % check input argument
+            if isscalar(limit) && isnumeric(limit) ...
+                    && isreal(limit) && limit > 0
+                % further checks are done in SMUMacros class
+                limit = double(limit);
+                % set property
+                obj.MacrosObj.LimitCurrentValue = limit;
+                % readback and verify (max 1% difference)
+                limitSet = obj.LimitCurrentValue;
+                if abs(limitSet - limit) > 1e-2*limit
+                    disp(['SMU: parameter value for property ' ...
+                        '''LimitCurrentValue'' was not set properly.']);
+                    fprintf('  wanted value      : %5.3f A\n', limit);
+                    fprintf('  actually set value: %5.3f A\n', limitSet);
+                end
+            else
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''LimitCurrentValue''.']);
+            end
+        end
+
+        function limit = get.LimitVoltageValue(obj)
+            limit = obj.MacrosObj.LimitVoltageValue;
+        end
+
+        function set.LimitVoltageValue(obj, limit)
+
+            % check input argument
+            if isscalar(limit) && isnumeric(limit) ...
+                    && isreal(limit) && limit > 0
+                % further checks are done in SMUMacros class
+                limit = double(limit);
+                % set property
+                obj.MacrosObj.LimitVoltageValue = limit;
+                % readback and verify (max 1% difference)
+                limitSet = obj.LimitVoltageValue;
+                if abs(limitSet - limit) > 1e-2*limit
+                    disp(['SMU: parameter value for property ' ...
+                        '''LimitVoltageValue'' was not set properly.']);
+                    fprintf('  wanted value      : %5.1f V\n', limit);
+                    fprintf('  actually set value: %5.1f V\n', limitSet);
+                end
+            else
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''LimitVoltageValue''.']);
+            end
+        end
 
         function outputState = get.OutputState(obj)
             % get output state:
@@ -560,148 +652,6 @@ classdef SMU < VisaIF
             % read error list from the generator’s error buffer
             errMsg = obj.MacrosObj.ErrorMessages;
         end
-        
-    end
-
-    % ---------------------------------------------------------------------
-    methods(Static, Access = private)
-
-        function outVars = checkParams(inVars, command, showmsg)
-            % Check input parameters for SMU methods
-            % Extend the checkParams to include SMU-specific parameters
-
-            narginchk(1, 3);
-            if nargin < 3
-                showmsg = false;
-            end
-            if nargin < 2 || isempty(command)
-                command = '';
-            end
-
-            % Validate even number of inputs (NAME=VALUE pairs)
-            if mod(length(inVars), 2) ~= 0
-                error('SMU: checkParams requires an even number of inputs (NAME=VALUE pairs).');
-            end
-
-            % Initialize all parameter values (empty)
-            func = ''; % configureSource, configureMeasure
-            level = ''; % configureSource
-            limit = ''; % configureSource
-            range = ''; % configureSource, configureMeasure
-            nplc = ''; % configureMeasure
-
-            % Assign parameter values
-            for nArgsIn = 2:2:length(inVars)
-                paramName = inVars{nArgsIn-1};
-                paramValue = inVars{nArgsIn};
-                if iscellstr(paramName) || isstring(paramName)
-                    paramName = char(strjoin(paramName, ''));
-                end
-                if ischar(paramName) || isStringScalar(paramName)
-                    % Validate parameter value type
-                    if ~isvector(paramValue)
-                        paramValue = '';
-                        disp(['SMU: Invalid type of ''' paramName '''. Ignore input.']);
-                    elseif ischar(paramValue)
-                        paramValue = upper(paramValue);
-                    elseif iscellstr(paramValue) || isstring(paramValue)
-                        paramValue = upper(char(strjoin(paramValue, ', ')));
-                    elseif isa(paramValue, 'double') && isscalar(paramValue)
-                        paramValue = num2str(paramValue, 10);
-                    else
-                        paramValue = '';
-                        disp(['SMU: Invalid type of ''' paramName '''. Ignore input.']);
-                    end
-
-                    switch lower(char(paramName))
-                        case {'function', 'func'}
-                            if ~isempty(regexp(paramValue, '^(VOLTAGE|CURRENT|RESISTANCE)$', 'once'))
-                                func = paramValue;
-                            else
-                                disp(['SMU: Invalid function value ''' paramValue '''. Ignore input.']);
-                            end
-                        case {'level', 'lvl'}
-                            if ~isempty(regexp(paramValue, '^[\d\.\+\-eE]+$', 'once')) && ~isnan(str2double(paramValue))
-                                level = paramValue;
-                            else
-                                disp(['SMU: Invalid level value ''' paramValue '''. Must be numeric. Ignore input.']);
-                            end
-                        case {'limit', 'lim'}
-                            if ~isempty(regexp(paramValue, '^[\d\.\+\-eE]+$', 'once')) && ~isnan(str2double(paramValue))
-                                limit = paramValue;
-                            else
-                                disp(['SMU: Invalid limit value ''' paramValue '''. Must be numeric. Ignore input.']);
-                            end
-                        case {'range', 'rng'}
-                            if ~isempty(regexp(paramValue, '^(AUTO|[\d\.\+\-eEmMuUkK]+)$', 'once'))
-                                range = paramValue;
-                            else
-                                disp(['SMU: Invalid range value ''' paramValue '''. Ignore input.']);
-                            end
-                        case {'nplc'}
-                            if ~isempty(regexp(paramValue, '^[\d\.\+\-eE]+$', 'once')) && ~isnan(str2double(paramValue))
-                                nplc = paramValue;
-                            else
-                                disp(['SMU: Invalid nplc value ''' paramValue '''. Must be numeric. Ignore input.']);
-                            end
-                        otherwise
-                            disp(['SMU: Warning - Parameter name ''' paramName ''' is unknown. Ignore parameter.']);
-                    end
-                else
-                    disp('SMU: Parameter names have to be character arrays. Ignore input.');
-                end
-            end
-
-            % Copy command-relevant parameters
-            switch command
-                case 'configureSource'
-                    outVars = { ...
-                        'function', func, ...
-                        'level', level, ...
-                        'limit', limit, ...
-                        'range', range };
-                case 'configureMeasure'
-                    outVars = { ...
-                        'function', func, ...
-                        'range', range, ...
-                        'nplc', nplc };
-                case 'measure'
-                    outVars = {};
-                otherwise
-                    allVars = { ...
-                        'function', func, ...
-                        'level', level, ...
-                        'limit', limit, ...
-                        'range', range, ...
-                        'nplc', nplc };
-                    outVars = cell(0);
-                    idx = 1;
-                    for cnt = 1:2:length(allVars)
-                        if ~isempty(allVars{cnt+1})
-                            outVars{idx} = allVars{cnt};
-                            outVars{idx+1} = allVars{cnt+1};
-                            idx = idx + 2;
-                        end
-                    end
-            end
-
-            if showmsg
-                for cnt = 1:2:length(outVars)
-                    if ~isempty(outVars{cnt+1})
-                        disp(['  - ' pad(outVars{cnt}, 13) ': ' outVars{cnt+1}]);
-                    end
-                end
-            end
-        end
-
-    end
-
-
-
-    % ---------------------------------------------------------------------
-    methods(Static, Access = private)
-
-        %outVars = checkParams(inVars, command, showmsg)
 
     end
 
@@ -710,17 +660,14 @@ classdef SMU < VisaIF
 
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)
-
             version = obj.MacrosObj.MacrosVersion;
         end
 
         function date = get.MacrosDate(obj)
             % get method of property (dependent)
-
             date = obj.MacrosObj.MacrosDate;
         end
 
     end
 
 end
-

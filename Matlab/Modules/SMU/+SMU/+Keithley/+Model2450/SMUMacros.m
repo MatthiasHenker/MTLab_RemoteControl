@@ -1,27 +1,36 @@
-classdef SMUMacros < handle
-    % SMUMacros class for Keithley 2450 SMU
-    % Provides device-specific macros for SMU class operations
-    % Located in +SMU/+Keithley/+Model2450 package
-    %
-    % Modeled after ScopeMacros for consistent VISA communication and error handling
+% documentation for class 'SMUmacros' package for +SMU/+Keithley/+Model2450
+% ---------------------------------------------------------------------
+% this class provides device-specific macros for SMU class operations
+% supports firmware: 1.7.16a (2025-03-12) ==> see SMU.Identifier)
+% -------------------------------------------------------------------------
 
+% ToDo
+%   ErrorMessages
+
+classdef SMUMacros < handle
     properties(Constant = true)
         MacrosVersion = '0.9.0';      % Updated release version
-        MacrosDate    = '2025-07-10'; % Updated release date
+        MacrosDate    = '2025-07-11'; % Updated release date
+    end
+
+    properties(Dependent)
+        LimitCurrentValue double;     % in A
+        LimitVoltageValue double;    % in V
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        ShowMessages       logical
-        OutputState        double % 0 = 'off', 1 = 'on', -1 = 'unknown'
+        ShowMessages       logical % false = 'none', true = 'few' or 'all'
+        OutputState        double  % 0 = 'off', 1 = 'on', -1 = 'unknown'
         ErrorMessages      char
     end
 
     properties(SetAccess = private, GetAccess = private)
-        VisaIFobj         % Reference to SMU object for communication
+        VisaIFobj         % reference to SMU object for communication
     end
 
     % ------- basic methods -----------------------------------------------
     methods
+
         function obj = SMUMacros(VisaIFobj)
             % Constructor
 
@@ -109,12 +118,13 @@ classdef SMUMacros < handle
             end
 
             % reconfigure device after reset
+            % inclues a final '*OPC?' to wait for operation complete
             if obj.runAfterOpen()
                 status = -1;
             end
 
             % wait for operation complete
-            obj.VisaIFobj.opc;
+            %obj.VisaIFobj.opc;
 
             % set final status
             if isnan(status)
@@ -127,7 +137,7 @@ classdef SMUMacros < handle
             % clears the event registers and queues
 
             % init output
-            status = -1;
+            status = NaN;
 
             % clear status (event logs and error queue)
             if obj.VisaIFobj.write('*CLS')
@@ -144,9 +154,37 @@ classdef SMUMacros < handle
             end
         end
 
+        function status = lock(obj)
+            % lock all buttons at SMU
+
+            status = 0;
+
+            if obj.ShowMessages
+                disp(['SMU WARNING - Method ''lock'' is not ' ...
+                    'supported for ']);
+                disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                    obj.VisaIFobj.Product ...
+                    ' -->  SMU will never be locked ' ...
+                    'by remote access']);
+            end
+        end
+
+        function status = unlock(obj)
+            % unlock all buttons at SMU
+
+            status = 0;
+
+            disp(['SMU WARNING - Method ''unlock'' is not ' ...
+                'supported for ']);
+            disp(['      ' obj.VisaIFobj.Vendor '/' ...
+                obj.VisaIFobj.Product ...
+                ' -->  SMU will never be locked ' ...
+                'by remote access']);
+        end
+
         function status = outputEnable(obj)
 
-            status = -1; % default to error state
+            status = NaN; % init
 
             if obj.VisaIFobj.write(':OUTP ON')
                 status = -1;
@@ -164,7 +202,7 @@ classdef SMUMacros < handle
 
         function status = outputDisable(obj)
 
-            status = -1; % default to error state
+            status = NaN; % init
 
             if obj.VisaIFobj.write(':OUTP OFF')
                 status = -1;
@@ -181,11 +219,11 @@ classdef SMUMacros < handle
         end
 
 
-
-
-
-
         % ToDo
+
+        % function: '^(VOLTAGE|CURRENT|RESISTANCE)$'
+        % range   : '^(AUTO|[\d\.\+\-eEmMuUkK]+)$'
+
         function status = configureSenseMode(obj, varargin)
             % Configure sense mode (2-wire or 4-wire)
             % Expected varargin: 'function', 'mode'
@@ -254,7 +292,7 @@ classdef SMUMacros < handle
             status = -1; % Default to error state
 
             try
-                
+
                 % Input parameter parsing
                 parser = inputParser;
                 addParameter(parser, 'function', '', @ischar);
@@ -355,7 +393,7 @@ classdef SMUMacros < handle
             status = -1; % Default to error state
 
             try
-                
+
                 % Input parameter parsing
                 parser = inputParser;
                 addParameter(parser, 'function', '', @ischar);
@@ -469,7 +507,7 @@ classdef SMUMacros < handle
             meas = struct('status', -1, 'value', NaN, 'unit', '', 'function', '');
 
             try
-                
+
                 % Clear error queue
                 cmd = '*CLS';
                 if ischar(cmd)
@@ -614,7 +652,7 @@ classdef SMUMacros < handle
         function [voltages, currents] = VoltageLinearSweep(obj, start, stop, numPoints, delay) %limit
 
             try
-                
+
                 % Increase timeout
                 obj.VisaIFobj.Timeout = 30; % Set to 30 seconds
 
@@ -685,7 +723,7 @@ classdef SMUMacros < handle
 
                 % Disable output
                 obj.VisaIFobj.write('OUTP OFF'); % replace by internal macro
-                
+
                 pause (10);
 
                 % Read data from buffer
@@ -740,7 +778,7 @@ classdef SMUMacros < handle
             %   voltages - Array of measured voltages (V)
 
             try
-                
+
                 % Increase timeout
                 obj.VisaIFobj.Timeout = 30; % Set to 30 seconds
 
@@ -805,7 +843,7 @@ classdef SMUMacros < handle
 
                 % Disable output
                 obj.VisaIFobj.write('OUTP OFF'); % replace by internal macro
-                
+
                 pause (10);
 
                 % Calculate number of points
@@ -855,24 +893,65 @@ classdef SMUMacros < handle
 
 
 
-    % -----------------------------------------------------------------
-    % get methods (dependent)
-    % -----------------------------------------------------------------
 
-    methods
+    % ---------------------------------------------------------------------
+    methods           % get methods (dependent)
+
+        function limit = get.LimitCurrentValue(obj)
+            [limit, status] = obj.VisaIFobj.query( ...
+                ':SOURCE:VOLTAGE:ILIMIT?');
+            %
+            if status ~= 0
+                limit = NaN; % unknown value, error
+            else
+                % convert value
+                limit = lower(char(limit));
+                limit = str2double(limit);
+            end
+        end
+
+        function set.LimitCurrentValue(obj, limit)
+
+            % further checks and clipping
+            limit = min(limit, 1.05);  % max 1.05 A for Keithley 2450
+            limit = max(limit, 1e-9);  % min 1 nA   for Keithley 2450
+            % set property ==> check is done via readback and verify
+            obj.VisaIFobj.write([':SOURCE:VOLTAGE:ILIMIT ' num2str(limit)]);
+        end
+
+        function limit = get.LimitVoltageValue(obj)
+            [limit, status] = obj.VisaIFobj.query( ...
+                ':SOURCE:CURRENT:VLIMIT?');
+            %
+            if status ~= 0
+                limit = NaN; % unknown value, error
+            else
+                % convert value
+                limit = lower(char(limit));
+                limit = str2double(limit);
+            end
+        end
+
+        function set.LimitVoltageValue(obj, limit)
+
+            % further checks and clipping
+            limit = min(limit, 210);   % max  210 V for Keithley 2450
+            limit = max(limit, 0.02);  % min 0.02 V for Keithley 2450
+            % set property ==> check is done via readback and verify
+            obj.VisaIFobj.write([':SOURCE:CURRENT:VLIMIT ' num2str(limit)]);
+        end
+
         function outputState = get.OutputState(obj)
-            % read output state ('on' or 'off')
-
             [outpState, status] = obj.VisaIFobj.query(':OUTP?');
-                        %
+            %
             if status ~= 0
                 outputState = -1; % unknown state, error
             else
                 % remap trigger state
                 outpState = lower(char(outpState));
                 switch outpState
-                    case '0'   , outputState = 0;
-                    case '1'   , outputState = 1;
+                    case '0'   , outputState = 0;  % 'off'
+                    case '1'   , outputState = 1;  % 'on'
                     otherwise  , outputState = -1; % unknown state, error
                 end
             end
@@ -889,7 +968,8 @@ classdef SMUMacros < handle
             end
 
             % copy result to output
-            errMsg = '0, no error buffer at Scope';
+            %errMsg = '0, no error buffer at SMU';
+            errMsg = 'no readback of error buffer implemented yet';
 
         end
 
