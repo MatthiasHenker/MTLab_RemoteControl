@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------------------------------------
-// 2025-07-07
+// 2025-07-12
 // config file listing all available Visa measurement devices in rooms/labs like S110, S106
 // required columns
 //   Device     : char array as unique identifier
@@ -69,5 +69,6 @@ Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; demo      ;; USB0
 # SMU Keithley 2450                 (SID = 04616887)  located in room S106
 # OutBufSize: longest command is ??? ==> 1MByte as starting point (should be more than enough buffer)
 # InBufSize : longest command is ??? ==> same as OutBufSize
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; demo      ;; USB0::0x05E6::0x2450::demo ;;       1e6 ;;     1e6
 Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-usb  ;; USB0::0x05E6::0x2450::\w+  ;;       1e6 ;;     1e6
 Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-tcpip;; TCPIP0::192.168.178.51     ;;       1e6 ;;     1e6

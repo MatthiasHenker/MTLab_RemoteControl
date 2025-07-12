@@ -3,8 +3,8 @@ classdef VisaDemo < handle
     properties(Constant = true)
         % matches to VisaIF class version min. 3.x.x
         % emulates 'visadev'
-        VisaDemoVersion = '3.0.0';      % current version
-        VisaDemoDate    = '2024-08-18'; % release date
+        VisaDemoVersion = '3.0.1';      % current version
+        VisaDemoDate    = '2025-07-12'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -212,6 +212,14 @@ classdef VisaDemo < handle
         end
 
         function clrdevice(obj) %#ok<MANU>
+            % do nothing else
+        end
+
+        function flush(obj, buffer) %#ok<INUSD>
+            narginchk(1, 2);
+            if nargin < 2
+                buffer = ''; %#ok<NASGU>
+            end
             % do nothing else
         end
 
