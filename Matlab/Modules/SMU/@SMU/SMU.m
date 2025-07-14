@@ -10,6 +10,14 @@
 % Your SMU can be controlled by the SMU class when it is accessible and
 % a matching support package is installed.
 %
+% Attention: While there are IVI-C classes with a proposed general command
+% structure for devices such as Scope, Signal Generator and DMMs (which
+% were used as inspiration for the Scope and FGen classes), there is no
+% such IVI-C class for SMU. This SMU class is therefore very much tailored
+% to the Keithley 2450 SMU measument device (further packages can be for
+% 2460, 2470). Other SMU (Keysight B29xx, Rohde&Schwarz NGU4xx) will most
+% probably have a different operating concept.
+%
 % All public properties and methods from superclass 'VisaIF' can also
 % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.2).
 %
@@ -92,8 +100,9 @@
 %     * OutputState   : current output state (1 = 'on' or 0 = 'off')
 %     * ErrorMessages : content of error logging buffer
 %   - with read/write access
-%     * LimitCurrentValue : safety limit, max current in A
-%     * LimitVoltageValue : safety limit, max voltage in V
+%     * LimitCurrentValue          : safety limit, max current in A
+%     * LimitVoltageValue          : safety limit, max voltage in V
+%     * OverVoltageProtectionLevel : max. source output in V (coerced)
 %
 % ---------------------------------------------------------------------
 % example for usage of class 'SMU': assuming Keithley 2450
@@ -150,15 +159,17 @@ classdef SMU < VisaIF
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        MacrosVersion
-        MacrosDate
-        OutputState
-        ErrorMessages
+        MacrosVersion                char
+        MacrosDate                   char
+        ErrorMessages                char
+        OutputState                  double
+        OverVoltageProtectionTripped double
     end
 
     properties(Dependent)
-        LimitCurrentValue             % in A
-        LimitVoltageValue             % in V
+        OverVoltageProtectionLevel   double  % in V
+        LimitVoltageValue            double  % in V
+        LimitCurrentValue            double  % in A
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -589,7 +600,7 @@ classdef SMU < VisaIF
                 obj.MacrosObj.LimitCurrentValue = limit;
                 % readback and verify (max 1% difference)
                 limitSet = obj.LimitCurrentValue;
-                if abs(limitSet - limit) > 1e-2*limit
+                if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
                     disp(['SMU: parameter value for property ' ...
                         '''LimitCurrentValue'' was not set properly.']);
                     fprintf('  wanted value      : %5.3f A\n', limit);
@@ -616,7 +627,7 @@ classdef SMU < VisaIF
                 obj.MacrosObj.LimitVoltageValue = limit;
                 % readback and verify (max 1% difference)
                 limitSet = obj.LimitVoltageValue;
-                if abs(limitSet - limit) > 1e-2*limit
+                if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
                     disp(['SMU: parameter value for property ' ...
                         '''LimitVoltageValue'' was not set properly.']);
                     fprintf('  wanted value      : %5.1f V\n', limit);
@@ -628,11 +639,38 @@ classdef SMU < VisaIF
             end
         end
 
+        function limit = get.OverVoltageProtectionLevel(obj)
+            limit = obj.MacrosObj.OverVoltageProtectionLevel;
+        end
+
+        function set.OverVoltageProtectionLevel(obj, limit)
+
+            % check input argument
+            if isscalar(limit) && isnumeric(limit) ...
+                    && isreal(limit) && limit > 0
+                % further checks are done in SMUMacros class
+                limit = double(limit);
+                % set property
+                obj.MacrosObj.OverVoltageProtectionLevel = limit;
+                % readback and verify (max +20 V difference)
+                limitSet = obj.OverVoltageProtectionLevel;
+                if (limitSet - limit) > 20 || isnan(limitSet)
+                    disp(['SMU: parameter value for property ' ...
+                        '''OverVoltageProtectionLevel'' was not set properly.']);
+                    fprintf('  wanted value      : %5.1f V\n', limit);
+                    fprintf('  actually set value: %5.1f V\n', limitSet);
+                end
+            else
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''OverVoltageProtectionLevel''.']);
+            end
+        end
+
         function outputState = get.OutputState(obj)
             % get output state:
-            %   0 for 'off',
-            %   1 for 'on'
-            %  -1 for unknown state (error)
+            %    0 for 'off',
+            %    1 for 'on'
+            %  NaN for unknown state (error)
 
             outputState = obj.MacrosObj.OutputState;
 
@@ -645,6 +683,28 @@ classdef SMU < VisaIF
                 end
                 disp([obj.DeviceName ':']);
                 disp(['  output state = ' outputStateDisp]);
+            end
+        end
+
+        function OVPState = get.OverVoltageProtectionTripped(obj)
+            % get OVP state:
+            %    0 for 'not exceed the OVP limit',
+            %    1 for 'overvoltage protection is active, voltage is restricted'
+            %  NaN for unknown state (error)
+
+            OVPState = obj.MacrosObj.OverVoltageProtectionTripped;
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                switch OVPState
+                    case 0 
+                        OVPStateDisp = 'voltage does not exceed the OVP limit';
+                    case 1
+                        OVPStateDisp = 'overvoltage protection is active, voltage is restricted';
+                    otherwise , OVPStateDisp = 'unknown state (error)';
+                end
+                disp([obj.DeviceName ':']);
+                disp(['  OVP state = ' OVPStateDisp]);
             end
         end
 

@@ -14,14 +14,18 @@ classdef SMUMacros < handle
     end
 
     properties(Dependent)
-        LimitCurrentValue double;     % in A
-        LimitVoltageValue double;    % in V
+        LimitCurrentValue          double; % in A
+        LimitVoltageValue          double; % in V
+        OverVoltageProtectionLevel double; % in V, coerced to (2, 5, 10,
+        %                                    20, 40, 60, 80, 100, 120,
+        %                                    140, 160, 180, infty) V
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        ShowMessages       logical % false = 'none', true = 'few' or 'all'
-        OutputState        double  % 0 = 'off', 1 = 'on', -1 = 'unknown'
-        ErrorMessages      char
+        ShowMessages         logical % false = 'none', true = 'few' or 'all'
+        OutputState          double  % 0 = 'off', 1 = 'on', -1 = 'unknown'
+        OverVoltageProtectionTripped double % 0 = inactive, 1 = active
+        ErrorMessages        char
     end
 
     properties(SetAccess = private, GetAccess = private)
@@ -941,18 +945,77 @@ classdef SMUMacros < handle
             obj.VisaIFobj.write([':SOURCE:CURRENT:VLIMIT ' num2str(limit)]);
         end
 
+        function limit = get.OverVoltageProtectionLevel(obj)
+            [limit, status] = obj.VisaIFobj.query( ...
+                ':SOURCE:VOLTAGE:PROTECTION:LEVEL?');
+            %
+            if status ~= 0
+                limit = NaN; % unknown value, error
+            else
+                % convert value
+                limit = lower(char(limit));
+                if strcmp(limit, 'none')
+                    limit = inf;
+                elseif startsWith(limit, 'prot') && length(limit) >= 5
+                    limit = str2double(limit(5:end));
+                else
+                    limit = NaN; % unknown response
+                end
+            end
+        end
+
+        function set.OverVoltageProtectionLevel(obj, limit)
+
+            % further checks and clipping, coerced to (2, 5, 10, 20, 40,
+            % 60, 80, 100, 120, 140, 160, 180, infty) V
+            if     limit > 180, setStr = 'NONE';
+            elseif limit > 160, setStr = 'PROT180';
+            elseif limit > 140, setStr = 'PROT160';
+            elseif limit > 120, setStr = 'PROT140';
+            elseif limit > 100, setStr = 'PROT120';
+            elseif limit >  80, setStr = 'PROT100';
+            elseif limit >  60, setStr = 'PROT80';
+            elseif limit >  40, setStr = 'PROT60';
+            elseif limit >  20, setStr = 'PROT40';
+            elseif limit >  10, setStr = 'PROT20';
+            elseif limit >   5, setStr = 'PROT10';
+            elseif limit >   2, setStr = 'PROT5';
+            else                setStr = 'PROT2';
+            end
+            % set property ==> check is done via readback and verify
+            obj.VisaIFobj.write([':SOURCE:VOLTAGE:PROTECTION:LEVEL ' ...
+                setStr]);
+        end
+
         function outputState = get.OutputState(obj)
             [outpState, status] = obj.VisaIFobj.query(':OUTP?');
             %
             if status ~= 0
-                outputState = -1; % unknown state, error
+                outputState = NaN; % unknown state, error
             else
-                % remap trigger state
+                % remap state
                 outpState = lower(char(outpState));
                 switch outpState
                     case '0'   , outputState = 0;  % 'off'
                     case '1'   , outputState = 1;  % 'on'
-                    otherwise  , outputState = -1; % unknown state, error
+                    otherwise  , outputState = NaN; % unknown state, error
+                end
+            end
+        end
+
+        function OVPState = get.OverVoltageProtectionTripped(obj)
+            [OVPState, status] = obj.VisaIFobj.query( ...
+                ':SOURCE:VOLTAGE:PROTECTION:TRIPPED?');
+            %
+            if status ~= 0
+                OVPState = NaN; % unknown state, error
+            else
+                % remap state
+                OVPState = lower(char(OVPState));
+                switch OVPState
+                    case '0'   , OVPState = 0;  % 'OVP not active'
+                    case '1'   , OVPState = 1;  % 'OVP active'
+                    otherwise  , OVPState = NaN; % unknown state, error
                 end
             end
         end
