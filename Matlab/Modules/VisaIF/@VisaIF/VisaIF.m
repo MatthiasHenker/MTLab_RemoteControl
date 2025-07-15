@@ -247,7 +247,7 @@ classdef VisaIF < handle
 
     properties(Constant = true)
         VisaIFVersion = '3.0.2';      % current version of VisaIF
-        VisaIFDate    = '2025-07-09'; % release date
+        VisaIFDate    = '2025-07-15'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -330,7 +330,7 @@ classdef VisaIF < handle
     end
 
     properties(Constant = true, GetAccess = private)
-        MaxNumOfChars = 62; % max. number of characters shown in Visa
+        MaxNumOfChars = 100; % max. number of characters shown in Visa
         % command history (notifications for external VisaIFLog) and
         % shown in optional display messages (see property ShowMessages)
     end
