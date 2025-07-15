@@ -19,8 +19,9 @@ Release v3.0.2  (same as VisaIF class)
       extension: add "SMU" to list of SupportedInstrumentClasses
       change   : remove some unused entries in list of 
                  SupportedInstrumentClasses
-  - VisaDemo                                           v3.0.1  (2025-07-11)
+  - VisaDemo                                           v3.0.2  (2025-07-15)
       bug fix: add missing method 'flush'
+               add missing property 'ResourceName'
   - VisaIFLogEventData                                 v2.0.1  (2021-01-09)
       no changes
   - VisaIFLogger                                       v3.0.0  (2024-08-20)

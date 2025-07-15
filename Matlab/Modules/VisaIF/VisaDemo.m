@@ -3,13 +3,14 @@ classdef VisaDemo < handle
     properties(Constant = true)
         % matches to VisaIF class version min. 3.x.x
         % emulates 'visadev'
-        VisaDemoVersion = '3.0.1';      % current version
-        VisaDemoDate    = '2025-07-12'; % release date
+        VisaDemoVersion = '3.0.2';      % current version
+        VisaDemoDate    = '2025-07-15'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
         Name              char   = '<empty>';
-        RsrcName          char   = '<empty>';
+        RsrcName          char   = '<empty>'; % defined by config.csv
+        ResourceName      char   = '<empty>'; % defined by emulated visadev
         Alias             char   = '';
         Type              char   = 'demo';
         PreferredVisa     char   = '<empty>';
@@ -63,8 +64,9 @@ classdef VisaDemo < handle
             if nargin < 1 || ~ischar(RsrcName)
                 RsrcName = 'demo';
             end
-            obj.RsrcName = RsrcName;
-            obj.Status   = 'open';
+            obj.RsrcName     = RsrcName;
+            obj.ResourceName = RsrcName;
+            obj.Status       = 'open';
 
             % -------------------------------------------------------------
             % here starts the actual emulation
