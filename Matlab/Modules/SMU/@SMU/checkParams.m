@@ -10,15 +10,14 @@ function outVars = checkParams(inVars, command, showmsg)
 %   - invalid types of parameter values
 %
 % accepted inputs are: (for all parameters)
-% text is not case sensitive    ==> changed to upper case
-% 'text', "text", {'text'}      ==> 'TEXT'    (without spaces)
-% number, [number], true/false  ==> 'number'
-% additionally for 'channels'
-% 1, [1 2 3], '1,2,3' '1;2;3' ["1", "2", "3"]  ==> '1, 2, 3'
-% 'ch1, ch2',  {'ch1', 'ch2'}, ["ch1", "ch2"]  ==> '1, 2'
-% any channel number in range 0 .. 99 is allowed
-% channel ids will be sorted in ascending order, duplicates will be removed
-%
+% text is case sensitive       ==> text remains unchanged
+% 'Text', "Text", {'Text'}     ==> 'Text'
+% number, [number], true/false ==> 'number' (with num2str, false = 0, true = 1)
+% additionally for ParameterName 'text'
+% 'ABC;abc', {'ABC', 'abc'}, ["ABC", "abc"]  ==> 'ABC;abc'
+% ==> ';' is used as delimiter to separate char arrays (lines of text)
+% text starts with [a-zA-Z_0-9] or any white space followed by characters 
+% like +-*/\:.,;%& ==> ';' is used as delimiter ==> cannot be used in text
 
 narginchk(1,3);
 % -------------------------------------------------------------------------
@@ -48,6 +47,7 @@ limit        = ''; % configureSource
 range        = ''; % configureSource, configureMeasure
 nplc         = ''; % configureMeasure
 fileName     = ''; % tbd.
+text         = ''; % displayText
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -60,19 +60,19 @@ for nArgsIn = 2:2:length(inVars)
     end
     if ischar(paramName) || isStringScalar(paramName)
         % coerce parameter value (array) to comma separated char array
-        % '1', {'1'}, "1", 1, true                           ==> '1'
-        % {'0', '1'} ["0", "1"], '0, 1', [0 1] [false true ] ==> '0, 1'
+        % '1', {'1'}, "1", 1, true                          ==> '1'
+        % {'0', '1'} ["0", "1"], '0;1', [0 1] [false true ] ==> '0;1'
         if ~isvector(paramValue)
             paramValue = '';
             disp(['SMU: Invalid type of ''' paramName '''. ' ...
                 'Ignore input.']);
-        elseif ischar(paramValue)
-            paramValue = upper(paramValue);
+        %elseif ischar(paramValue)
+        %    paramValue = upper(paramValue);
         elseif iscellstr(paramValue) || isstring(paramValue)
-            paramValue = upper(char(strjoin(paramValue, ', ')));
+            paramValue = char(strjoin(paramValue, ';')); % no final upper()
         elseif isa(paramValue, 'double') || islogical(paramValue)
-            paramValue = upper(regexprep( ...
-                num2str(paramValue, 10), '\s+', ', '));
+            paramValue = regexprep( ...
+                num2str(paramValue, 10), '\s+', ';');    % no final upper()
         else
             paramValue = '';
         end
@@ -108,6 +108,20 @@ for nArgsIn = 2:2:length(inVars)
                         fileName = '';
                     end
                 end
+            case {'text'}
+                % text: equivalent settings are (case sensitive)
+                % 'ABC', {'ABC'}, "ABC"                      ==> 'ABC'
+                % 'ABC;abc', {'ABC', 'abc'}, ["ABC", "abc"]  ==> 'ABC;abc'
+                %
+                % check format and accept valid input only
+                if ~isempty(regexp(paramValue, ...
+                        '^(\w|\s)*((;|,|\.|%|&|/|\\|:|+|-|\*|\w|\s)*)*$', ...
+                        'once'))
+                    % text starts with [a-zA-Z_0-9] or any white space
+                    % followed by characters like +-*/\:.,;%&
+                    % ';' is used as delimiter ==> cannot be used in text
+                    text = paramValue;
+                end
             otherwise
                 disp(['SMU: Warning - Parameter name ''' ...
                     paramName ''' is unknown. ' ...
@@ -124,24 +138,28 @@ end
 switch command
     case 'configureSource'
         outVars = { ...
-            'function' , func, ...
+            'function' , func , ...
             'level'    , level, ...
             'limit'    , limit, ...
             'range'    , range };
     case 'configureMeasure'
         outVars = { ...
-            'function' , func, ...
+            'function' , func , ...
             'range'    , range, ...
             'nplc'     , nplc };
+    case 'displayText'
+        outVars = { ...
+            'text'     , text };
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
-            'function' , func, ...
-            'level'    , level, ...
-            'limit'    , limit, ...
-            'range'    , range, ...
-            'nplc'     , nplc , ...
-            'filename' , fileName};
+            'function' , func     , ...
+            'level'    , level    , ...
+            'limit'    , limit    , ...
+            'range'    , range    , ...
+            'nplc'     , nplc     , ...
+            'filename' , fileName , ...
+            'text'     , text};
         outVars = cell(0);
         idx = 1;
         for cnt = 1:2:length(allVars)
