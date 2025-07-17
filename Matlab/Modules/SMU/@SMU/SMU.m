@@ -10,13 +10,13 @@
 % Your SMU can be controlled by the SMU class when it is accessible and
 % a matching support package is installed.
 %
-% Attention: While there are IVI-C classes with a proposed general command
+% ATTENTION: While there are IVI-C classes with a proposed general command
 % structure for devices such as Scope, Signal Generator and DMMs (which
 % were used as inspiration for the Scope and FGen classes), there is no
 % such IVI-C class for SMU. This SMU class is therefore very much tailored
-% to the Keithley 2450 SMU measument device (further packages can be for
-% 2460, 2470). Other SMU (Keysight B29xx, Rohde&Schwarz NGU4xx) will most
-% probably have a different operating concept.
+% to the Keithley 2450 SMU measument device (further packages can possibly
+% be created for 2460, 2470). Other SMU (Keysight B29xx, Rohde&Schwarz
+% NGU4xx) will most probably have a different operating concept.
 %
 % All public properties and methods from superclass 'VisaIF' can also
 % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.2).
@@ -60,6 +60,26 @@
 %     * usage:
 %           status = mySMU.outputDisable
 %
+%   - configureDisplay : configure SMU display
+%     * usage:
+%           status = mySMU.configureDisplay(varargin)
+%       with varargin: pairs of parameters NAME = VALUE
+%             'screen' : char to select displayed screen
+%                        'clear' to delete user defined text ('text')
+%                        'help' to print out list of screen options
+%                        'home' to select home screen ...
+%             'digits' : determines the number of digits that are displayed
+%             'brightness': scalar double to adjust brightness (-1 ... 100)
+%             'buffer' : determines which buffer is used for measurements
+%                        that are displayed
+%             'text'   : text string to print out at SMU display
+%                        'ABC'     for single line
+%                        'ABC;abc' for dual line with ';' as delimiter
+%                        use either 'X;Y', {'X', 'Y'} or ["X", "Y"]
+%
+%
+%
+%
 % ToDo
 %
 %
@@ -91,14 +111,28 @@
 %           result.function : measurement function ('voltage',
 %                           'current', 'resistance')
 %
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
 % additional properties of class 'SMU':
 %   - with read access only
-%     * SMUVersion    : version of this class file (char)
-%     * SMUDate       : release date of this class file (char)
-%     * MacrosVersion : version of support package class (char)
-%     * MacrosDate    : release date of support package class (char)
-%     * OutputState   : current output state (1 = 'on' or 0 = 'off')
-%     * ErrorMessages : content of error logging buffer
+%     * SMUVersion         : version of this class file (char)
+%     * SMUDate            : release date of this class file (char)
+%     * MacrosVersion      : version of support package class (char)
+%     * MacrosDate         : release date of support package class (char)
+%     * AvailableBuffers   : list of available reading buffers
+%     * OutputState        : current output state (1 = 'on' or 0 = 'off')
+%     * OverVoltageProtectionTripped : OVP active (1 = 'on' or 0 = 'off')
+%     * ErrorMessages      : content of error logging buffer
 %   - with read/write access
 %     * LimitCurrentValue          : safety limit, max current in A
 %     * LimitVoltageValue          : safety limit, max voltage in V
@@ -155,13 +189,14 @@
 classdef SMU < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-07-11'; % updated release date
+        SMUDate       = '2025-07-17'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
         MacrosVersion                char
         MacrosDate                   char
         ErrorMessages                char
+        AvailableBuffers             cell
         OutputState                  double
         OverVoltageProtectionTripped double
     end
@@ -196,7 +231,7 @@ classdef SMU < VisaIF
 
     end
 
-    % ---------------------------------------------------------------------
+    % ------- public methods -----------------------------------------------
     methods
 
         function obj = SMU(device, interface, showmsg)
@@ -410,7 +445,24 @@ classdef SMU < VisaIF
             end
         end
 
+        function status = configureDisplay(obj, varargin)
+            % configureDisplay : configure display
 
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  configure SMU display');
+                params = obj.checkParams(varargin, 'configureDisplay', true);
+            else
+                params = obj.checkParams(varargin, 'configureDisplay');
+            end
+
+            % execute device specific macro
+            status = obj.MacrosObj.configureDisplay(params{:});
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  configureDisplay failed');
+            end
+        end
 
 
 
@@ -580,10 +632,8 @@ classdef SMU < VisaIF
             end
         end
 
-    end
-
-    % ---------------------------------------------------------------------
-    methods           % get/set methods (dependent)
+        % -----------------------------------------------------------------
+        % get/set methods for dependent properties
 
         function limit = get.LimitCurrentValue(obj)
             limit = obj.MacrosObj.LimitCurrentValue;
@@ -666,6 +716,19 @@ classdef SMU < VisaIF
             end
         end
 
+        function buffers = get.AvailableBuffers(obj)
+            % get list of available reading buffers:
+            %  cell array of char with reading buffers
+
+            buffers = obj.MacrosObj.AvailableBuffers;
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  buffers = ' char(join(buffers, ', '))]);
+            end
+        end
+
         function outputState = get.OutputState(obj)
             % get output state:
             %    0 for 'off',
@@ -697,7 +760,7 @@ classdef SMU < VisaIF
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
                 switch OVPState
-                    case 0 
+                    case 0
                         OVPStateDisp = 'voltage does not exceed the OVP limit';
                     case 1
                         OVPStateDisp = 'overvoltage protection is active, voltage is restricted';
@@ -713,10 +776,8 @@ classdef SMU < VisaIF
             errMsg = obj.MacrosObj.ErrorMessages;
         end
 
-    end
-
-    % ---------------------------------------------------------------------
-    methods           % get/set methods
+        % -----------------------------------------------------------------
+        % get/set methods
 
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)

@@ -11,8 +11,8 @@ SMUName = 'KEITHLEY-2450';
 interface = 'demo';
 %interface = '';
 
-showmsg   = 'all';
-%showmsg   = 'few';
+%showmsg   = 'all';
+showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -58,6 +58,14 @@ mySMU.reset;
 %mySMU.LimitVoltageValue = 5.6;
 %mySMU.LimitVoltageValue
 
+%mySMU.configureDisplay(screen = 'X');
+%mySMU.configureDisplay(screen = 'hElp');
+%mySMU.configureDisplay(screen = 'clear');
+%mySMU.configureDisplay(screen = 'hist');
+mySMU.configureDisplay(brightness = 25);
+mySMU.configureDisplay(digits = '4');
+%mySMU.configureDisplay(text = 'Running first tests;work in progress ...');
+
 
 %mySMU.configureSenseMode(funct= 'current', mode= '4WIRE');
 
@@ -73,7 +81,7 @@ mySMU.reset;
 
 % -------------------------------------------------------------------------
 % low level commands
-if true
+if false
 
     mySMU.write('Source:Function:Mode Current');
     mySMU.write('Source:Current:Range 100e-3'); % or ':Auto On'
@@ -105,7 +113,7 @@ if true
     % better read points = numOfElements
     % specify buffer
     response = mySMU.query(':Trace:Actual:End? "defbuffer1"');
-    points   = str2double(char(response))
+    points   = str2double(char(response));
     response = mySMU.query(sprintf('Trace:Data? 1, %d, "defbuffer1", SOUR, READ', points));
     response = char(response);
 
@@ -132,7 +140,7 @@ if true
 end
 
 %return
-mySMU.delete;
+%mySMU.delete;
 
 %return
 % -------------------------------------------------------------------------
@@ -152,14 +160,15 @@ myLog.listCommandHistory(inf);  % inf for all lines
 %myLog.CommandHistory
 %myLog.saveHistoryTable('test_SMU2450.csv');
 
-return
-myLog.delete;
+%myLog.delete;
 return
 
-myLog = VisaIFLogger;
-myLog.readHistoryTable('test_SMU2450.csv');
-myLog.Filter = false;
-myLog.listCommandHistory(inf);
-myLog.delete;
+if false %#ok<UNRCH>
+    myLog = VisaIFLogger;
+    myLog.readHistoryTable('test_SMU2450.csv');
+    myLog.Filter = false;
+    myLog.listCommandHistory(inf);
+    myLog.delete;
+end
 
 % -------------------------------------------------------------------------

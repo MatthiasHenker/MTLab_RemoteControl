@@ -10,7 +10,7 @@
 classdef SMUMacros < handle
     properties(Constant = true)
         MacrosVersion = '0.9.0';      % Updated release version
-        MacrosDate    = '2025-07-11'; % Updated release date
+        MacrosDate    = '2025-07-17'; % Updated release date
     end
 
     properties(Dependent)
@@ -28,17 +28,26 @@ classdef SMUMacros < handle
         ErrorMessages        char
     end
 
-    properties(SetAccess = private, GetAccess = private)
-        VisaIFobj         % reference to SMU object for communication
+    properties(SetAccess = private, GetAccess = public)
+        AvailableBuffers cell = {''};  % cell array of char
     end
 
-    % ------- basic methods -----------------------------------------------
+    properties(SetAccess = private, GetAccess = private)
+        VisaIFobj             % reference to SMU object for communication
+    end
+
+    properties(Constant = true, GetAccess = private)
+        DefaultBuffers = {'defbuffer1', 'defbuffer2'};
+    end
+
+    % ------- public methods -----------------------------------------------
     methods
 
         function obj = SMUMacros(VisaIFobj)
             % Constructor
 
             obj.VisaIFobj = VisaIFobj;
+            obj.resetBuffer;
 
             if ~strcmpi(obj.VisaIFobj.ShowMessages, 'none')
                 disp(['SMUMacros initialized for ' obj.VisaIFobj.Device]);
@@ -114,6 +123,8 @@ classdef SMUMacros < handle
             % use standard reset command (Factory Default)
             if obj.VisaIFobj.write('*RST')
                 status = -1;
+            else
+                obj.resetBuffer;
             end
 
             % clear status (event logs and error queue)
@@ -222,12 +233,235 @@ classdef SMUMacros < handle
             end
         end
 
+        function status = configureDisplay(obj, varargin)
+            % configureDisplay : configure display
+            %   'screen' : char to select displayed screen
+            %              'clear' to delete user defined text ('text')
+            %              '' to print out lsit of screen options
+            %              'home' to select home screen ...
+            %   'digits' : determines the number of digits that are displayed
+            %   'brightness': scalar double to adjust brightness (-1 ... 100)
+            %   'buffer' : determines which buffer is used for measurements
+            %              that are displayed
+            %   'text'   : text that is shown on SMU display
+            %              'ABC', {'ABC'}, "ABC" for single line
+            %              'ABC;abc', {'ABC', 'abc'}, ["ABC", "abc"] for
+            %              dual line
+
+            % init output
+            status = NaN;
+
+            % initialize all supported parameters
+            screen     = '';
+            digits     = [];
+            brightness = [];
+            buffer     = '';
+            text       = {};
+
+            % init misc
+            screenClear = false;
+            screenHelp  = false;
+
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'screen'
+                        switch lower(paramValue)
+                            case ''
+                                screen = '';
+                            case 'help'
+                                screenHelp  = true;
+                            case 'clear'
+                                screenClear = true;
+                            case 'home'
+                                screen = 'home';
+                            case {'home_larg', 'home_large_reading'}
+                                screen = 'home_large_reading';
+                            case {'read', 'reading_table'}
+                                screen = 'reading_table';
+                            case {'grap', 'graph'}
+                                screen = 'graph';
+                            case {'hist', 'histogram'}
+                                screen = 'histogram';
+                            case {'swipe_grap', 'swipe_graph'}
+                                screen = 'swipe_graph';
+                            case {'swipe_sett', 'swipe_setting'}
+                                screen = 'swipe_setting';
+                            case {'sour', 'source'}
+                                screen = 'source';
+                            case {'swipe_stat', 'swipe_statistics'}
+                                screen = 'swipe_statistics';
+                            case 'swipe_user'
+                                screen = 'swipe_user';
+                            case {'proc', 'processing'}
+                                screen = 'processing';
+                            otherwise
+                                disp(['SMU: Warning - ' ...
+                                    '''configureDisplay(screen)'' ' ...
+                                    'invalid parameter value ' ...
+                                    '--> ignore and continue']);
+                        end
+                    case 'digits'
+                        if ~isempty(paramValue)
+                            digits = str2double(paramValue);
+                            if isnan(digits)
+                                digits = '';
+                            else
+                                digits = round(digits);
+                                digits = min(digits, 6);
+                                digits = max(digits, 3);
+                                digits = num2str(digits, '%d');
+                            end
+                        end
+                    case 'brightness'
+                        if ~isempty(paramValue)
+                            brightness = str2double(paramValue);
+                            if isnan(brightness)
+                                brightness = [];
+                            else
+                                brightness = round(brightness);
+                                brightness = min(brightness, 100);
+                                brightness = max(brightness, -1);
+                            end
+                            % convert to command string (char)
+                            if brightness < 0
+                                brightness = 'blackout';
+                            elseif brightness < 5
+                                brightness = 'off';
+                            elseif brightness < 30
+                                brightness = 'on25';
+                            elseif brightness < 55
+                                brightness = 'on50';
+                            elseif brightness < 80
+                                brightness = 'on75';
+                            else
+                                brightness = 'on100';
+                            end
+                        end
+                    case 'buffer'
+
+
+
+
+                    case 'text'
+                        % split and copy to cell array of char
+                        if ~isempty(paramValue)
+                            text = split(paramValue, ';');
+                        end
+                        % check and limit number of lines
+                        % check and limit also length of lines
+                        maxNumOfLines = 2;
+                        maxLenLine    = [20 32];
+                        if length(text) > maxNumOfLines
+                            text = text(1:maxNumOfLines);
+                        end
+                        for cnt = 1 : length(text)
+                            if length(text{cnt}) > maxLenLine(cnt)
+                                text{cnt} = text{cnt}(1 : ...
+                                    maxLenLine(cnt)); %#ok<AGROW>
+                            end
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['SMU: Warning - ''configureDisplay'' ' ...
+                                'parameter ''' paramName ''' is ' ...
+                                'unknown --> ignore and continue']);
+                        end
+                end
+            end
+
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+            % 'screen'           : char
+            if screenHelp
+                disp('Help for ''configureDisplay(screen= OPTIONS)''');
+                disp('  available OPTIONS are:');
+                disp('  ''HOME''              - Home screen');
+                disp('  ''HOME_LARGe_reading''- ... with large readings');
+                disp('  ''READing_table''     - Reading table');
+                disp('  ''GRAPh''             - Graph screen');
+                disp('  ''HISTogram''         - Histogram screen');
+                disp('  ''SWIPE_GRAPh''       - GRAPH      swipe screen');
+                disp('  ''SWIPE_SETTings''    - SETTINGS   swipe screen');
+                disp('  ''SOURce''            - SOURCE     swipe screen');
+                disp('  ''SWIPE_STATistics''  - STATISTICS swipe screen');
+                disp('  ''SWIPE_USER''        - USER       swipe screen');
+                disp('  ''PROCessing''        - screen reducing CPU power');
+            elseif screenClear
+                obj.VisaIFobj.write(':Display:Clear');
+            elseif ~isempty(screen)
+                obj.VisaIFobj.write([':Display:Screen ' screen]);
+                % read and verify (not applicable)
+            end
+
+            % 'digits'           : char
+            if ~isempty(digits)
+                obj.VisaIFobj.write([':Display:Digits ' digits]);
+                % readback and verify
+                % ToDo
+            end
+
+            % 'brightness'       : char
+            if ~isempty(brightness)
+                obj.VisaIFobj.write([':Display:Light:State ' brightness]);
+                % readback and verify
+                % ToDo
+            end
+
+            % 'buffer'           : char
+            if ~isempty(buffer)
+
+                % ToDo
+                % ':Display:Buffer:Active "' buffer '"'
+                % readback and verify
+                % ':Display:Buffer:Active?'
+
+
+            end
+
+            % 'text'             : cell array of char
+            if ~isempty(text)
+                % select user swipe screen
+                obj.VisaIFobj.write(':Display:Screen swipe_user');
+                % show text on screen
+                for cnt = 1 : length(text)
+                    if ~isempty(text{cnt})
+                        cmd = sprintf(':Display:User%d:Text "%s"', ...
+                            cnt, text{cnt});
+                        obj.VisaIFobj.write(cmd);
+                    end
+                end
+
+                % read and verify (not applicable)
+                %response = obj.VisaIFobj.query('XXX?');
+                % if ~strcmpi(text, char(response))
+                %     disp(['SMU: Warning - ''configureDisplay'' ' ...
+                %         'text parameter could not be set correctly.']);
+                %     status = -1;
+                % end
+            end
+
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+        end
+
+
+
+
+
 
         % ToDo
 
         % function: '^(VOLTAGE|CURRENT|RESISTANCE)$'
         % range   : '^(AUTO|[\d\.\+\-eEmMuUkK]+)$'
-
         function status = configureSenseMode(obj, varargin)
             % Configure sense mode (2-wire or 4-wire)
             % Expected varargin: 'function', 'mode'
@@ -890,16 +1124,28 @@ classdef SMUMacros < handle
             end
 
         end
-    end
 
 
 
 
 
+        % -----------------------------------------------------------------
+        % get/set methods
 
+        function showmsg = get.ShowMessages(obj)
 
-    % ---------------------------------------------------------------------
-    methods           % get methods (dependent)
+            switch lower(obj.VisaIFobj.ShowMessages)
+                case 'none'
+                    showmsg = false;
+                case {'few', 'all'}
+                    showmsg = true;
+                otherwise
+                    disp('SMUMacros: invalid state in get.ShowMessages');
+            end
+        end
+
+        % -----------------------------------------------------------------
+        % get/set methods for dependent properties
 
         function limit = get.LimitCurrentValue(obj)
             [limit, status] = obj.VisaIFobj.query( ...
@@ -980,12 +1226,22 @@ classdef SMUMacros < handle
             elseif limit >  10, setStr = 'PROT20';
             elseif limit >   5, setStr = 'PROT10';
             elseif limit >   2, setStr = 'PROT5';
-            else                setStr = 'PROT2';
+            else              , setStr = 'PROT2';
             end
             % set property ==> check is done via readback and verify
             obj.VisaIFobj.write([':SOURCE:VOLTAGE:PROTECTION:LEVEL ' ...
                 setStr]);
         end
+
+        % get/set methods for AvailableBuffers are empty
+        % ==> only needed when further actions are needed
+        % function buffers = get.AvailableBuffers(obj)
+        %     buffers = obj.AvailableBuffers;
+        % end
+        %
+        % function set.AvailableBuffers(obj, buffers)
+        %     obj.AvailableBuffers = buffers;
+        % end
 
         function outputState = get.OutputState(obj)
             [outpState, status] = obj.VisaIFobj.query(':OUTP?');
@@ -1038,18 +1294,56 @@ classdef SMUMacros < handle
 
     end
 
-    % ---------------------------------------------------------------------
-    methods           % get/set methods
+    % ------- private methods -----------------------------------------------
+    methods(Access = private)
 
-        function showmsg = get.ShowMessages(obj)
+        % internal methods to memorize name of reading buffers at SMU
+        function status = resetBuffer(obj)
+            status               = 0; % always okay
+            obj.AvailableBuffers = obj.DefaultBuffers;
+        end
 
-            switch lower(obj.VisaIFobj.ShowMessages)
-                case 'none'
-                    showmsg = false;
-                case {'few', 'all'}
-                    showmsg = true;
-                otherwise
-                    disp('SMUMacros: invalid state in get.ShowMessages');
+        function status = isBuffer(obj, buffer)
+            % status = false when buffer does not exist yet
+            % status = true  when buffer already exist
+            %
+            % buffer : char array (format already checked by 'checkParams')
+
+            status = any(strcmpi(obj.AvailableBuffers, buffer));
+        end
+
+        function status = addBuffer(obj, buffer)
+            % status =  0 when buffer was added to buffer list
+            % status = -1 when buffer cannot be added (already existing)
+            %
+            % buffer : char array (format already checked by 'checkParams')
+
+            if any(strcmpi(obj.AvailableBuffers, buffer))
+                status = -1;
+            else
+                %obj.AvailableBuffers = [obj.AvailableBuffers {buffer}];
+                obj.AvailableBuffers{end+1} = buffer; % shorter
+                status =  0;
+            end
+        end
+
+        function status = deleteBuffer(obj, buffer)
+            % status =  0 when buffer was removed from buffer list
+            % status = -1 when buffer cannot be deleted (is default buffer)
+            % status = -2 when buffer cannot be deleted (does not exist)
+            %
+            % buffer : char array (format already checked by 'checkParams')
+
+            if any(strcmpi(obj.DefaultBuffers, buffer))
+                status = -1;
+            elseif ~any(strcmpi(obj.AvailableBuffers, buffer))
+                status = -2;
+            else
+                % index is not empty (see test abaove)
+                idx = strcmpi(obj.AvailableBuffers, buffer);
+                % remove cell element by replacing it with empty array
+                obj.AvailableBuffers(idx) = [];
+                status =  0;
             end
         end
 

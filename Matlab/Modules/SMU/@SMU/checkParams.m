@@ -16,8 +16,8 @@ function outVars = checkParams(inVars, command, showmsg)
 % additionally for ParameterName 'text'
 % 'ABC;abc', {'ABC', 'abc'}, ["ABC", "abc"]  ==> 'ABC;abc'
 % ==> ';' is used as delimiter to separate char arrays (lines of text)
-% text starts with [a-zA-Z_0-9] or any white space followed by characters 
-% like +-*/\:.,;%& ==> ';' is used as delimiter ==> cannot be used in text
+% text starts with [a-zA-Z_0-9] or any white space followed by characters
+% like +-*/\:.,;=%& ==> ';' is used as delimiter ==> cannot be used in text
 
 narginchk(1,3);
 % -------------------------------------------------------------------------
@@ -47,7 +47,11 @@ limit        = ''; % configureSource
 range        = ''; % configureSource, configureMeasure
 nplc         = ''; % configureMeasure
 fileName     = ''; % tbd.
-text         = ''; % displayText
+screen       = ''; % configureDisplay
+digits       = ''; % configureDisplay
+brightness   = ''; % configureDisplay
+buffer       = ''; % configureDisplay
+text         = ''; % configureDisplay
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -66,8 +70,8 @@ for nArgsIn = 2:2:length(inVars)
             paramValue = '';
             disp(['SMU: Invalid type of ''' paramName '''. ' ...
                 'Ignore input.']);
-        %elseif ischar(paramValue)
-        %    paramValue = upper(paramValue);
+        elseif ischar(paramValue)
+            paramValue = paramValue; %#ok<ASGSL> % do nothing
         elseif iscellstr(paramValue) || isstring(paramValue)
             paramValue = char(strjoin(paramValue, ';')); % no final upper()
         elseif isa(paramValue, 'double') || islogical(paramValue)
@@ -76,6 +80,7 @@ for nArgsIn = 2:2:length(inVars)
         else
             paramValue = '';
         end
+
         % copy coerced parameter value to the right variable
         switch lower(char(paramName))
             % list of supported parameters
@@ -108,6 +113,22 @@ for nArgsIn = 2:2:length(inVars)
                         fileName = '';
                     end
                 end
+            case {'screen'}
+                if ~isempty(regexp(paramValue, '^\w+$', 'once'))
+                    screen= paramValue;
+                end
+            case {'digits', 'digit'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    digits= paramValue;
+                end
+            case {'brightness', 'bright'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    brightness= paramValue;
+                end
+            case {'buffer', 'buf'}
+                if ~isempty(regexp(paramValue, '^\w+$', 'once'))
+                    buffer= paramValue;
+                end
             case {'text'}
                 % text: equivalent settings are (case sensitive)
                 % 'ABC', {'ABC'}, "ABC"                      ==> 'ABC'
@@ -115,7 +136,7 @@ for nArgsIn = 2:2:length(inVars)
                 %
                 % check format and accept valid input only
                 if ~isempty(regexp(paramValue, ...
-                        '^(\w|\s)*((;|,|\.|%|&|/|\\|:|+|-|\*|\w|\s)*)*$', ...
+                        '^(\w|\s)*((;|,|\.|%|&|/|\\|:|=|+|-|\*|\w|\s)*)*$', ...
                         'once'))
                     % text starts with [a-zA-Z_0-9] or any white space
                     % followed by characters like +-*/\:.,;%&
@@ -138,28 +159,36 @@ end
 switch command
     case 'configureSource'
         outVars = { ...
-            'function' , func , ...
-            'level'    , level, ...
-            'limit'    , limit, ...
-            'range'    , range };
+            'function'  , func       , ...
+            'level'     , level      , ...
+            'limit'     , limit      , ...
+            'range'     , range      };
     case 'configureMeasure'
         outVars = { ...
-            'function' , func , ...
-            'range'    , range, ...
-            'nplc'     , nplc };
-    case 'displayText'
+            'function'  , func       , ...
+            'range'     , range      , ...
+            'nplc'      , nplc       };
+    case 'configureDisplay'
         outVars = { ...
-            'text'     , text };
+            'screen'    , screen     , ...
+            'digits'    , digits     , ...
+            'brightness', brightness , ...
+            'buffer'    , buffer     , ...
+            'text'      , text       };
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
-            'function' , func     , ...
-            'level'    , level    , ...
-            'limit'    , limit    , ...
-            'range'    , range    , ...
-            'nplc'     , nplc     , ...
-            'filename' , fileName , ...
-            'text'     , text};
+            'function'  , func       , ...
+            'level'     , level      , ...
+            'limit'     , limit      , ...
+            'range'     , range      , ...
+            'nplc'      , nplc       , ...
+            'filename'  , fileName   , ...
+            'screen'    , screen     , ...
+            'digits'    , digits     , ...
+            'brightness', brightness , ...
+            'buffer'    , buffer     , ...
+            'text'      , text       };
         outVars = cell(0);
         idx = 1;
         for cnt = 1:2:length(allVars)
@@ -175,7 +204,7 @@ if showmsg
     for cnt = 1 : 2 : length(outVars)
         if ~isempty(outVars{cnt+1})
             disp(['  - ' pad(outVars{cnt}, 13) ': ' ...
-                outVars{cnt+1}]);
+                lower(outVars{cnt+1})]);
         end
     end
 end
