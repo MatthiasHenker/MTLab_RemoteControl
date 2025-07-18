@@ -10,7 +10,7 @@
 classdef SMUMacros < handle
     properties(Constant = true)
         MacrosVersion = '0.9.0';      % Updated release version
-        MacrosDate    = '2025-07-17'; % Updated release date
+        MacrosDate    = '2025-07-18'; % Updated release date
     end
 
     properties(Dependent)
@@ -340,10 +340,11 @@ classdef SMUMacros < handle
                             end
                         end
                     case 'buffer'
-
-
-
-
+                        if ~isempty(paramValue)
+                            if obj.isBuffer(paramValue)
+                                buffer = paramValue;
+                            end
+                        end
                     case 'text'
                         % split and copy to cell array of char
                         if ~isempty(paramValue)
@@ -400,25 +401,42 @@ classdef SMUMacros < handle
             if ~isempty(digits)
                 obj.VisaIFobj.write([':Display:Digits ' digits]);
                 % readback and verify
-                % ToDo
+                response = obj.VisaIFobj.query(':Display:Digits?');
+                response = char(response);
+                if ~strcmpi(response, digits)
+                    % set command failed
+                    disp(['SMU: Warning - ''configureDisplay'' ' ...
+                        'digits parameter could not be set correctly.']);
+                    status = -1;
+                end
             end
 
             % 'brightness'       : char
             if ~isempty(brightness)
                 obj.VisaIFobj.write([':Display:Light:State ' brightness]);
                 % readback and verify
-                % ToDo
+                response = obj.VisaIFobj.query(':Display:Light:State?');
+                response = char(response);
+                if ~strcmpi(response, brightness)
+                    % set command failed
+                    disp(['SMU: Warning - ''configureDisplay'' ' ...
+                        'brightness parameter could not be set correctly.']);
+                    status = -1;
+                end
             end
 
             % 'buffer'           : char
             if ~isempty(buffer)
-
-                % ToDo
-                % ':Display:Buffer:Active "' buffer '"'
+                obj.VisaIFobj.write([':Display:Buffer:Active "' buffer '"']);
                 % readback and verify
-                % ':Display:Buffer:Active?'
-
-
+                response = obj.VisaIFobj.query(':Display:Buffer:Active?');
+                response = char(response);
+                if ~strcmpi(response, buffer)
+                    % set command failed
+                    disp(['SMU: Warning - ''configureDisplay'' ' ...
+                        'buffer parameter could not be set correctly.']);
+                    status = -1;
+                end
             end
 
             % 'text'             : cell array of char
@@ -433,14 +451,7 @@ classdef SMUMacros < handle
                         obj.VisaIFobj.write(cmd);
                     end
                 end
-
                 % read and verify (not applicable)
-                %response = obj.VisaIFobj.query('XXX?');
-                % if ~strcmpi(text, char(response))
-                %     disp(['SMU: Warning - ''configureDisplay'' ' ...
-                %         'text parameter could not be set correctly.']);
-                %     status = -1;
-                % end
             end
 
             % wait for operation complete
@@ -453,13 +464,19 @@ classdef SMUMacros < handle
             end
         end
 
+        % ToDo
+        %configureTerminales (front / rear)
+        %configureOutput (mode = Normal / HiZ / Zero / Guard
+        %                 interlock = On / Off)
+        % property InterlockTripped
 
 
+
+        % check: readback value is also filtered like sense value?
 
 
 
         % ToDo
-
         % function: '^(VOLTAGE|CURRENT|RESISTANCE)$'
         % range   : '^(AUTO|[\d\.\+\-eEmMuUkK]+)$'
         function status = configureSenseMode(obj, varargin)
@@ -521,9 +538,7 @@ classdef SMUMacros < handle
             end
             return
         end
-        %%
 
-        % mySMU.configureSource('function', 'VOLTAGE', 'level', '1','range', '20');
         function status = configureSource(obj, varargin)
             % Configure source function and parameters
             % Expected varargin: 'function', 'level', 'limit', 'range'
@@ -621,9 +636,7 @@ classdef SMUMacros < handle
                 end
             end
         end
-        %%
-        %Tested, Work
-        %mySMU.configureMeasure('function', 'Current');
+
         function status = configureMeasure(obj, varargin)
             % Configure measurement function (Voltage, Current, Resistance, Power)
             % Expected varargin: 'function', 'range', 'nplc'
@@ -736,7 +749,6 @@ classdef SMUMacros < handle
                 end
             end
         end
-        %%
 
         function meas = measure(obj, varargin)
             % Perform a measurement
@@ -885,7 +897,6 @@ classdef SMUMacros < handle
                 end
             end
         end
-        %%
 
         function [voltages, currents] = VoltageLinearSweep(obj, start, stop, numPoints, delay) %limit
 
@@ -1002,7 +1013,6 @@ classdef SMUMacros < handle
                 rethrow(ME);
             end
         end
-
 
         function [currents, voltages] = CurrentLinearSweep(obj, start, stop, step, delay)
             % Perform a linear current sweep for V-I characterization of a diode using LINear:STEP
