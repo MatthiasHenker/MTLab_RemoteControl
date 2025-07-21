@@ -47,7 +47,7 @@ myLog.ShowMessages = 0;
 % display details (properties) of SMU object
 %mySMU
 
-mySMU.reset;
+%mySMU.reset;
 %mySMU.clear;
 
 %mySMU.LimitCurrentValue
@@ -58,17 +58,28 @@ mySMU.reset;
 %mySMU.LimitVoltageValue = 5.6;
 %mySMU.LimitVoltageValue
 
-%mySMU.configureDisplay(screen = 'X');
-%mySMU.configureDisplay(screen = 'hElp');
-%mySMU.configureDisplay(screen = 'clear');
-%mySMU.configureDisplay(screen = 'hist');
-mySMU.configureDisplay(brightness = 25);
-mySMU.configureDisplay(digits = '4');
-%mySMU.configureDisplay(text = 'Running first tests;work in progress ...');
+mySMU.OverVoltageProtectionLevel
+mySMU.OverVoltageProtectionLevel = 3;
+mySMU.OverVoltageProtectionLevel
+
+%mySMU.configureDisplay(screen= 'X');
+%mySMU.configureDisplay(screen= 'hElp');
+%mySMU.configureDisplay(screen= 'home');
+%mySMU.configureDisplay(screen= 'clear');
+%mySMU.configureDisplay(screen= 'hist');
+mySMU.configureDisplay(brightness= 25);
+mySMU.configureDisplay(digits= '6');
+mySMU.configureDisplay(buffer= 'defbuffer2');
+%mySMU.configureDisplay(text= 'Running first tests;work in progress ...');
 
 
 %mySMU.configureSenseMode(funct= 'current', mode= '4WIRE');
 
+
+mySMU.outputTone;
+mySMU.outputTone(freq= 2440, duration= '2.5');
+
+eventLog = mySMU.ErrorMessages;
 
 
 % still unknown
@@ -90,20 +101,24 @@ if false
     mySMU.write('Sense:Voltage:Range 20');      % or ':Auto On'
     mySMU.write('Sense:Voltage:Rsense Off');    % On
 
-    mySMU.LimitVoltageValue = 2.5;
+    mySMU.LimitVoltageValue = 3.5;
 
     start  = 10e-6;
     stop   = 30e-3;
-    points = 101;
+    points = 1001;
     delay  = 10e-3;
     cmd    = sprintf( ...
         'Source:Sweep:Current:Log %f, %f, %d, %f, 1, Fixed, Off, On, "defbuffer1"', ...
         start, stop, points, delay);
     mySMU.write(cmd);
 
+    mySMU.query('Trace:Actual?');
+    mySMU.query('Trace:Actual:Start?');
+    mySMU.query('Trace:Actual:End?');
+    %
     mySMU.write(':Trace:Clear');
 
-    mySMU.write('Initiate'); % init trigger and enables output
+    mySMU.write(':Initiate'); % init trigger and enables output
     %pause;
     mySMU.write('*WAI'); % wait until measurement done
     % ATTENTION: timeout can kill script
@@ -126,8 +141,8 @@ if false
     voltages = data(2:2:end);
 
     % Plot results
-    if (~isempty(currents) && ~isnan(currents) && ...
-            ~isempty(voltages) && ~isnan(voltages))
+    if (~isempty(currents) && ~any(isnan(currents)) && ...
+            ~isempty(voltages) && ~any(isnan(voltages)))
         figure(2);
         plot(voltages, currents, '*r-');
         title('V-I Characterization');

@@ -60,6 +60,17 @@
 %     * usage:
 %           status = mySMU.outputDisable
 %
+%   - outputTone       : emit a tone
+%     * usage:
+%           status = mySMU.outputTone(varargin)
+%       with varargin: pairs of parameters NAME = VALUE
+%          'frequency' : frequency of the beep (in Hz)
+%                        range: 20 ... 8e3
+%                        optional parameter, default: 440 (440 Hz)
+%          'duration'  : length of tone (in s)
+%                        range: 1e-3 ... 1e2
+%                        optional parameter, default: 1 (1 s)
+%
 %   - configureDisplay : configure SMU display
 %     * usage:
 %           status = mySMU.configureDisplay(varargin)
@@ -132,7 +143,11 @@
 %     * AvailableBuffers   : list of available reading buffers
 %     * OutputState        : current output state (1 = 'on' or 0 = 'off')
 %     * OverVoltageProtectionTripped : OVP active (1 = 'on' or 0 = 'off')
-%     * ErrorMessages      : content of error logging buffer
+%     * ErrorMessages      : table with event log buffer
+%                    .Time      time when the event occurred ('datetime')
+%                    .Code      event code                     ('double')
+%                    .Type      error, warning or information  ('string')
+%                    .Description event message                ('string')
 %   - with read/write access
 %     * LimitCurrentValue          : safety limit, max current in A
 %     * LimitVoltageValue          : safety limit, max voltage in V
@@ -189,13 +204,18 @@
 classdef SMU < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-07-17'; % updated release date
+        SMUDate       = '2025-07-21'; % updated release date
+    end
+
+    properties(SetAccess = private, GetAccess = public)
+        MacrosVersion                char
+        MacrosDate                   char
+        ErrorMessages                table = table(Size= [0, 4], ...
+            VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
+            VariableTypes= {'datetime', 'double', 'string', 'string'});
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        MacrosVersion                char
-        MacrosDate                   char
-        ErrorMessages                char
         AvailableBuffers             cell
         OutputState                  double
         OverVoltageProtectionTripped double
@@ -409,14 +429,7 @@ classdef SMU < VisaIF
             end
 
             % Execute device-specific macro
-            try
-                status = obj.MacrosObj.outputEnable;
-                if ~isscalar(status)
-                    error('SMU: outputEnable macro returned non-scalar status.');
-                end
-            catch ME
-                error('SMU: outputEnable macro failed: %s', ME.message);
-            end
+            status = obj.MacrosObj.outputEnable;
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  outputEnable failed');
@@ -431,17 +444,29 @@ classdef SMU < VisaIF
             end
 
             % Execute device-specific macro
-            try
-                status = obj.MacrosObj.outputDisable;
-                if ~isscalar(status)
-                    error('SMU: outputDisable macro returned non-scalar status.');
-                end
-            catch ME
-                error('SMU: outputDisable macro failed: %s', ME.message);
-            end
+            status = obj.MacrosObj.outputDisable;
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  outputDisable failed');
+            end
+        end
+
+        function status = outputTone(obj, varargin)
+            % beeper of the instrument generates an audible signal
+
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  generate a tone (default: 1 kHz for 1 s)');
+                params = obj.checkParams(varargin, 'outputTone', true);
+            else
+                params = obj.checkParams(varargin, 'outputTone');
+            end
+
+            % Execute device-specific macro
+            status = obj.MacrosObj.outputTone(params{:});
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  outputTone failed');
             end
         end
 
@@ -632,6 +657,9 @@ classdef SMU < VisaIF
             end
         end
 
+
+
+
         % -----------------------------------------------------------------
         % get/set methods for dependent properties
 
@@ -771,13 +799,16 @@ classdef SMU < VisaIF
             end
         end
 
-        function errMsg = get.ErrorMessages(obj)
-            % read error list from the generator’s error buffer
-            errMsg = obj.MacrosObj.ErrorMessages;
-        end
-
         % -----------------------------------------------------------------
         % get/set methods
+
+        function errTable = get.ErrorMessages(obj)
+            % read error list from the SMU’s error buffer
+            % append received events to table (history is saved here)
+            obj.ErrorMessages = ...
+                [obj.ErrorMessages; obj.MacrosObj.ErrorMessages];
+            errTable = obj.ErrorMessages;
+        end
 
         function version = get.MacrosVersion(obj)
             % get method of property (dependent)

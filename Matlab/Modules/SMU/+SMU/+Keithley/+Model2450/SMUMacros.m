@@ -4,13 +4,10 @@
 % supports firmware: 1.7.16a (2025-03-12) ==> see SMU.Identifier)
 % -------------------------------------------------------------------------
 
-% ToDo
-%   ErrorMessages
-
 classdef SMUMacros < handle
     properties(Constant = true)
         MacrosVersion = '0.9.0';      % Updated release version
-        MacrosDate    = '2025-07-18'; % Updated release date
+        MacrosDate    = '2025-07-21'; % Updated release date
     end
 
     properties(Dependent)
@@ -25,7 +22,7 @@ classdef SMUMacros < handle
         ShowMessages         logical % false = 'none', true = 'few' or 'all'
         OutputState          double  % 0 = 'off', 1 = 'on', -1 = 'unknown'
         OverVoltageProtectionTripped double % 0 = inactive, 1 = active
-        ErrorMessages        char
+        ErrorMessages        table
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -233,6 +230,81 @@ classdef SMUMacros < handle
             end
         end
 
+        function status = outputTone(obj, varargin)
+            % outputTone : emit a tone
+            %   'frequency' : frequency of the beep (in Hz)
+            %                 range: 20 ... 8e3
+            %                 optional parameter, default: 440 (440 Hz)
+            %   'duration'  : length of tone (in s)
+            %                 range: 1e-3 ... 1e2
+            %                 optional parameter, default: 1 (1 s)
+
+            % init output
+            status = NaN;
+
+            for idx = 1:2:length(varargin)
+                paramName  = varargin{idx};
+                paramValue = varargin{idx+1};
+                switch paramName
+                    case 'frequency'
+                        defaultFreq = 440;
+                        if ~isempty(paramValue)
+                            frequency = str2double(paramValue);
+                            if isnan(frequency)
+                                frequency = defaultFreq;
+                            else
+                                % clip to range
+                                frequency = min(frequency, 8e3);
+                                frequency = max(frequency, 20);
+                            end
+                        else
+                            frequency = defaultFreq;
+                        end
+                        frequency = num2str(frequency, '%g');
+                    case 'duration'
+                        defaultDuration = 1;
+                        if ~isempty(paramValue)
+                            duration = str2double(paramValue);
+                            if isnan(duration)
+                                duration = defaultDuration;
+                            else
+                                % clip to range
+                                duration = min(duration, 1e2);
+                                duration = max(duration, 1e-3);
+                            end
+                        else
+                            duration = defaultDuration;
+                        end
+                        duration = num2str(duration, '%g');
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['SMU: Warning - ''configureDisplay'' ' ...
+                                'parameter ''' paramName ''' is ' ...
+                                'unknown --> ignore and continue']);
+                        end
+                end
+            end
+
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+
+            % send command
+            obj.VisaIFobj.write([':System:Beeper ' frequency ',' ...
+                duration]);
+            % read and verify (not applicable)
+            pause(max(0, (str2double(duration)-1)));
+
+            % wait for operation complete
+            obj.VisaIFobj.opc;
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+        end
+
         function status = configureDisplay(obj, varargin)
             % configureDisplay : configure display
             %   'screen' : char to select displayed screen
@@ -286,8 +358,8 @@ classdef SMUMacros < handle
                                 screen = 'histogram';
                             case {'swipe_grap', 'swipe_graph'}
                                 screen = 'swipe_graph';
-                            case {'swipe_sett', 'swipe_setting'}
-                                screen = 'swipe_setting';
+                            case {'swipe_sett', 'swipe_settings'}
+                                screen = 'swipe_settings';
                             case {'sour', 'source'}
                                 screen = 'source';
                             case {'swipe_stat', 'swipe_statistics'}
@@ -399,9 +471,10 @@ classdef SMUMacros < handle
 
             % 'digits'           : char
             if ~isempty(digits)
+                % set for all modes: curr, res, volt
                 obj.VisaIFobj.write([':Display:Digits ' digits]);
                 % readback and verify
-                response = obj.VisaIFobj.query(':Display:Digits?');
+                response = obj.VisaIFobj.query(':Display:Volt:Digits?');
                 response = char(response);
                 if ~strcmpi(response, digits)
                     % set command failed
@@ -1286,22 +1359,76 @@ classdef SMUMacros < handle
             end
         end
 
-        function errMsg = get.ErrorMessages(obj)
-            % read error list from the SMU’s error buffer
+        function errTable = get.ErrorMessages(obj)
+            % read error list from the SMU's error buffer
+            %
+            % actually read all types of events (error, warning,
+            % informational)
 
+            datetimeFmt = 'yyyy/MM/dd HH:mm:ss.SSS';
+
+            % how many unread events are available?
+            numOfEvents = obj.VisaIFobj.query(':System:Eventlog:Count? All');
+            numOfEvents = str2double(char(numOfEvents));
+            if isnan(numOfEvents)
+                errTable  = table(datetime('now', ...
+                    InputFormat= datetimeFmt), NaN, "<missing>", ...
+                    "ERROR: Could not read event buffer from SMU!", ...
+                    VariableNames= {'Time', 'Code', 'Type', 'Description'});
+                return
+            else
+                % intialize table for events
+                eventTable  = table( ...
+                    Size=[numOfEvents, 4], ...
+                    VariableNames= {'Time', 'Code', 'Type', 'Description'}, ...
+                    VariableTypes= {'datetime', 'double', 'string', ...
+                    'string'});
+            end
+
+            % read events from buffer
+            for cnt = 1 : numOfEvents
+                eventMsg = obj.VisaIFobj.query(':System:Eventlog:Next?');
+                eventMsg = char(eventMsg);
+                % format: 'Code, "Description;Type;Time"'
+                if ~isempty(regexpi(eventMsg, '^(|-)\d+,".*;\d;.*"$', 'once'))
+                    tmp = split(eventMsg, ',"');
+                    eventTable.Code(cnt)        = str2double(tmp{1});
+                    tmp = split(tmp{2}(1:end-1), ';');
+                    eventTable.Description(cnt) = tmp{1};
+                    switch tmp{2}
+                        case '0',   eventTable.Type(cnt) = '';
+                        case '1',   eventTable.Type(cnt) = 'Error';
+                        case '2',   eventTable.Type(cnt) = 'Warning';
+                        case '4',   eventTable.Type(cnt) = 'Information';
+                        otherwise , eventTable.Type(cnt) = 'unknown';
+                    end
+                    eventTable.Time(cnt)        = datetime(tmp{3}, ...
+                        InputFormat= datetimeFmt);
+                else
+                    % unexpected pattern of received string
+                    eventTable.Time(cnt)        = NaT;
+                    eventTable.Code(cnt)        = NaN;
+                    eventTable.Type(cnt)        = 'unknown';
+                    eventTable.Description(cnt) = 'unexpected response';
+                end
+            end
+
+            % optionally display results
             if obj.ShowMessages
-                disp(['SMU WARNING - Method ''ErrorMessages'' is not ' ...
-                    'implemented yet for ']);
-                disp(['      ' obj.VisaIFobj.Vendor '/' ...
-                    obj.VisaIFobj.Product ]);
+                if ~isempty(eventTable)
+                    disp('SMU event list:');
+                    disp(eventTable);
+                else
+                    disp('SMU event list is empty');
+                end
             end
 
             % copy result to output
-            %errMsg = '0, no error buffer at SMU';
-            errMsg = 'no readback of error buffer implemented yet';
+            errTable = eventTable;
 
+            % reading out the error buffer again results in an empty return
+            % value ==> therefore history is saved in 'SMU' class
         end
-
     end
 
     % ------- private methods -----------------------------------------------
