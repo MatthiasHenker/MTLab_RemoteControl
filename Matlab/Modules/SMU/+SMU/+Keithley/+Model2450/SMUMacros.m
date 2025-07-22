@@ -11,17 +11,18 @@ classdef SMUMacros < handle
     end
 
     properties(Dependent)
-        LimitCurrentValue          double; % in A
-        LimitVoltageValue          double; % in V
-        OverVoltageProtectionLevel double; % in V, coerced to (2, 5, 10,
-        %                                    20, 40, 60, 80, 100, 120,
-        %                                    140, 160, 180, infty) V
+        OutputState          double  % 0 = 'off', 1 = 'on', NaN = 'error'
+        LimitCurrentValue    double; % in A
+        LimitVoltageValue    double; % in V
+        OverVoltageProtectionLevel   double; % in V, coerced to (2, 5, 10,
+        %                                      20, 40, 60, 80, 100, 120,
+        %                                      140, 160, 180, inf) V
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
         ShowMessages         logical % false = 'none', true = 'few' or 'all'
-        OutputState          double  % 0 = 'off', 1 = 'on', -1 = 'unknown'
         OverVoltageProtectionTripped double % 0 = inactive, 1 = active
+        TriggerState         char
         ErrorMessages        table
     end
 
@@ -305,6 +306,24 @@ classdef SMUMacros < handle
             end
         end
 
+        function status = restartTrigger(obj)
+
+            status = NaN; % init
+
+            if obj.VisaIFobj.write(':Trigger:Continuous Restart')
+                status = -1;
+            else
+                % any following command will stop continuous trigger again
+                % ==> no readback for verification
+            end
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+        end
+
         function status = configureDisplay(obj, varargin)
             % configureDisplay : configure display
             %   'screen' : char to select displayed screen
@@ -546,6 +565,16 @@ classdef SMUMacros < handle
 
 
         % check: readback value is also filtered like sense value?
+
+        %runSweepMeasurement
+        % configure sweep (linear, log, list)
+        % obj.TriggerState check (= building)
+        % :Initiate
+        % while loop until done or timeout (:Abort to stop trigger)
+        %   :trigger:state?  (running 'running' or 'idle')
+        % download data
+
+
 
 
 
@@ -1316,18 +1345,8 @@ classdef SMUMacros < handle
                 setStr]);
         end
 
-        % get/set methods for AvailableBuffers are empty
-        % ==> only needed when further actions are needed
-        % function buffers = get.AvailableBuffers(obj)
-        %     buffers = obj.AvailableBuffers;
-        % end
-        %
-        % function set.AvailableBuffers(obj, buffers)
-        %     obj.AvailableBuffers = buffers;
-        % end
-
         function outputState = get.OutputState(obj)
-            [outpState, status] = obj.VisaIFobj.query(':OUTP?');
+            [outpState, status] = obj.VisaIFobj.query(':Output:State?');
             %
             if status ~= 0
                 outputState = NaN; % unknown state, error
@@ -1342,6 +1361,31 @@ classdef SMUMacros < handle
             end
         end
 
+        function set.OutputState(obj, param)
+
+            % map to on/off
+            if logical(param)
+                param = 'On';
+            else
+                param = 'Off';
+            end
+            % set property ==> check is done via readback and verify
+            obj.VisaIFobj.write([':Output:State ' param]);
+        end
+
+        % get/set methods for AvailableBuffers are empty
+        % ==> only needed when further actions are needed
+        % function buffers = get.AvailableBuffers(obj)
+        %     buffers = obj.AvailableBuffers;
+        % end
+        %
+        % function set.AvailableBuffers(obj, buffers)
+        %     obj.AvailableBuffers = buffers;
+        % end
+
+        % -----------------------------------------------------------------
+        % get methods for dependent properties (read-only)
+
         function OVPState = get.OverVoltageProtectionTripped(obj)
             [OVPState, status] = obj.VisaIFobj.query( ...
                 ':SOURCE:VOLTAGE:PROTECTION:TRIPPED?');
@@ -1355,6 +1399,23 @@ classdef SMUMacros < handle
                     case '0'   , OVPState = 0;  % 'OVP not active'
                     case '1'   , OVPState = 1;  % 'OVP active'
                     otherwise  , OVPState = NaN; % unknown state, error
+                end
+            end
+        end
+
+        function TrigState = get.TriggerState(obj)
+            [TrigState, status] = obj.VisaIFobj.query(':Trigger:State?');
+            %
+            if status ~= 0
+                TrigState = 'read error, unknown state';
+            else
+                % remap state
+                TrigState = lower(char(TrigState));
+                tmp = split(TrigState, ';');
+                if size(tmp, 1) == 3
+                    TrigState = tmp{1};
+                else
+                    TrigState = 'unexpected format, unknown state';
                 end
             end
         end

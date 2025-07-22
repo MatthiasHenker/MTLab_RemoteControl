@@ -55,10 +55,12 @@
 %   - outputEnable     : enable the SMU output
 %     * usage:
 %           status = mySMU.outputEnable
+%     alternatively set property mySMU.OutputState = 1 (or true)
 %
 %   - outputDisable    : disable the SMU output
 %     * usage:
 %           status = mySMU.outputDisable
+%     alternatively set property mySMU.OutputState = 0 (or false)
 %
 %   - outputTone       : emit a tone
 %     * usage:
@@ -70,6 +72,13 @@
 %          'duration'  : length of tone (in s)
 %                        range: 1e-3 ... 1e2
 %                        optional parameter, default: 1 (1 s)
+%
+%   - restartTrigger   : set the instrument into local control and start
+%                        continuous measurements, aborts any running any
+%                        trigger models ==> any following remote control
+%                        command overwrites this command again
+%     * usage:
+%           status = mySMU.restartTrigger
 %
 %   - configureDisplay : configure SMU display
 %     * usage:
@@ -87,6 +96,7 @@
 %                        'ABC'     for single line
 %                        'ABC;abc' for dual line with ';' as delimiter
 %                        use either 'X;Y', {'X', 'Y'} or ["X", "Y"]
+%
 %
 %
 %
@@ -141,17 +151,44 @@
 %     * MacrosVersion      : version of support package class (char)
 %     * MacrosDate         : release date of support package class (char)
 %     * AvailableBuffers   : list of available reading buffers
-%     * OutputState        : current output state (1 = 'on' or 0 = 'off')
 %     * OverVoltageProtectionTripped : OVP active (1 = 'on' or 0 = 'off')
+%     * TriggerState       : 'idle', 'running', 'aborted' ...
 %     * ErrorMessages      : table with event log buffer
 %                    .Time      time when the event occurred ('datetime')
 %                    .Code      event code                     ('double')
 %                    .Type      error, warning or information  ('string')
 %                    .Description event message                ('string')
-%   - with read/write access
+%   - with read/write access (numeric values as 'double')
+%     * OutputState                : output state (1 = 'on' or 0 = 'off')
 %     * LimitCurrentValue          : safety limit, max current in A
 %     * LimitVoltageValue          : safety limit, max voltage in V
 %     * OverVoltageProtectionLevel : max. source output in V (coerced)
+
+
+% method refreshAutoZero ':Sense:Azero:Once' When autozero is set to off,
+% the instrument may gradually drift out of specification. To minimize the
+% drift, you can send the once command to make a reference and zero
+% measurement immediately before a test sequence.
+
+% SenseFunction   measurement function
+%                 either 'current = I' or 'voltage = V'
+% SenseUnit       either Ohm/Watt/Amp for SenseI or Ohm/Watt/Volt for SenseV
+% SenseCount
+% SenseRSense     either 0/false for off/2-wire or 1/true for on/4-wire
+% SenseAutoRange++ ==> configureAutoRange??
+% SenseOffsetCompensated only applied to resistance measurements
+%                 (unit = Ohm)
+% SenseAutoZero
+% SenseNPLC
+% SenseAverage++ ==> configureAverage??
+%
+% SourceFunction
+% SourceAutoRange++ ==> configureAutoRange??
+% SourceReadback
+% LimitVoltageTripped
+% LimitCurrentTripped
+
+
 %
 % ---------------------------------------------------------------------
 % example for usage of class 'SMU': assuming Keithley 2450
@@ -198,9 +235,6 @@
 %   - Matthias Henker (professor)
 % -------------------------------------------------------------------------
 
-% ToDo
-%   configureXXX, measure commands
-
 classdef SMU < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
@@ -217,18 +251,19 @@ classdef SMU < VisaIF
 
     properties(Dependent, SetAccess = private, GetAccess = public)
         AvailableBuffers             cell
-        OutputState                  double
         OverVoltageProtectionTripped double
+        TriggerState                 char
     end
 
     properties(Dependent)
-        OverVoltageProtectionLevel   double  % in V
+        OutputState                  double  % 0, false for 'off' ...
+        OverVoltageProtectionLevel   double  % in V, scalar, positive
         LimitVoltageValue            double  % in V
         LimitCurrentValue            double  % in A
     end
 
     properties(SetAccess = private, GetAccess = private)
-        MacrosObj       % access to actual device-specific macros
+        MacrosObj       % handle to actual device-specific macro class
     end
 
     % ---------------------------------------------------------------------
@@ -470,6 +505,20 @@ classdef SMU < VisaIF
             end
         end
 
+        function status = restartTrigger(obj)
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  restart trigger (continuous measurements)');
+            end
+
+            % Execute device-specific macro
+            status = obj.MacrosObj.restartTrigger;
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  restartTrigger failed');
+            end
+        end
+
         function status = configureDisplay(obj, varargin)
             % configureDisplay : configure display
 
@@ -661,88 +710,7 @@ classdef SMU < VisaIF
 
 
         % -----------------------------------------------------------------
-        % get/set methods for dependent properties
-
-        function limit = get.LimitCurrentValue(obj)
-            limit = obj.MacrosObj.LimitCurrentValue;
-        end
-
-        function set.LimitCurrentValue(obj, limit)
-
-            % check input argument
-            if isscalar(limit) && isnumeric(limit) ...
-                    && isreal(limit) && limit > 0
-                % further checks are done in SMUMacros class
-                limit = double(limit);
-                % set property
-                obj.MacrosObj.LimitCurrentValue = limit;
-                % readback and verify (max 1% difference)
-                limitSet = obj.LimitCurrentValue;
-                if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
-                    disp(['SMU: parameter value for property ' ...
-                        '''LimitCurrentValue'' was not set properly.']);
-                    fprintf('  wanted value      : %5.3f A\n', limit);
-                    fprintf('  actually set value: %5.3f A\n', limitSet);
-                end
-            else
-                disp(['SMU: Invalid parameter value for property ' ...
-                    '''LimitCurrentValue''.']);
-            end
-        end
-
-        function limit = get.LimitVoltageValue(obj)
-            limit = obj.MacrosObj.LimitVoltageValue;
-        end
-
-        function set.LimitVoltageValue(obj, limit)
-
-            % check input argument
-            if isscalar(limit) && isnumeric(limit) ...
-                    && isreal(limit) && limit > 0
-                % further checks are done in SMUMacros class
-                limit = double(limit);
-                % set property
-                obj.MacrosObj.LimitVoltageValue = limit;
-                % readback and verify (max 1% difference)
-                limitSet = obj.LimitVoltageValue;
-                if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
-                    disp(['SMU: parameter value for property ' ...
-                        '''LimitVoltageValue'' was not set properly.']);
-                    fprintf('  wanted value      : %5.1f V\n', limit);
-                    fprintf('  actually set value: %5.1f V\n', limitSet);
-                end
-            else
-                disp(['SMU: Invalid parameter value for property ' ...
-                    '''LimitVoltageValue''.']);
-            end
-        end
-
-        function limit = get.OverVoltageProtectionLevel(obj)
-            limit = obj.MacrosObj.OverVoltageProtectionLevel;
-        end
-
-        function set.OverVoltageProtectionLevel(obj, limit)
-
-            % check input argument
-            if isscalar(limit) && isnumeric(limit) ...
-                    && isreal(limit) && limit > 0
-                % further checks are done in SMUMacros class
-                limit = double(limit);
-                % set property
-                obj.MacrosObj.OverVoltageProtectionLevel = limit;
-                % readback and verify (max +20 V difference)
-                limitSet = obj.OverVoltageProtectionLevel;
-                if (limitSet - limit) > 20 || isnan(limitSet)
-                    disp(['SMU: parameter value for property ' ...
-                        '''OverVoltageProtectionLevel'' was not set properly.']);
-                    fprintf('  wanted value      : %5.1f V\n', limit);
-                    fprintf('  actually set value: %5.1f V\n', limitSet);
-                end
-            else
-                disp(['SMU: Invalid parameter value for property ' ...
-                    '''OverVoltageProtectionLevel''.']);
-            end
-        end
+        % get methods for dependent properties (read only)
 
         function buffers = get.AvailableBuffers(obj)
             % get list of available reading buffers:
@@ -754,26 +722,6 @@ classdef SMU < VisaIF
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp(['  buffers = ' char(join(buffers, ', '))]);
-            end
-        end
-
-        function outputState = get.OutputState(obj)
-            % get output state:
-            %    0 for 'off',
-            %    1 for 'on'
-            %  NaN for unknown state (error)
-
-            outputState = obj.MacrosObj.OutputState;
-
-            % optionally display results
-            if ~strcmpi(obj.ShowMessages, 'none')
-                switch outputState
-                    case 0    , outputStateDisp = 'off';
-                    case 1    , outputStateDisp = 'on';
-                    otherwise , outputStateDisp = 'unknown state (error)';
-                end
-                disp([obj.DeviceName ':']);
-                disp(['  output state = ' outputStateDisp]);
             end
         end
 
@@ -799,8 +747,140 @@ classdef SMU < VisaIF
             end
         end
 
+        function TrigState = get.TriggerState(obj)
+            % read trigger state
+
+            TrigState = obj.MacrosObj.TriggerState;
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  trigger state = ' TrigState]);
+            end
+        end
+
         % -----------------------------------------------------------------
-        % get/set methods
+        % get/set methods for dependent properties (read/write)
+
+        function limit = get.LimitCurrentValue(obj)
+            limit = obj.MacrosObj.LimitCurrentValue;
+        end
+
+        function set.LimitCurrentValue(obj, limit)
+
+            % check input argument (already coerced to type double)
+            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''LimitCurrentValue''.']);
+                return
+            end
+
+            % set property
+            obj.MacrosObj.LimitCurrentValue = limit;
+            % readback and verify (max 1% difference)
+            limitSet = obj.LimitCurrentValue;
+            if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
+                disp(['SMU: parameter value for property ' ...
+                    '''LimitCurrentValue'' was not set properly.']);
+                fprintf('  wanted value      : %1.6f A\n', limit);
+                fprintf('  actually set value: %1.6f A\n', limitSet);
+            end
+        end
+
+        function limit = get.LimitVoltageValue(obj)
+            limit = obj.MacrosObj.LimitVoltageValue;
+        end
+
+        function set.LimitVoltageValue(obj, limit)
+
+            % check input argument (already coerced to type double)
+            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''LimitVoltageValue''.']);
+                return
+            end
+
+            % set property
+            obj.MacrosObj.LimitVoltageValue = limit;
+            % readback and verify (max 1% difference)
+            limitSet = obj.LimitVoltageValue;
+            if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
+                disp(['SMU: parameter value for property ' ...
+                    '''LimitVoltageValue'' was not set properly.']);
+                fprintf('  wanted value      : %3.3f V\n', limit);
+                fprintf('  actually set value: %3.3f V\n', limitSet);
+            end
+        end
+
+        function limit = get.OverVoltageProtectionLevel(obj)
+            limit = obj.MacrosObj.OverVoltageProtectionLevel;
+        end
+
+        function set.OverVoltageProtectionLevel(obj, limit)
+
+            % check input argument (already coerced to type double)
+            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''OverVoltageProtectionLevel''.']);
+                return
+            end
+
+            % set property
+            obj.MacrosObj.OverVoltageProtectionLevel = limit;
+            % readback and verify
+            limitSet = obj.OverVoltageProtectionLevel;
+            if limitSet < limit || isnan(limitSet)
+                disp(['SMU: parameter value for property ' ...
+                    '''OverVoltageProtectionLevel'' was not set properly.']);
+                fprintf('  wanted value      : %3.1f V\n', limit);
+                fprintf('  actually set value: %3.1f V\n', limitSet);
+            end
+        end
+
+        function outputState = get.OutputState(obj)
+            % get output state:
+            %    0 for 'off',
+            %    1 for 'on'
+            %  NaN for unknown state (error)
+
+            outputState = obj.MacrosObj.OutputState;
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                switch outputState
+                    case 0    , outputStateDisp = 'off';
+                    case 1    , outputStateDisp = 'on';
+                    otherwise , outputStateDisp = 'unknown state (error)';
+                end
+                disp([obj.DeviceName ':']);
+                disp(['  output state = ' outputStateDisp]);
+            end
+        end
+
+        function set.OutputState(obj, param)
+
+            % check input argument (already coerced to type double)
+            if ~isscalar(param) || isnan(param) || ~isreal(param)
+                disp(['SMU: Invalid parameter value for property ' ...
+                    '''OutputState''.']);
+                return
+            end
+
+            % set property
+            param = double(logical(param));
+            obj.MacrosObj.OutputState = param;
+            % readback and verify
+            paramSet = obj.OutputState;
+            if (paramSet - param) ~= 0 || isnan(paramSet)
+                disp(['SMU: parameter value for property ' ...
+                    '''OutputState'' was not set properly.']);
+                fprintf('  wanted value      : %d \n', param);
+                fprintf('  actually set value: %d \n', paramSet);
+            end
+        end
+
+        % -----------------------------------------------------------------
+        % more get methods
 
         function errTable = get.ErrorMessages(obj)
             % read error list from the SMU’s error buffer
