@@ -7,20 +7,20 @@ clc;
 SMUName = 'KEITHLEY-2450';
 
 %interface = 'visa-usb';
-%interface = 'visa-tcpip';
-interface = 'demo';
+interface = 'visa-tcpip';
+%interface = 'demo';
 %interface = '';
 
-%showmsg   = 'all';
-showmsg   = 'few';
+showmsg   = 'all';
+%showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
 % display versions
-% disp(['Version of SMU               : ' SMU.SMUVersion ...
-%     ' (' SMU.SMUDate ')']);
-% disp(['Version of VisaIF            : ' SMU.VisaIFVersion ...
-%     ' (' SMU.VisaIFDate ')']);
+% disp(['Version of SMU               : ' SMU24xx.SMUVersion ...
+%     ' (' SMU24xx.SMUDate ')']);
+% disp(['Version of VisaIF            : ' SMU24xx.VisaIFVersion ...
+%     ' (' SMU24xx.VisaIFDate ')']);
 % disp(['Version of VisaIFLogEventData: ' ...
 %     VisaIFLogEventData.VisaIFLogEventVersion ...
 %     ' (' VisaIFLogEventData.VisaIFLogEventDate ')']);
@@ -31,21 +31,23 @@ showmsg   = 'few';
 
 % -------------------------------------------------------------------------
 % print out some information
-%SMU.listAvailableConfigFiles;
-%SMU.listContentOfConfigFiles;
-%SMU.listAvailableVisaUsbDevices;
-SMU.listAvailablePackages;
+% SMU24xx.listAvailableConfigFiles;
+% SMU24xx.listContentOfConfigFiles;
+% SMU24xx.listAvailableVisaUsbDevices;
 
-%mySMU = SMU({SMUName, SMUID}, interface);
-mySMU = SMU(SMUName, interface, showmsg);
-mySMU.EnableCommandLog = true;
+%mySMU = SMU24xx({SMUName, SMUID}, interface);
+mySMU = SMU24xx(SMUName, interface, showmsg);
+%mySMU.EnableCommandLog = true;
 %mySMU.ShowMessages     = 'few';
 
-myLog = VisaIFLogger();
-myLog.ShowMessages = 0;
+%myLog = VisaIFLogger();
+%myLog.ShowMessages = 0;
 
 % display details (properties) of SMU object
 %mySMU
+
+return
+
 
 %mySMU.reset;
 %mySMU.clear;
@@ -77,22 +79,35 @@ mySMU.configureDisplay(buffer= 'defbuffer2');
 
 
 mySMU.outputTone;
-mySMU.outputTone(freq= 2440, duration= '2.5');
+mySMU.outputTone(freq= 2500, duration= '1.5');
 
-eventLog = mySMU.ErrorMessages;
 
 
 % still unknown
 %mySMU.unlock;
 %mySMU.lock;
 
-%errMsgs = mySMU.ErrorMessages;
-%disp(['SMU error messages: ' errMsgs]);
+eventLog = mySMU.ErrorMessages;
+disp('SMU error (event) messages: ');
+disp(eventLog);
 
 
 % -------------------------------------------------------------------------
 % low level commands
 if false
+
+    mySMU.query('Source:Function?');
+    mySMU.write('Source:Function Current');
+    mySMU.write('Source:Function Voltage');
+    mySMU.query('Source:Function?');
+
+    mySMU.query('Sense:Function?');
+    mySMU.write('Sense:Function "Current"');
+    mySMU.write('Sense:Function "Voltage"');
+    mySMU.query('Sense:Function?');
+
+
+
 
     mySMU.write('Source:Function:Mode Current');
     mySMU.write('Source:Current:Range 100e-3'); % or ':Auto On'
@@ -120,7 +135,9 @@ if false
 
     mySMU.write(':Initiate'); % init trigger and enables output
     %pause;
+    mySMU.query(':Trigger:State?');
     mySMU.write('*WAI'); % wait until measurement done
+
     % ATTENTION: timeout can kill script
     % also disables output again
     %mySMU.write('OUTP OFF');
@@ -152,6 +169,7 @@ if false
         drawnow;
     end
 
+
 end
 
 %return
@@ -171,19 +189,21 @@ end
 %myLog.FilterSCPIcommand = '^(?!meas).'; % must not contain 'meas'
 %myLog.FilterSCPIcommand = 'cata';
 %myLog.FilterNumBytes    = [1 inf];
-myLog.listCommandHistory(inf);  % inf for all lines
+
+%myLog.listCommandHistory(inf);  % inf for all lines
+
 %myLog.CommandHistory
 %myLog.saveHistoryTable('test_SMU2450.csv');
 
 %myLog.delete;
-return
-
-if false %#ok<UNRCH>
-    myLog = VisaIFLogger;
-    myLog.readHistoryTable('test_SMU2450.csv');
-    myLog.Filter = false;
-    myLog.listCommandHistory(inf);
-    myLog.delete;
-end
+%return
+% 
+% if false %#ok<UNRCH>
+%     myLog = VisaIFLogger;
+%     myLog.readHistoryTable('test_SMU2450.csv');
+%     myLog.Filter = false;
+%     myLog.listCommandHistory(inf);
+%     myLog.delete;
+% end
 
 % -------------------------------------------------------------------------

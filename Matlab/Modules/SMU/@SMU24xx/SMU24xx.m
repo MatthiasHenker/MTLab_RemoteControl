@@ -1,6 +1,6 @@
 % documentation for class 'SMU24xx'
 % ---------------------------------------------------------------------
-% This class defines specific methods for Source Measure Unit (SMU 2450 by 
+% This class defines specific methods for Source Measure Unit (SMU 2450 by
 % Keithley) control. This class is a subclass of the superclass 'VisaIF'.
 % Type (in command window):
 % 'SMU24xx' - to get a full list of accessible SMUs which means that
@@ -11,7 +11,7 @@
 % structure for devices such as Scope, Signal Generator and DMMs (which
 % were used as inspiration for the Scope and FGen classes), there is no
 % such IVI-C class for SMU. This SMU class is therefore very much tailored
-% to the Keithley 2450 SMU measurement device. Other SMU (Keysight B29xx, 
+% to the Keithley 2450 SMU measurement device. Other SMU (Keysight B29xx,
 % Rohde&Schwarz NGU4xx) will most probably have a different operating concept.
 %
 % All public properties and methods from superclass 'VisaIF' can also
@@ -162,7 +162,7 @@
 % drift, you can send the once command to make a reference and zero
 % measurement immediately before a test sequence.
 
-% SenseFunction   measurement function
+% SenseMode       measurement function
 %                 either 'current = I' or 'voltage = V'
 % SenseUnit       either Ohm/Watt/Amp for SenseI or Ohm/Watt/Volt for SenseV
 % SenseCount
@@ -174,16 +174,13 @@
 % SenseNPLC
 % SenseAverage++ ==> configureAverage??
 %
-% SourceFunction
-% SourceAutoRange++ ==> configureAutoRange??
-% SourceReadback
-% LimitVoltageTripped
-% LimitCurrentTripped
 
+% InterlockState
+% InterlockTripped  read-only
 
 %
 % ---------------------------------------------------------------------
-% example for usage of class 'SMU24xx': (Keithley 24xx has to be listed in 
+% example for usage of class 'SMU24xx': (Keithley 24xx has to be listed in
 % config file)
 %
 %   SMU24xx.listContentOfConfigFiles; % list all known devices
@@ -196,7 +193,7 @@
 %
 % ToDo
 %   mySMU.outputEnable;
-%  
+%
 %   mySMU.outputDisable;
 %
 %   mySMU.delete;                     % close interface and delete object
@@ -239,17 +236,32 @@ classdef SMU24xx < VisaIF
     end
 
     properties(Dependent)
-        OutputState                  double  % 0, false for 'off' ...
-        OverVoltageProtectionLevel   double  % in V, scalar, positive
-        LimitVoltageValue            double  % in V
-        LimitCurrentValue            double  % in A
+        OutputState                double  % 0, false for 'off' ...
+        OverVoltageProtectionLevel double  % in V, scalar, positive
+        LimitVoltageValue          double  % in V
+        LimitCurrentValue          double  % in A
+        OperationMode              categorical
+        SourceParameters           struct
     end
 
     properties(SetAccess = private, GetAccess = private)
-        InternalVars double = 0; % ToDo
+        SourceMode                 char
+        SenseMode                  char
+        TestProp
     end
 
     properties(Constant = true, GetAccess = private)
+        DefaultOperationMode       = categorical({'SVMI'}, ...
+            {'SVMI', 'Source:V_Sense:I',  ...
+            'SIMV', 'Source:I_Sense:V'});
+        DefaultSourceParameters    = struct( ...
+            OutputValue = 0    , ...
+            LimitValue  = 0    , ...
+            Readback    = true , ...
+            Range       = 0    , ...
+            AutoRange   = true , ...
+            Delay       = 0    , ...
+            HighCapMode = false);
         DefaultBuffers             = {'defbuffer1', 'defbuffer2'};
         DefaultOutputToneFrequency = 1e3; % 1 kHz
         DefaultOutputToneDuration  = 1;   % 1 s
@@ -258,7 +270,6 @@ classdef SMU24xx < VisaIF
     % ---------------------------------------------------------------------
     methods(Static)
 
-        % ToDo: does not work anymore
         function doc
             % Open a help window using web-command
             className = mfilename('class');
@@ -314,6 +325,9 @@ classdef SMU24xx < VisaIF
                 % ==> single class with very specific macros for Keithley 2450
                 %
                 % check selection
+                % ==> for future use: extend this section to load different
+                % internal parameters for different models: 2450, 2460,
+                % 2461, 2470
                 disp(['Vendor  = ' obj.Vendor]);
                 disp(['Product = ' obj.Product]);
                 error(['SMU24xx: Initialization failed. Currently only ' ...
@@ -326,7 +340,7 @@ classdef SMU24xx < VisaIF
             % execute device specific macros after opening connection
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  execute post-open macro');
+                disp('  execute macro-after-opening');
             end
             if obj.runAfterOpen
                 error('Initial configuration of SMU failed.');
@@ -339,13 +353,13 @@ classdef SMU24xx < VisaIF
             % execute device specific macros before closing connection
             if ~strcmpi(obj.ShowMessages, 'none') && ~isempty(obj.DeviceName)
                 disp([obj.DeviceName ':']);
-                disp('  execute pre-close macro');
+                disp('  execute macro-before-closing');
             end
 
             if obj.runBeforeClose
                 error('Reconfiguration of SMU before closing connecting failed.');
             end
-            
+
             % regular deletion of this class object follows now
         end
 
@@ -416,11 +430,12 @@ classdef SMU24xx < VisaIF
             % add some device specific commands:
             %
             % switch off output for safety reasons
-            if obj.write(':OUTP OFF')
+            if obj.outputDisable
                 status = -1;
             end
 
-            % ...
+            % optionally set some default values
+            %obj.OperationMode = obj.DefaultOperationMode;
 
             % wait for operation complete
             obj.opc;
@@ -468,7 +483,7 @@ classdef SMU24xx < VisaIF
                 disp([obj.DeviceName ':']);
                 disp('  clear status');
             end
-            
+
             if obj.write('*CLS')
                 status = -1;
             end
@@ -1028,6 +1043,66 @@ classdef SMU24xx < VisaIF
         % -----------------------------------------------------------------
         % get/set methods for dependent properties (read/write)
 
+        function operationMode = get.OperationMode(obj)
+            myCats = categories(obj.DefaultOperationMode);
+
+            % actual get function
+            senseMode  = categorical({obj.SenseMode});
+            sourceMode = categorical({obj.SourceMode});
+            if sourceMode == "voltage" && senseMode == "current"
+                operationMode = categorical("Source:V_Sense:I", myCats);
+            elseif sourceMode == "current" && senseMode == "voltage"
+                operationMode = categorical("Source:I_Sense:V", myCats);
+            else
+                operationMode = categorical("unknown", myCats);
+            end
+
+        end
+
+        function set.OperationMode(obj, operationMode)
+            myCats = categories(obj.DefaultOperationMode);
+
+            % check input
+            if ~any(myCats == operationMode)
+                % optionally display error message (invalid input)
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp([obj.DeviceName ':']);
+                    disp('  invalid ''OperationMode'' ignore and continue.');
+                    catList = join(myCats, '", "');
+                    catList = ['"' catList{1} '"'];
+                    disp(['  valid parameter values are: ' catList]);
+                end
+                % exit without changing operation mode
+                return
+            end
+
+            % actual set function
+            if any(myCats(1:2) == operationMode)
+                % 'SVMI', 'Source:V_Sense:I'
+                obj.SenseMode  = 'Current';
+                obj.SourceMode = 'Voltage';
+            else
+                % 'SIMV', 'Source:I_Sense:V'
+                obj.SenseMode  = 'Voltage';
+                obj.SourceMode = 'Current';
+            end
+        end
+
+        function params = get.SourceParameters(obj)
+
+            params = obj.TestProp;
+
+        end
+
+        function set.SourceParameters(obj, params)
+
+            obj.TestProp = params;
+        end
+
+        % -----------------------------------------------------------------
+
+
+
         function limit = get.LimitCurrentValue(obj)
             [limit, status] = obj.query(':SOURCE:VOLTAGE:ILIMIT?');
             %
@@ -1294,6 +1369,66 @@ classdef SMU24xx < VisaIF
 
             % copy result to output
             errTable = obj.ErrorMessages;
+        end
+
+        % -----------------------------------------------------------------
+        % get/set for internal properties (private)
+
+        function set.SourceMode(obj, mode)
+            % mode: 'current' or 'voltage'
+
+            % set property
+            obj.write(['Source:Function ' mode]);
+
+            % readback and verify
+            modeSet = obj.SourceMode;
+            if ~strcmpi(modeSet, mode)
+                disp(['SMU24xx parameter value for property ' ...
+                    '''SourceMode'' was not set properly.']);
+                disp(['  wanted value      : ' mode]);
+                disp(['  actually set value: ' modeSet]);
+            end
+        end
+
+        function mode = get.SourceMode(obj)
+            % mode: 'current' or 'voltage'
+
+            % get property
+            response = char(obj.query('Source:Function?'));
+            switch lower(response)
+                case 'volt', mode = 'voltage';
+                case 'curr', mode = 'current';
+                otherwise  , mode = 'Error, unknown mode';
+            end
+        end
+
+        function set.SenseMode(obj, mode)
+            % mode: 'current' or 'voltage'
+
+            % set property
+            obj.write(['Sense:Function "' mode '"']);
+
+            % readback and verify
+            modeSet = obj.SenseMode;
+            if ~strcmpi(modeSet, mode)
+                disp(['SMU24xx parameter value for property ' ...
+                    '''SenseMode'' was not set properly.']);
+                disp(['  wanted value      : ' mode]);
+                disp(['  actually set value: ' modeSet]);
+            end
+        end
+
+        function mode = get.SenseMode(obj)
+            % mode: 'current' or 'voltage'
+
+            % get property
+            response = char(obj.query('Sense:Function?'));
+            switch lower(response)
+                case '"volt:dc"', mode = 'voltage';
+                case '"curr:dc"', mode = 'current';
+                case '"res"'    , mode = 'resistance';
+                otherwise       , mode = 'Error, unknown mode';
+            end
         end
 
     end
