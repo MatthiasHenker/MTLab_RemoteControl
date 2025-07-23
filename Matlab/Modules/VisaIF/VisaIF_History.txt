@@ -15,8 +15,8 @@ Release vx.x.x
 
 ---------------------------------------------------------------------------
 Release v3.0.2  (same as VisaIF class)
-  - VisaIF                                             v3.0.2  (2025-07-15)
-      extension: add "SMU" to list of SupportedInstrumentClasses
+  - VisaIF                                             v3.0.2  (2025-07-23)
+      extension: add "SMU" and "SMU24xx" to list of SupportedInstrumentClasses
       change   : remove some unused entries in list of 
                  SupportedInstrumentClasses
       change   : increase value of property 'MaxNumOfChars' from 62 to 100

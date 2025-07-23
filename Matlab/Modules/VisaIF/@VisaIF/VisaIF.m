@@ -247,7 +247,7 @@ classdef VisaIF < handle
 
     properties(Constant = true)
         VisaIFVersion = '3.0.2';      % current version of VisaIF
-        VisaIFDate    = '2025-07-15'; % release date
+        VisaIFDate    = '2025-07-23'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -290,6 +290,7 @@ classdef VisaIF < handle
             'FGen'              ...
             'Scope'             ...
             'SMU'               ...
+            'SMU24xx'           ...
             'SpecAn'                 };
           % more instrument classes for future use
           % 'Digitizer'

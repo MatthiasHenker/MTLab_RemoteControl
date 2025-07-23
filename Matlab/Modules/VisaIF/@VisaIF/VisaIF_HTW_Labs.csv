@@ -67,8 +67,8 @@ Keysight-33511B  ;; Keysight  ;; Gen33511B    ;; FGen       ;; demo      ;; USB0
 #
 #
 # SMU Keithley 2450                 (SID = 04616887)  located in room S106
-# OutBufSize: longest command is ??? ==> 1MByte as starting point (should be more than enough buffer)
-# InBufSize : longest command is ??? ==> same as OutBufSize
-Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; demo      ;; USB0::0x05E6::0x2450::demo ;;       1e6 ;;     1e6
-Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-usb  ;; USB0::0x05E6::0x2450::\w+  ;;       1e6 ;;     1e6
-Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU        ;; visa-tcpip;; TCPIP0::192.168.178.51     ;;       1e6 ;;     1e6
+# OutBufSize: longest command is :TRACe:DATA?               ==> 1 MByte as starting point (data can be downloded in chunks)
+# InBufSize : longest command is :SOURce[1]:LIST:<function> ==> some kB is okay, meas points have to uploaded in small chunks
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU24xx    ;; demo      ;; USB0::0x05E6::0x2450::demo ;;       1e5 ;;     1e6
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU24xx    ;; visa-usb  ;; USB0::0x05E6::0x2450::\w+  ;;       1e5 ;;     1e6
+Keithley-2450    ;; Keithley  ;; Model2450    ;; SMU24xx    ;; visa-tcpip;; TCPIP0::192.168.178.51     ;;       1e5 ;;     1e6
