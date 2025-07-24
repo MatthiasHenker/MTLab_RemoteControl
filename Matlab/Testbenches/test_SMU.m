@@ -7,8 +7,8 @@ clc;
 SMUName = 'KEITHLEY-2450';
 
 %interface = 'visa-usb';
-interface = 'visa-tcpip';
-%interface = 'demo';
+%interface = 'visa-tcpip';
+interface = 'demo';
 %interface = '';
 
 showmsg   = 'all';
@@ -61,7 +61,7 @@ return
 %mySMU.LimitVoltageValue
 
 mySMU.OverVoltageProtectionLevel
-mySMU.OverVoltageProtectionLevel = 3;
+mySMU.OverVoltageProtectionLevel = 2;
 mySMU.OverVoltageProtectionLevel
 
 %mySMU.configureDisplay(screen= 'X');
@@ -197,7 +197,7 @@ end
 
 %myLog.delete;
 %return
-% 
+%
 % if false %#ok<UNRCH>
 %     myLog = VisaIFLogger;
 %     myLog.readHistoryTable('test_SMU2450.csv');

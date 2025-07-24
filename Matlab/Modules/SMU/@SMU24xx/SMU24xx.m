@@ -96,6 +96,11 @@
 %
 % ToDo
 %
+%    showSettings
+%
+%
+%
+%
 %
 %   - configureSource : configure the source function and parameters
 %     * usage:
@@ -223,13 +228,6 @@ classdef SMU24xx < VisaIF
         SMUDate       = '2025-07-23'; % updated release date
     end
 
-    properties(SetAccess = private, GetAccess = public)
-        ErrorMessages                table = table(Size= [0, 4], ...
-            VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
-            VariableTypes= {'datetime', 'double', 'string', 'string'});
-        AvailableBuffers             cell  = {''};
-    end
-
     properties(Dependent, SetAccess = private, GetAccess = public)
         OverVoltageProtectionTripped double
         TriggerState                 char
@@ -238,30 +236,41 @@ classdef SMU24xx < VisaIF
     properties(Dependent)
         OutputState                double  % 0, false for 'off' ...
         OverVoltageProtectionLevel double  % in V, scalar, positive
-        LimitVoltageValue          double  % in V
-        LimitCurrentValue          double  % in A
-        OperationMode              categorical
+        LimitVoltageValue          double  % in V ToDo:move
+        LimitCurrentValue          double  % in A ToDo:move
+        OperationMode  % get: categorical; set: char, string or categorical
         SourceParameters           struct
     end
 
+    properties(SetAccess = private, GetAccess = public)
+        ErrorMessages                table = table(Size= [0, 4], ...
+            VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
+            VariableTypes= {'datetime', 'double', 'string', 'string'});
+        AvailableBuffers             cell  = {''};
+    end
+
+    % ---------------------------------------------------------------------
     properties(SetAccess = private, GetAccess = private)
         SourceMode                 char
         SenseMode                  char
-        TestProp
     end
 
     properties(Constant = true, GetAccess = private)
         DefaultOperationMode       = categorical({'SVMI'}, ...
             {'SVMI', 'Source:V_Sense:I',  ...
             'SIMV', 'Source:I_Sense:V'});
+        %
         DefaultSourceParameters    = struct( ...
             OutputValue = 0    , ...
             LimitValue  = 0    , ...
+            LimitTripped = []  , ... % read-only
             Readback    = true , ...
             Range       = 0    , ...
             AutoRange   = true , ...
             Delay       = 0    , ...
+            AutoDelay   = true , ...
             HighCapMode = false);
+        %
         DefaultBuffers             = {'defbuffer1', 'defbuffer2'};
         DefaultOutputToneFrequency = 1e3; % 1 kHz
         DefaultOutputToneDuration  = 1;   % 1 s
@@ -941,6 +950,64 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        % ToDo
+        function status = showSettings(obj)
+
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  show SMU settings');
+            end
+
+            % init output
+            status = NaN;
+
+            % save state of ShowMessages and set to silent operation
+            showMessages     = obj.ShowMessages;
+            obj.ShowMessages = 'none';
+
+            % actual code
+            operationMode                = obj.OperationMode;
+            sourceMode                   = obj.SourceMode;
+            senseMode                    = obj.SenseMode;
+            overVoltageProtectionLevel   = obj.OverVoltageProtectionLevel;
+            overVoltageProtectionTripped = obj.OverVoltageProtectionTripped;
+            sourceParameters             = obj.SourceParameters;
+            outputState                  = obj.OutputState;
+            triggerState                 = obj.TriggerState;
+
+            disp(['  OperationMode      = ' char(operationMode)]);
+            disp(['  SourceMode         = ' char(sourceMode)]);
+            disp(['  SenseMode          = ' char(senseMode)]);
+            disp(['  OVP Level          = ' ...
+                num2str(overVoltageProtectionLevel) ' V']);
+            disp(['  OVP Tripped        = ' num2str(overVoltageProtectionTripped)]);
+            disp(['  Source Parameters  : ' '']);
+            disp(sourceParameters); % ToDo : with units?
+            disp(['  Output State       = ' num2str(outputState)]);
+            disp(['  Trigger State      = ' triggerState]);
+
+
+            % ...
+
+
+            % wait for operation complete
+            obj.opc;
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+
+            % restore state of ShowMessages
+            obj.ShowMessages = showMessages;
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  showSettings failed');
+            end
+        end
+
+
 
         % ToDo
         %configureTerminales (front / rear)
@@ -1062,8 +1129,27 @@ classdef SMU24xx < VisaIF
         function set.OperationMode(obj, operationMode)
             myCats = categories(obj.DefaultOperationMode);
 
-            % check input
-            if ~any(myCats == operationMode)
+            % check input and convert to categorical
+            if iscategorical(operationMode)
+                % already fine
+            elseif ischar(operationMode)
+                operationMode = categorical({operationMode});
+            elseif isstring(operationMode)
+                operationMode = categorical(operationMode);
+            else
+                % set to empty
+                operationMode = categorical([]);
+            end
+            % check input: scalar and valid parameter
+            if ~isscalar(operationMode)
+                % not exact one element: than set to empty
+                operationMode = categorical([]);
+            elseif ~any(myCats == operationMode)
+                % not a valid parameter value : set to empty
+                operationMode = categorical([]);
+            end
+            %
+            if isempty(operationMode)
                 % optionally display error message (invalid input)
                 if ~strcmpi(obj.ShowMessages, 'none')
                     disp([obj.DeviceName ':']);
@@ -1072,7 +1158,7 @@ classdef SMU24xx < VisaIF
                     catList = ['"' catList{1} '"'];
                     disp(['  valid parameter values are: ' catList]);
                 end
-                % exit without changing operation mode
+                % exit
                 return
             end
 
@@ -1089,14 +1175,164 @@ classdef SMU24xx < VisaIF
         end
 
         function params = get.SourceParameters(obj)
+            % list of all existing parameters (params is a 'struct')
+            allFields = fieldnames(obj.DefaultSourceParameters);
 
-            params = obj.TestProp;
+            % which function mode?
+            funcMode = obj.SourceMode; % 'voltage' or 'current'
+            if strcmpi(funcMode, 'current')
+                limitMode = 'Vlimit';
+            elseif strcmpi(funcMode, 'voltage')
+                limitMode = 'Ilimit';
+            else
+                limitMode = ''; % will end up in an SCPI error
+            end
 
+            % loop to get parameters sequentially
+            for idx = 1 : length(allFields)
+                paramName  = allFields{idx};
+
+                switch paramName
+                    case 'OutputValue'
+                        paramValue = randi(100); % ToDo
+
+                    case 'LimitValue'
+                        [limit, status] = obj.query([':SOURCE:' ...
+                            funcMode ':' limitMode '?']);
+                        if status ~= 0
+                            paramValue = NaN; % unknown value, error
+                        else
+                            % convert value
+                            paramValue = str2double(char(limit));
+                        end
+
+                    case 'LimitTripped'
+                        paramValue = randi(100); % ToDo
+
+                    case 'Readback'
+                        paramValue = randi(100); % ToDo
+
+                    case 'Range'
+                        paramValue = randi(100); % ToDo
+
+                    case 'AutoRange'
+                        paramValue = randi(100); % ToDo
+
+                    case 'Delay'
+                        paramValue = randi(100); % ToDo
+
+                    case 'AutoDelay'
+                        paramValue = randi(100); % ToDo
+
+                    case 'HighCapMode'
+                        paramValue = randi(100); % ToDo
+
+                    otherwise
+                        disp(['Error, missing get command in struct ' ...
+                            '"SourceParameters"']);
+                end
+                % copy parameter value to output variable (struct)
+                params.(paramName) = paramValue;
+            end
         end
 
         function set.SourceParameters(obj, params)
+            % list of all existing parameters (params is a 'struct')
+            allFields = fieldnames(obj.DefaultSourceParameters);
+            % list of parameters to be set (parameters of input)
+            inFields  = allFields(isfield(params, allFields));
 
-            obj.TestProp = params;
+            % which function mode?
+            funcMode = obj.SourceMode; % 'voltage' or 'current'
+            if strcmpi(funcMode, 'current')
+                limitMode = 'Vlimit';
+                limitMin  = 0.002; % min 0.002 V for Keithley 2450
+                limitMax  = 210;   % max  210 V  for Keithley 2450
+                limitUnit = 'V';
+            elseif strcmpi(funcMode, 'voltage')
+                limitMode = 'Ilimit';
+                limitMin  = 1e-9;  % min 1 nA    for Keithley 2450
+                limitMax  = 1.05;  % max 1.05 A  for Keithley 2450
+                limitUnit = 'A';
+            else
+                limitMode = '';    % will end up in an SCPI error
+                limitMin  = [];
+                limitMax  = [];
+                limitUnit = '';
+            end
+
+            % loop to set parameters sequentially
+            for idx = 1 : length(inFields)
+                paramName  = inFields{idx};
+                paramValue = params.(paramName);
+
+                switch paramName
+                    case 'OutputValue'
+                        disp(paramValue); % ToDo
+
+                    case 'LimitValue'
+                        limit = paramValue;
+                        % check input argument
+                        if ~isnumeric(limit) || ~isscalar(limit) || ...
+                                isnan(limit) || ~isreal(limit)
+                            disp(['SMU24xx Invalid parameter value for ' ...
+                                'property ' ...
+                                '''SourceParameters.LimitValue''.']);
+                            limit = [];
+                        end
+
+                        % further checks and clipping
+                        limit = min(limit, limitMax);
+                        limit = max(limit, limitMin);
+
+                        if ~isempty(limit)
+                            % set property
+                            obj.write([':SOURCE:' funcMode ':' ...
+                                limitMode ' ' num2str(limit)]);
+
+                            % readback and verify (max 1% difference)
+                            limitSet = obj.SourceParameters.LimitValue;
+                            if abs(limitSet - limit) > 1e-2*limit || ...
+                                    isnan(limitSet)
+                                disp(['SMU24xx parameter value for ' ...
+                                    'property ''SourceParameters.' ...
+                                    'LimitValue'' was not set properly.']);
+                                fprintf('  wanted value      : %3.6f %s\n', ...
+                                    limit   , limitUnit);
+                                fprintf('  actually set value: %3.6f %s\n', ...
+                                    limitSet, limitUnit);
+                            end
+                        end
+
+                    case 'LimitTripped'
+                        if ~strcmpi(obj.ShowMessages, 'none')
+                            disp(['Parameter ''LimitTripped'' is ' ...
+                                'read-only. Ignore and continue.']);
+                        end
+
+                    case 'Readback'
+                        disp(paramValue);
+
+                    case 'Range'
+                        disp(paramValue);
+
+                    case 'AutoRange'
+                        disp(paramValue);
+
+                    case 'Delay'
+                        disp(paramValue);
+
+                    case 'AutoDelay'
+                        disp(paramValue);
+
+                    case 'HighCapMode'
+                        disp(paramValue);
+
+                    otherwise
+                        disp(['Error, missing set command in struct ' ...
+                            '"SourceParameters"']);
+                end
+            end
         end
 
         % -----------------------------------------------------------------
@@ -1352,7 +1588,7 @@ classdef SMU24xx < VisaIF
             end
 
             % optionally display results
-            if obj.ShowMessages
+            if ~strcmpi(obj.ShowMessages, 'none')
                 if ~isempty(eventTable)
                     disp('SMU event list:');
                     disp(eventTable);
@@ -1372,7 +1608,7 @@ classdef SMU24xx < VisaIF
         end
 
         % -----------------------------------------------------------------
-        % get/set for internal properties (private)
+        % get/set for internal properties (private properties)
 
         function set.SourceMode(obj, mode)
             % mode: 'current' or 'voltage'
@@ -1399,6 +1635,7 @@ classdef SMU24xx < VisaIF
                 case 'volt', mode = 'voltage';
                 case 'curr', mode = 'current';
                 otherwise  , mode = 'Error, unknown mode';
+                    disp([mode '(get SourceMode)']);
             end
         end
 
@@ -1428,6 +1665,7 @@ classdef SMU24xx < VisaIF
                 case '"curr:dc"', mode = 'current';
                 case '"res"'    , mode = 'resistance';
                 otherwise       , mode = 'Error, unknown mode';
+                    disp([mode '(get SourceMode)']);
             end
         end
 
