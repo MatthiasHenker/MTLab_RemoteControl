@@ -1207,7 +1207,14 @@ classdef SMU24xx < VisaIF
                         end
 
                     case 'LimitTripped'
-                        paramValue = randi(100); % ToDo
+                        [tripped, status] = obj.query([':SOURCE:' ...
+                            funcMode ':' limitMode ':Tripped?']);
+                        if status ~= 0
+                            paramValue = NaN; % unknown value, error
+                        else
+                            % convert value
+                            paramValue = str2double(char(tripped));
+                        end
 
                     case 'Readback'
                         paramValue = randi(100); % ToDo
@@ -1333,6 +1340,55 @@ classdef SMU24xx < VisaIF
                             '"SourceParameters"']);
                 end
             end
+        end
+
+        % -----------------------------------------------------------------
+
+        function obj = subsasgn(obj, S, value)
+            % overload method that analyze input to detect
+            % patterns like obj.myproperty.myfield = value
+
+            % Wenn Sie in einer Klasse subsasgn überschreiben, ruft MATLAB diese
+            % Methode automatisch auf, sobald eine Subskript- oder Punktzuweisung
+            % erfolgt. Dabei übergibt MATLAB als zweiten Eingabeparameter genau
+            % die Informationen, die es über die einzelnen Subskriptstufen
+            % gesammelt hat – und zwar in S.
+            %
+            % Aufbau von S: ist ein Array von Strukturen, jede Struktur
+            % beschreibt einen Schritt der Indizierung
+            % Je nach Art der Subskripte enthält jede S(i) zwei Felder:
+            %
+            % type: Zeichenkette, z. B.
+            %     '.' für Punktzugriff
+            %     '()' für runde Klammern
+            %     '{}' für geschweifte Klammern
+            %
+            % subs: der eigentliche Subskriptinhalt
+            %     Bei Punktzugriffen der Feldname als String
+            %     Bei () oder {} der Index bzw. ein Zellarray der Indizes
+
+            myproperty = 'SourceParameters';
+ 
+            if numel(S) >= 2 && strcmp(S(1).type, '.') ...
+                    && strcmp(S(1).subs, myproperty) ...
+                    && strcmp(S(2).type, '.')
+
+                % Extract the field name and assign into propInternal
+                myfield = S(2).subs;
+                %obj.propInternal.(myfield) = value;
+                switch myfield
+                    case 'OutputValue'  , x = value;
+                    case 'LimitValue'   , x = value;
+                    otherwise           , disp('ToDo');
+                end
+
+                disp(value);
+
+                return
+            end
+
+            % Otherwise, fall back to default behavior
+            obj = builtin('subsasgn', obj, S, value);
         end
 
         % -----------------------------------------------------------------
@@ -1614,7 +1670,7 @@ classdef SMU24xx < VisaIF
             % mode: 'current' or 'voltage'
 
             % set property
-            obj.write(['Source:Function ' mode]);
+            obj.write([':Source:Function ' mode]);
 
             % readback and verify
             modeSet = obj.SourceMode;
@@ -1630,7 +1686,7 @@ classdef SMU24xx < VisaIF
             % mode: 'current' or 'voltage'
 
             % get property
-            response = char(obj.query('Source:Function?'));
+            response = char(obj.query(':Source:Function?'));
             switch lower(response)
                 case 'volt', mode = 'voltage';
                 case 'curr', mode = 'current';
@@ -1643,7 +1699,7 @@ classdef SMU24xx < VisaIF
             % mode: 'current' or 'voltage'
 
             % set property
-            obj.write(['Sense:Function "' mode '"']);
+            obj.write([':Sense:Function "' mode '"']);
 
             % readback and verify
             modeSet = obj.SenseMode;
@@ -1659,7 +1715,7 @@ classdef SMU24xx < VisaIF
             % mode: 'current' or 'voltage'
 
             % get property
-            response = char(obj.query('Sense:Function?'));
+            response = char(obj.query(':Sense:Function?'));
             switch lower(response)
                 case '"volt:dc"', mode = 'voltage';
                 case '"curr:dc"', mode = 'current';

@@ -21,9 +21,11 @@ Release v3.0.2  (same as VisaIF class)
                  SupportedInstrumentClasses
       change   : increase value of property 'MaxNumOfChars' from 62 to 100
                  (for logging of SPCIcommands)
-  - VisaDemo                                           v3.0.2  (2025-07-15)
+  - VisaDemo                                           v3.0.2  (2025-07-25)
       bug fix: add missing method 'flush'
                add missing property 'ResourceName'
+               add SMU24xxMode support (resond to some SCPI-queries)
+               do not add 'LF' at responses anymore
   - VisaIFLogEventData                                 v2.0.1  (2021-01-09)
       no changes
   - VisaIFLogger                                       v3.0.0  (2024-08-20)

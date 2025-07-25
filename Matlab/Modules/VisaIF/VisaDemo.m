@@ -4,7 +4,7 @@ classdef VisaDemo < handle
         % matches to VisaIF class version min. 3.x.x
         % emulates 'visadev'
         VisaDemoVersion = '3.0.2';      % current version
-        VisaDemoDate    = '2025-07-15'; % release date
+        VisaDemoDate    = '2025-07-25'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -35,26 +35,32 @@ classdef VisaDemo < handle
 
     properties(SetAccess = private, GetAccess = private)
         % internal state variables
-        CurrentCmd       char     % to store current write command
+        CurrentCmd       char            % to store current write command
         %
         % device AGILENT-33220A   : internal state variables
-        FgenMode         logical  % true for AGILENT-33220A
-        FgenFreq         double   % actual frequency at generator
+        FgenMode         logical = false % true for AGILENT-33220A
+        FgenFreq         double  = 1e3   % actual frequency at generator
         % add more here ...
         %
         % device TEK-TDS1001C-EDU : internal state variables
-        ScopeMode        logical  % true for TEK-TDS1001C-EDU
+        ScopeMode        logical = false % true for TEK-TDS1001C-EDU
+        %
+        SMU24xxMode      logical = false % true for Keithley-2450
         % add more here ...
     end
 
     properties (Constant = true, GetAccess = private)
         % device AGILENT-33220A
-        FgenRsrcName   = 'USB0::0x0957::0x0407::demo';
-        FgenIdn        = 'Agilent Technologies,33220A,Serial-ID,FW-ID';
+        FgenRsrcName    = 'USB0::0x0957::0x0407::demo';
+        FgenIdn         = 'Agilent Technologies,33220A,Serial-ID,FW-ID';
         %
         % device TEK-TDS1001C-EDU
-        ScopeRsrcName  = 'USB0::0x0699::0x03AA::demo';
-        ScopeIdn       = 'TEKTRONIX,TDS 1001C-EDU,Serial-ID,FW-ID';
+        ScopeRsrcName   = 'USB0::0x0699::0x03AA::demo';
+        ScopeIdn        = 'TEKTRONIX,TDS 1001C-EDU,Serial-ID,FW-ID';
+        %
+        % device
+        SMU24xxRsrcName = 'USB0::0x05E6::0x2450::demo';
+        SMU24xxIdn      = 'KEITHLEY,2450,Serial-ID,FW-ID';
     end
 
     methods
@@ -73,23 +79,26 @@ classdef VisaDemo < handle
 
             switch lower(obj.RsrcName)
                 case lower(obj.FgenRsrcName)
-                    obj.FgenMode  = true;    % emulate AGILENT-33220A
-                    obj.ScopeMode = false;
+                    obj.FgenMode    = true;   % emulate AGILENT-33220A
                 case lower(obj.ScopeRsrcName)
-                    obj.FgenMode  = false;
-                    obj.ScopeMode = true;    % emulate TEK-TDS1001C-EDU
+                    obj.ScopeMode   = true;   % emulate TEK-TDS1001C-EDU
+                case lower(obj.SMU24xxRsrcName)
+                    obj.SMU24xxMode = true;   % emulate Keithley 2450
                 otherwise
-                    obj.FgenMode  = false;
-                    obj.ScopeMode = false;
+                    % all '*Mode' = false
             end
 
             if obj.FgenMode
                 % initialze internal state variables
-                obj.FgenFreq = 1e3;  % 1kHz as default
+                obj.FgenFreq = 1e3;  % 1 kHz as default
                 % add more here ...
             end
 
             if obj.ScopeMode
+                % add more here ...
+            end
+
+            if obj.SMU24xxMode
                 % add more here ...
             end
 
@@ -155,6 +164,18 @@ classdef VisaDemo < handle
                 %
             end
 
+            % emulate Keithey-2450
+            if obj.SMU24xxMode
+                % list of supported SCPI commands (set commands only!)
+                switch upper(cmdHeader)
+                    case '*RST'
+                        % set to default again
+                        % add more here ...
+                    otherwise
+                        % do nothing
+                end
+            end
+
             % end of emulation
             % -------------------------------------------------------------
         end
@@ -198,11 +219,37 @@ classdef VisaDemo < handle
                 end
             end
 
+            % emulate Keithey-2450
+            if obj.SMU24xxMode
+                % create response according to last get command
+                switch upper(obj.CurrentCmd)
+                    case '*IDN?'
+                        response = obj.SMU24xxIdn;
+                    case '*OPC?'
+                        response = '1';
+                    case ':SENSE:FUNCTION?'
+                        response = '"curr:dc"'; % or '"volt:dc"'
+                    case ':SOURCE:FUNCTION?'
+                        response = 'volt';      % or 'curr'
+                    case ':SOURCE:VOLTAGE:ILIMIT?'
+                        response = '0.815';     % numerical
+                    case ':SOURCE:VOLTAGE:ILIMIT:TRIPPED?'
+                        response = '1';         % yes
+                        % add more here ...
+                    otherwise
+                        % unknown command
+                        response = '<cmd not implemented>';
+                end
+            end
+
             % end of emulation
             % -------------------------------------------------------------
 
             % convert to double (like in visa) and attach 'LF' at the end
-            response = [double(response) 10];
+            %response = [double(response) 10];
+            % do not attach 'LF' anymore because readline and writeline is
+            % used now
+            response = double(response);
         end
 
         function writeline(obj, cmd)
