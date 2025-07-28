@@ -67,9 +67,9 @@
 %                        optional parameter, default: 1 (1 s)
 %
 %   - restartTrigger   : set the instrument into local control and start
-%                        continuous measurements, aborts any running any
-%                        trigger models ==> any following remote control
-%                        command overwrites this command again
+%                        continuous measurements, aborts any running trigger
+%                        models ==> any following remote control command
+%                        stops continuous measurements again
 %     * usage:
 %           status = mySMU.restartTrigger
 %
@@ -157,9 +157,6 @@
 %
 %   - with read/write access (numeric values as 'double')
 %     * OutputState                : output state (1 = 'on' or 0 = 'off')
-%     * LimitCurrentValue          : safety limit, max current in A
-%     * LimitVoltageValue          : safety limit, max voltage in V
-%     * OverVoltageProtectionLevel : max. source output in V (coerced)
 
 
 % method refreshAutoZero ':Sense:Azero:Once' When autozero is set to off,
@@ -182,6 +179,12 @@
 
 % InterlockState
 % InterlockTripped  read-only
+
+% SorceParameters
+%     * LimitValue        : safety limit, max current in A or max voltage in V
+%     * OVProtectionValue : max. source output in V (coerced)
+
+
 
 %
 % ---------------------------------------------------------------------
@@ -225,21 +228,17 @@
 classdef SMU24xx < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-07-23'; % updated release date
+        SMUDate       = '2025-07-28'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        OverVoltageProtectionTripped double
         TriggerState                 char
     end
 
     properties(Dependent)
-        OutputState                double  % 0, false for 'off' ...
-        OverVoltageProtectionLevel double  % in V, scalar, positive
-        LimitVoltageValue          double  % in V ToDo:move
-        LimitCurrentValue          double  % in A ToDo:move
-        OperationMode  % get: categorical; set: char, string or categorical
-        SourceParameters           struct
+        OutputState                  double  % 0, false for 'off' ...
+        OperationMode       % get: categorical; set: char, string or categorical
+        SourceParameters             struct
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -261,15 +260,17 @@ classdef SMU24xx < VisaIF
             'SIMV', 'Source:I_Sense:V'});
         %
         DefaultSourceParameters    = struct( ...
-            OutputValue = 0    , ...
-            LimitValue  = 0    , ...
-            LimitTripped = []  , ... % read-only
-            Readback    = true , ...
-            Range       = 0    , ...
-            AutoRange   = true , ...
-            Delay       = 0    , ...
-            AutoDelay   = true , ...
-            HighCapMode = false);
+            OutputValue         = 0    , ...
+            Readback            = true , ...
+            Range               = 0    , ...
+            AutoRange           = true , ...
+            LimitValue          = 0    , ...
+            LimitTripped        = []   , ... % read-only
+            OVProtectionValue   = 0    , ...
+            OVProtectionTripped = []   , ... % read-only
+            Delay               = 0    , ...
+            AutoDelay           = true , ...
+            HighCapMode         = false);
         %
         DefaultBuffers             = {'defbuffer1', 'defbuffer2'};
         DefaultOutputToneFrequency = 1e3; % 1 kHz
@@ -950,6 +951,9 @@ classdef SMU24xx < VisaIF
             end
         end
 
+
+
+
         % ToDo
         function status = showSettings(obj)
 
@@ -969,20 +973,19 @@ classdef SMU24xx < VisaIF
             operationMode                = obj.OperationMode;
             sourceMode                   = obj.SourceMode;
             senseMode                    = obj.SenseMode;
-            overVoltageProtectionLevel   = obj.OverVoltageProtectionLevel;
-            overVoltageProtectionTripped = obj.OverVoltageProtectionTripped;
             sourceParameters             = obj.SourceParameters;
+            %
             outputState                  = obj.OutputState;
             triggerState                 = obj.TriggerState;
 
             disp(['  OperationMode      = ' char(operationMode)]);
             disp(['  SourceMode         = ' char(sourceMode)]);
             disp(['  SenseMode          = ' char(senseMode)]);
-            disp(['  OVP Level          = ' ...
-                num2str(overVoltageProtectionLevel) ' V']);
-            disp(['  OVP Tripped        = ' num2str(overVoltageProtectionTripped)]);
+            % disp(['  OVP Level          = ' ...
+            %     num2str(overVoltageProtectionLevel) ' V']);
+            % disp(['  OVP Tripped        = ' num2str(overVoltageProtectionTripped)]);
             disp(['  Source Parameters  : ' '']);
-            disp(sourceParameters); % ToDo : with units?
+            disp(sourceParameters); % ToDo : with units !!!
             disp(['  Output State       = ' num2str(outputState)]);
             disp(['  Trigger State      = ' triggerState]);
 
@@ -1032,83 +1035,67 @@ classdef SMU24xx < VisaIF
 
 
         % -----------------------------------------------------------------
-        % get methods for dependent properties (read only)
+        % get/set methods for dependent properties (read/write)
 
-        function buffers = get.AvailableBuffers(obj)
-            % get list of available reading buffers:
-            %  cell array of char with reading buffers
-
-            buffers = obj.AvailableBuffers;
-
-            % optionally display results
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                disp(['  buffers = ' char(join(buffers, ', '))]);
-            end
-        end
-
-        function OVPState = get.OverVoltageProtectionTripped(obj)
-            % get OVP state:
-            %    0 for 'not exceed the OVP limit',
-            %    1 for 'overvoltage protection is active, voltage is restricted'
+        function outputState = get.OutputState(obj)
+            % get output state:
+            %    0 for 'off',
+            %    1 for 'on'
             %  NaN for unknown state (error)
 
-            [OVPState, status] = obj.query( ...
-                ':SOURCE:VOLTAGE:PROTECTION:TRIPPED?');
+            [outpState, status] = obj.query(':Output:State?');
             %
             if status ~= 0
-                OVPState = NaN; % unknown state, error
+                outputState = NaN; % unknown state, error
             else
                 % remap state
-                OVPState = lower(char(OVPState));
-                switch OVPState
-                    case '0'   , OVPState = 0;  % 'OVP not active'
-                    case '1'   , OVPState = 1;  % 'OVP active'
-                    otherwise  , OVPState = NaN; % unknown state, error
+                outpState = lower(char(outpState));
+                switch outpState
+                    case '0'   , outputState = 0;
+                    case '1'   , outputState = 1;
+                    otherwise  , outputState = NaN;
                 end
             end
 
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
-                switch OVPState
-                    case 0
-                        OVPStateDisp = 'voltage does not exceed the OVP limit';
-                    case 1
-                        OVPStateDisp = 'overvoltage protection is active, voltage is restricted';
-                    otherwise , OVPStateDisp = 'unknown state (error)';
+                switch outputState
+                    case 0    , outputStateDisp = 'off';
+                    case 1    , outputStateDisp = 'on';
+                    otherwise , outputStateDisp = 'unknown state (error)';
                 end
                 disp([obj.DeviceName ':']);
-                disp(['  OVP state = ' OVPStateDisp]);
+                disp(['  output state = ' outputStateDisp]);
             end
         end
 
-        function TrigState = get.TriggerState(obj)
-            % read trigger state
+        function set.OutputState(obj, param)
 
-            [TrigState, status] = obj.query(':Trigger:State?');
-            %
-            if status ~= 0
-                TrigState = 'read error, unknown state';
+            % check input argument (already coerced to type double)
+            if ~isscalar(param) || isnan(param) || ~isreal(param)
+                disp(['SMU24xx Invalid parameter value for property ' ...
+                    '''OutputState''.']);
+                return
+            end
+
+            % map to on/off
+            if logical(param)
+                param = 'On';
             else
-                % remap state
-                TrigState = lower(char(TrigState));
-                tmp = split(TrigState, ';');
-                if size(tmp, 1) == 3
-                    TrigState = tmp{1};
-                else
-                    TrigState = 'unexpected format, unknown state';
-                end
+                param = 'Off';
             end
+            % set property
+            obj.write([':Output:State ' param]);
 
-            % optionally display results
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                disp(['  trigger state = ' TrigState]);
+            % readback and verify
+            paramSet = obj.OutputState;
+            if (paramSet - param) ~= 0 || isnan(paramSet)
+                disp(['SMU24xx parameter value for property ' ...
+                    '''OutputState'' was not set properly.']);
+                fprintf('  wanted value      : %d \n', param);
+                fprintf('  actually set value: %d \n', paramSet);
             end
         end
-
-        % -----------------------------------------------------------------
-        % get/set methods for dependent properties (read/write)
 
         function operationMode = get.OperationMode(obj)
             myCats = categories(obj.DefaultOperationMode);
@@ -1174,66 +1161,58 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        % Merging several dependent properties (parameters) into a struct
+        % is helpful to keep the overview. But there is also a drawback:
+        % A call in Matlab code with
+        %   myobj.myproperty   = struct(a = 1, b = 2) : works fine
+        %   myobj.myproperty.a = 5;                   : will call get
+        %     method to fetch a copy of 'myproperty' struct, then update
+        %     field 'a' and finally write all fields in set method again
+        %     ==> very annoying
+        %       goal (1) is to set only a single field of struct
+        %       goal (2) is to keep original behavior when setting a struct
+        %
+        % solution:
+        %   get method: overload subsref  for field assignment
+        %   set method: overload subsasgn for field assignment
+        %
+        % ATTENTION:
+        %   behaviour (code) in overloaded subsasgn/subsref methods
+        %   should match code in original set/get method of struct to avoid
+        %   trouble
         function params = get.SourceParameters(obj)
             % list of all existing parameters (params is a 'struct')
             allFields = fieldnames(obj.DefaultSourceParameters);
 
             % which function mode?
             funcMode = obj.SourceMode; % 'voltage' or 'current'
-            if strcmpi(funcMode, 'current')
-                limitMode = 'Vlimit';
-            elseif strcmpi(funcMode, 'voltage')
-                limitMode = 'Ilimit';
-            else
-                limitMode = ''; % will end up in an SCPI error
-            end
 
             % loop to get parameters sequentially
             for idx = 1 : length(allFields)
                 paramName  = allFields{idx};
-
                 switch paramName
                     case 'OutputValue'
-                        paramValue = randi(100); % ToDo
-
-                    case 'LimitValue'
-                        [limit, status] = obj.query([':SOURCE:' ...
-                            funcMode ':' limitMode '?']);
-                        if status ~= 0
-                            paramValue = NaN; % unknown value, error
-                        else
-                            % convert value
-                            paramValue = str2double(char(limit));
-                        end
-
-                    case 'LimitTripped'
-                        [tripped, status] = obj.query([':SOURCE:' ...
-                            funcMode ':' limitMode ':Tripped?']);
-                        if status ~= 0
-                            paramValue = NaN; % unknown value, error
-                        else
-                            % convert value
-                            paramValue = str2double(char(tripped));
-                        end
-
+                        paramValue = obj.getSourceOutputValue(funcMode);
                     case 'Readback'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceReadback(funcMode);
                     case 'Range'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceRange(funcMode);
                     case 'AutoRange'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceAutoRange(funcMode);
+                    case 'LimitValue'
+                        paramValue = obj.getSourceLimitValue(funcMode);
+                    case 'LimitTripped'
+                        paramValue = obj.getSourceLimitTripped(funcMode);
+                    case 'OVProtectionValue'
+                        paramValue = obj.getSourceOVProtectionValue(funcMode);
+                    case 'OVProtectionTripped'
+                        paramValue = obj.getSourceOVProtectionTripped(funcMode);
                     case 'Delay'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceDelay(funcMode);
                     case 'AutoDelay'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceAutoDelay(funcMode);
                     case 'HighCapMode'
-                        paramValue = randi(100); % ToDo
-
+                        paramValue = obj.getSourceHighCapMode(funcMode);
                     otherwise
                         disp(['Error, missing get command in struct ' ...
                             '"SourceParameters"']);
@@ -1251,90 +1230,40 @@ classdef SMU24xx < VisaIF
 
             % which function mode?
             funcMode = obj.SourceMode; % 'voltage' or 'current'
-            if strcmpi(funcMode, 'current')
-                limitMode = 'Vlimit';
-                limitMin  = 0.002; % min 0.002 V for Keithley 2450
-                limitMax  = 210;   % max  210 V  for Keithley 2450
-                limitUnit = 'V';
-            elseif strcmpi(funcMode, 'voltage')
-                limitMode = 'Ilimit';
-                limitMin  = 1e-9;  % min 1 nA    for Keithley 2450
-                limitMax  = 1.05;  % max 1.05 A  for Keithley 2450
-                limitUnit = 'A';
-            else
-                limitMode = '';    % will end up in an SCPI error
-                limitMin  = [];
-                limitMax  = [];
-                limitUnit = '';
-            end
 
             % loop to set parameters sequentially
             for idx = 1 : length(inFields)
                 paramName  = inFields{idx};
                 paramValue = params.(paramName);
-
                 switch paramName
                     case 'OutputValue'
-                        disp(paramValue); % ToDo
-
+                        obj.setSourceOutputValue(paramValue, funcMode);
+                    case 'Readback'
+                        obj.setSourceReadback(paramValue, funcMode);
+                    case 'Range'
+                        obj.setSourceRange(paramValue, funcMode);
+                    case 'AutoRange'
+                        obj.setSourceAutoRange(paramValue, funcMode);
                     case 'LimitValue'
-                        limit = paramValue;
-                        % check input argument
-                        if ~isnumeric(limit) || ~isscalar(limit) || ...
-                                isnan(limit) || ~isreal(limit)
-                            disp(['SMU24xx Invalid parameter value for ' ...
-                                'property ' ...
-                                '''SourceParameters.LimitValue''.']);
-                            limit = [];
-                        end
-
-                        % further checks and clipping
-                        limit = min(limit, limitMax);
-                        limit = max(limit, limitMin);
-
-                        if ~isempty(limit)
-                            % set property
-                            obj.write([':SOURCE:' funcMode ':' ...
-                                limitMode ' ' num2str(limit)]);
-
-                            % readback and verify (max 1% difference)
-                            limitSet = obj.SourceParameters.LimitValue;
-                            if abs(limitSet - limit) > 1e-2*limit || ...
-                                    isnan(limitSet)
-                                disp(['SMU24xx parameter value for ' ...
-                                    'property ''SourceParameters.' ...
-                                    'LimitValue'' was not set properly.']);
-                                fprintf('  wanted value      : %3.6f %s\n', ...
-                                    limit   , limitUnit);
-                                fprintf('  actually set value: %3.6f %s\n', ...
-                                    limitSet, limitUnit);
-                            end
-                        end
-
+                        obj.setSourceLimitValue(paramValue, funcMode);
                     case 'LimitTripped'
                         if ~strcmpi(obj.ShowMessages, 'none')
                             disp(['Parameter ''LimitTripped'' is ' ...
                                 'read-only. Ignore and continue.']);
                         end
-
-                    case 'Readback'
-                        disp(paramValue);
-
-                    case 'Range'
-                        disp(paramValue);
-
-                    case 'AutoRange'
-                        disp(paramValue);
-
+                    case 'OVProtectionValue'
+                        obj.setSourceOVProtectionValue(paramValue, funcMode);
+                    case 'OVProtectionTripped'
+                        if ~strcmpi(obj.ShowMessages, 'none')
+                            disp(['Parameter ''OVProtectionTripped'' is ' ...
+                                'read-only. Ignore and continue.']);
+                        end
                     case 'Delay'
-                        disp(paramValue);
-
+                        obj.setSourceDelay(paramValue, funcMode);
                     case 'AutoDelay'
-                        disp(paramValue);
-
+                        obj.setSourceAutoDelay(paramValue, funcMode);
                     case 'HighCapMode'
-                        disp(paramValue);
-
+                        obj.setSourceHighCapMode(paramValue, funcMode);
                     otherwise
                         disp(['Error, missing set command in struct ' ...
                             '"SourceParameters"']);
@@ -1343,11 +1272,14 @@ classdef SMU24xx < VisaIF
         end
 
         % -----------------------------------------------------------------
+        % overload method that analyze input to detect patterns like
+        % value = obj.myproperty.myfield ==> for get methods
+        %
+        % ToDo: same for subsref
 
+        % overload method that analyze input to detect patterns like
+        % obj.myproperty.myfield = value ==> for set methods
         function obj = subsasgn(obj, S, value)
-            % overload method that analyze input to detect
-            % patterns like obj.myproperty.myfield = value
-
             % Wenn Sie in einer Klasse subsasgn überschreiben, ruft MATLAB diese
             % Methode automatisch auf, sobald eine Subskript- oder Punktzuweisung
             % erfolgt. Dabei übergibt MATLAB als zweiten Eingabeparameter genau
@@ -1367,8 +1299,10 @@ classdef SMU24xx < VisaIF
             %     Bei Punktzugriffen der Feldname als String
             %     Bei () oder {} der Index bzw. ein Zellarray der Indizes
 
+            % ToDo
+
             myproperty = 'SourceParameters';
- 
+
             if numel(S) >= 2 && strcmp(S(1).type, '.') ...
                     && strcmp(S(1).subs, myproperty) ...
                     && strcmp(S(2).type, '.')
@@ -1387,206 +1321,53 @@ classdef SMU24xx < VisaIF
                 return
             end
 
-            % Otherwise, fall back to default behavior
+            % otherwise, fall back to default behavior
             obj = builtin('subsasgn', obj, S, value);
         end
 
         % -----------------------------------------------------------------
+        % get methods for dependent properties (read-only)
 
+        function buffers = get.AvailableBuffers(obj)
+            % get list of available reading buffers:
+            %  cell array of char with reading buffers
 
+            buffers = obj.AvailableBuffers;
 
-        function limit = get.LimitCurrentValue(obj)
-            [limit, status] = obj.query(':SOURCE:VOLTAGE:ILIMIT?');
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  buffers = ' char(join(buffers, ', '))]);
+            end
+        end
+
+        function TrigState = get.TriggerState(obj)
+            % read trigger state
+
+            [TrigState, status] = obj.query(':Trigger:State?');
             %
             if status ~= 0
-                limit = NaN; % unknown value, error
-            else
-                % convert value
-                limit = str2double(char(limit));
-            end
-        end
-
-        function set.LimitCurrentValue(obj, limit)
-
-            % check input argument (already coerced to type double)
-            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
-                disp(['SMU24xx Invalid parameter value for property ' ...
-                    '''LimitCurrentValue''.']);
-                return
-            end
-
-            % further checks and clipping
-            limit = min(limit, 1.05);  % max 1.05 A for Keithley 2450
-            limit = max(limit, 1e-9);  % min 1 nA   for Keithley 2450
-            % set property
-            obj.write([':SOURCE:VOLTAGE:ILIMIT ' num2str(limit)]);
-
-            % readback and verify (max 1% difference)
-            limitSet = obj.LimitCurrentValue;
-            if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
-                disp(['SMU24xx parameter value for property ' ...
-                    '''LimitCurrentValue'' was not set properly.']);
-                fprintf('  wanted value      : %1.6f A\n', limit);
-                fprintf('  actually set value: %1.6f A\n', limitSet);
-            end
-        end
-
-        function limit = get.LimitVoltageValue(obj)
-            [limit, status] = obj.query(':SOURCE:CURRENT:VLIMIT?');
-            %
-            if status ~= 0
-                limit = NaN; % unknown value, error
-            else
-                % convert value
-                limit = str2double(char(limit));
-            end
-        end
-
-        function set.LimitVoltageValue(obj, limit)
-
-            % check input argument (already coerced to type double)
-            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
-                disp(['SMU24xx Invalid parameter value for property ' ...
-                    '''LimitVoltageValue''.']);
-                return
-            end
-
-            % further checks and clipping
-            limit = min(limit, 210);   % max  210 V for Keithley 2450
-            limit = max(limit, 0.02);  % min 0.02 V for Keithley 2450
-            % set property
-            obj.write([':SOURCE:CURRENT:VLIMIT ' num2str(limit)]);
-
-            % readback and verify (max 1% difference)
-            limitSet = obj.LimitVoltageValue;
-            if abs(limitSet - limit) > 1e-2*limit || isnan(limitSet)
-                disp(['SMU24xx parameter value for property ' ...
-                    '''LimitVoltageValue'' was not set properly.']);
-                fprintf('  wanted value      : %3.3f V\n', limit);
-                fprintf('  actually set value: %3.3f V\n', limitSet);
-            end
-        end
-
-        function limit = get.OverVoltageProtectionLevel(obj)
-            [limit, status] = obj.query( ...
-                ':SOURCE:VOLTAGE:PROTECTION:LEVEL?');
-            %
-            if status ~= 0
-                limit = NaN; % unknown value, error
-            else
-                % convert value
-                limit = lower(char(limit));
-                if strcmp(limit, 'none')
-                    limit = inf;
-                elseif startsWith(limit, 'prot') && length(limit) >= 5
-                    limit = str2double(limit(5:end));
-                else
-                    limit = NaN; % unknown response
-                end
-            end
-
-        end
-
-        function set.OverVoltageProtectionLevel(obj, limit)
-
-            % check input argument (already coerced to type double)
-            if ~isscalar(limit) || isnan(limit) || ~isreal(limit)
-                disp(['SMU24xx Invalid parameter value for property ' ...
-                    '''OverVoltageProtectionLevel''.']);
-                return
-            end
-
-            % further checks and clipping, coerced to (2, 5, 10, 20, 40,
-            % 60, 80, 100, 120, 140, 160, 180, infty) V
-            if     limit > 180, setStr = 'NONE';
-            elseif limit > 160, setStr = 'PROT180';
-            elseif limit > 140, setStr = 'PROT160';
-            elseif limit > 120, setStr = 'PROT140';
-            elseif limit > 100, setStr = 'PROT120';
-            elseif limit >  80, setStr = 'PROT100';
-            elseif limit >  60, setStr = 'PROT80';
-            elseif limit >  40, setStr = 'PROT60';
-            elseif limit >  20, setStr = 'PROT40';
-            elseif limit >  10, setStr = 'PROT20';
-            elseif limit >   5, setStr = 'PROT10';
-            elseif limit >   2, setStr = 'PROT5';
-            else              , setStr = 'PROT2';
-            end
-            % set property ==> check is done via readback and verify
-            obj.write([':SOURCE:VOLTAGE:PROTECTION:LEVEL ' setStr]);
-
-            % readback and verify
-            limitSet = obj.OverVoltageProtectionLevel;
-            if limitSet < limit || isnan(limitSet)
-                disp(['SMU24xx parameter value for property ' ...
-                    '''OverVoltageProtectionLevel'' was not set properly.']);
-                fprintf('  wanted value      : %3.1f V\n', limit);
-                fprintf('  actually set value: %3.1f V\n', limitSet);
-            end
-        end
-
-        function outputState = get.OutputState(obj)
-            % get output state:
-            %    0 for 'off',
-            %    1 for 'on'
-            %  NaN for unknown state (error)
-
-            [outpState, status] = obj.query(':Output:State?');
-            %
-            if status ~= 0
-                outputState = NaN; % unknown state, error
+                TrigState = 'read error, unknown state';
             else
                 % remap state
-                outpState = lower(char(outpState));
-                switch outpState
-                    case '0'   , outputState = 0;
-                    case '1'   , outputState = 1;
-                    otherwise  , outputState = NaN;
+                TrigState = lower(char(TrigState));
+                tmp = split(TrigState, ';');
+                if size(tmp, 1) == 3
+                    TrigState = tmp{1};
+                else
+                    TrigState = 'unexpected format, unknown state';
                 end
             end
 
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
-                switch outputState
-                    case 0    , outputStateDisp = 'off';
-                    case 1    , outputStateDisp = 'on';
-                    otherwise , outputStateDisp = 'unknown state (error)';
-                end
                 disp([obj.DeviceName ':']);
-                disp(['  output state = ' outputStateDisp]);
-            end
-        end
-
-        function set.OutputState(obj, param)
-
-            % check input argument (already coerced to type double)
-            if ~isscalar(param) || isnan(param) || ~isreal(param)
-                disp(['SMU24xx Invalid parameter value for property ' ...
-                    '''OutputState''.']);
-                return
-            end
-
-            % map to on/off
-            if logical(param)
-                param = 'On';
-            else
-                param = 'Off';
-            end
-            % set property
-            obj.write([':Output:State ' param]);
-
-            % readback and verify
-            paramSet = obj.OutputState;
-            if (paramSet - param) ~= 0 || isnan(paramSet)
-                disp(['SMU24xx parameter value for property ' ...
-                    '''OutputState'' was not set properly.']);
-                fprintf('  wanted value      : %d \n', param);
-                fprintf('  actually set value: %d \n', paramSet);
+                disp(['  trigger state = ' TrigState]);
             end
         end
 
         % -----------------------------------------------------------------
-        % more get methods
+        % more get methods (public properties, read-only)
 
         function errTable = get.ErrorMessages(obj)
             % read error list from the SMU's error buffer
@@ -1727,9 +1508,372 @@ classdef SMU24xx < VisaIF
 
     end
 
-    % ------- private methods -----------------------------------------------
+    % ------- private methods ---------------------------------------------
     methods(Access = private)
 
+        % -----------------------------------------------------------------
+        % internal methods to get/set source parameters
+        % ==> combined in public struct-property 'SourceParameters'
+
+        % get: function mode (of source) is either 'voltage' or 'current'
+        function [param, paramAsMsg] = getSourceOutputValue(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceReadback(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceRange(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceAutoRange(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceLimitValue(obj, funcMode)
+            % config: request either voltage or current limit value
+            if strcmpi(funcMode, 'current')
+                limitMode    = 'Vlimit';
+                limitUnitMsg = ' V (voltage-limit)';
+            elseif strcmpi(funcMode, 'voltage')
+                limitMode    = 'Ilimit';
+                limitUnitMsg = ' A (current-limit)';
+            else
+                limitMode    = ' '; % will end up in an SCPI error
+                limitUnitMsg = ' Error, unknown source-function-mode';
+            end
+
+            % actual request (SCPI-command)
+            [limit, status] = obj.query([':Source:' funcMode ':' ...
+                limitMode '?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(limit));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            paramAsMsg = [num2str(param) limitUnitMsg];
+        end
+
+        function [param, paramAsMsg] = getSourceLimitTripped(obj, funcMode)
+            % config: request either voltage or current limit value
+            if strcmpi(funcMode, 'current')
+                limitMode    = 'Vlimit';
+                limitUnitMsg = ' (voltage-limit)';
+            elseif strcmpi(funcMode, 'voltage')
+                limitMode    = 'Ilimit';
+                limitUnitMsg = ' (current-limit)';
+            else
+                limitMode    = ' '; % will end up in an SCPI error
+                limitUnitMsg = ' Error, unknown source-function-mode';
+            end
+
+            % actual request (SCPI-command)
+            [tripped, status] = obj.query([':Source:' funcMode ':' ...
+                limitMode ':Tripped?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(tripped));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'No';
+            elseif param == 1
+                paramAsMsg = 'Yes - clipping is active';
+            else
+                paramAsMsg = [char(tripped) ' unexpected response'];
+            end
+            paramAsMsg = [paramAsMsg limitUnitMsg];
+        end
+
+        function [param, paramAsMsg] = getSourceOVProtectionValue(obj, ~)
+            % actual request (SCPI-command)
+            [limit, status] = obj.query(':Source:Voltage:Protection:Level?');
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                limit = lower(char(limit));
+                if strcmp(limit, 'none')
+                    param = inf;
+                elseif startsWith(limit, 'prot') && length(limit) >= 5
+                    param = str2double(limit(5:end));
+                else
+                    param = NaN; % unknown response
+                end
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            paramAsMsg = [num2str(param) ' V (voltage-limit)'];
+        end
+
+        function [param, paramAsMsg] = getSourceOVProtectionTripped(obj, ~)
+            % get OVP state:
+            %    0 for 'not exceed the OVP limit',
+            %    1 for 'overvoltage protection is active, voltage is restricted'
+            %  NaN for unknown state (error)
+
+            % actual request (SCPI-command)
+            [tripped, status] = obj.query(':Source:Voltage:Protection:Tripped?');
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(tripped));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'No';
+            elseif param == 1
+                paramAsMsg = 'Yes - overvoltage protection is active';
+            else
+                paramAsMsg = [char(tripped) ' unexpected response'];
+            end
+        end
+
+        function [param, paramAsMsg] = getSourceDelay(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceAutoDelay(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        function [param, paramAsMsg] = getSourceHighCapMode(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        % set: function mode (of source) is either 'voltage' or 'current'
+        function status = setSourceOutputValue(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceReadback(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceRange(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceAutoRange(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceLimitValue(obj, param, funcMode)
+            propName = '''SourceParameters.LimitValue''';
+
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % config: request either voltage or current limit value
+            if strcmpi(funcMode, 'current')
+                limitMode = 'Vlimit';
+                limitMin  = 0.002; % min 0.002 V for Keithley 2450
+                limitMax  = 210;   % max  210 V  for Keithley 2450
+                limitUnit = 'V';
+            elseif strcmpi(funcMode, 'voltage')
+                limitMode = 'Ilimit';
+                limitMin  = 1e-9;  % min 1 nA    for Keithley 2450
+                limitMax  = 1.05;  % max 1.05 A  for Keithley 2450
+                limitUnit = 'A';
+            else
+                limitMode = '';    % will end up in an SCPI error
+                limitMin  = [];
+                limitMax  = [];
+                limitUnit = '';
+            end
+
+            % further checks and clipping
+            limit = param;
+            limit = min(limit, limitMax);
+            limit = max(limit, limitMin);
+
+            if ~isempty(limit) && ~isnan(limit)
+                % set property
+                obj.write([':Source:' funcMode ':' limitMode ' ' ...
+                    num2str(limit)]);
+
+                % readback and verify (max 1% difference)
+                limitSet = obj.getSourceLimitValue(funcMode);
+                if abs(limitSet - limit) > 1e-2*limit || ...
+                        isnan(limitSet)
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %3.6f %s\n', ...
+                        limit   , limitUnit);
+                    fprintf('  actually set value: %3.6f %s\n', ...
+                        limitSet, limitUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
+        end
+
+        % no setSourceLimitTripped method (parameter is read-only)
+
+        function status = setSourceOVProtectionValue(obj, param, ~)
+            propName = '''SourceParameters.OVProtectionValue''';
+
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % further checks and clipping, coerced to (2, 5, 10, 20, 40,
+            % 60, 80, 100, 120, 140, 160, 180, infty) V
+            limit = param;
+            if     limit > 180, setStr = 'NONE';
+            elseif limit > 160, setStr = 'PROT180';
+            elseif limit > 140, setStr = 'PROT160';
+            elseif limit > 120, setStr = 'PROT140';
+            elseif limit > 100, setStr = 'PROT120';
+            elseif limit >  80, setStr = 'PROT100';
+            elseif limit >  60, setStr = 'PROT80';
+            elseif limit >  40, setStr = 'PROT60';
+            elseif limit >  20, setStr = 'PROT40';
+            elseif limit >  10, setStr = 'PROT20';
+            elseif limit >   5, setStr = 'PROT10';
+            elseif limit >   2, setStr = 'PROT5';
+            elseif limit >   0, setStr = 'PROT2';
+            else              , setStr = '';
+            end
+
+            if ~isempty(setStr)
+                % set property
+                obj.write([':Source:Voltage:Protection:Level ' setStr]);
+
+                % readback and verify (max 1% difference)
+                getStr = obj.query(':Source:Voltage:Protection:Level?');
+                if ~strmpi(setStr, getStr)
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    disp(['  wanted value      : ' setStr '(voltage)']);
+                    disp(['  actually set value: ' getStr '(voltage)']);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
+        end
+
+        % no setSourceOVProtectionTripped method (parameter is read-only)
+
+        function status = setSourceDelay(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceAutoDelay(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSourceHighCapMode(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        % -----------------------------------------------------------------
+        % internal methods to get/set sense parameters
+        % ==> combined in public struct-property 'SenseParameters'
+
+        % get: function mode (of sense) is either 'voltage' or 'current'
+        %      manually it can also be set to 'resistance'
+
+
+        % ToDo
+
+
+
+        % -----------------------------------------------------------------
         % internal methods to memorize name of reading buffers at SMU
         function status = resetBuffer(obj)
             status               = 0; % always okay
