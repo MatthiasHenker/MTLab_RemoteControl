@@ -239,6 +239,7 @@ classdef SMU24xx < VisaIF
         OutputState                  double  % 0, false for 'off' ...
         OperationMode       % get: categorical; set: char, string or categorical
         SourceParameters             struct
+        SenseParameters              struct
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -259,18 +260,23 @@ classdef SMU24xx < VisaIF
             {'SVMI', 'Source:V_Sense:I',  ...
             'SIMV', 'Source:I_Sense:V'});
         %
-        DefaultSourceParameters    = struct( ...
-            OutputValue         = 0    , ...
-            Readback            = true , ...
-            Range               = 0    , ...
-            AutoRange           = true , ...
-            LimitValue          = 0    , ...
-            LimitTripped        = []   , ... % read-only
-            OVProtectionValue   = 0    , ...
-            OVProtectionTripped = []   , ... % read-only
-            Delay               = 0    , ...
-            AutoDelay           = true , ...
-            HighCapMode         = false);
+        DefaultSourceParameters   = struct( ...
+            OutputValue           = 0     , ...
+            Readback              = true  , ...
+            Range                 = 0     , ...
+            AutoRange             = true  , ...
+            LimitValue            = 0     , ...
+            LimitTripped          = []    , ... % read-only
+            OVProtectionValue     = 0     , ...
+            OVProtectionTripped   = []    , ... % read-only
+            Delay                 = 0     , ...
+            AutoDelay             = true  , ...
+            HighCapMode           = false);
+        DefaultSenseParameters    = struct( ...
+            AverageCount          = 0     , ...
+            AverageMode           = 'repeat' , ...
+            ToDo                  = NaN   , ...  % ToDo: extend fields
+            Unit                  = 'ohm');
         %
         DefaultBuffers             = {'defbuffer1', 'defbuffer2'};
         DefaultOutputToneFrequency = 1e3; % 1 kHz
@@ -974,6 +980,7 @@ classdef SMU24xx < VisaIF
             sourceMode                   = obj.SourceMode;
             senseMode                    = obj.SenseMode;
             sourceParameters             = obj.SourceParameters;
+            senseParameters              = obj.SenseParameters;
             %
             outputState                  = obj.OutputState;
             triggerState                 = obj.TriggerState;
@@ -981,11 +988,10 @@ classdef SMU24xx < VisaIF
             disp(['  OperationMode      = ' char(operationMode)]);
             disp(['  SourceMode         = ' char(sourceMode)]);
             disp(['  SenseMode          = ' char(senseMode)]);
-            % disp(['  OVP Level          = ' ...
-            %     num2str(overVoltageProtectionLevel) ' V']);
-            % disp(['  OVP Tripped        = ' num2str(overVoltageProtectionTripped)]);
             disp(['  Source Parameters  : ' '']);
             disp(sourceParameters); % ToDo : with units !!!
+            disp(['  Sense Parameters  : ' '']);
+            disp(senseParameters);  % ToDo : with units !!!
             disp(['  Output State       = ' num2str(outputState)]);
             disp(['  Trigger State      = ' triggerState]);
 
@@ -1129,7 +1135,7 @@ classdef SMU24xx < VisaIF
             end
             % check input: scalar and valid parameter
             if ~isscalar(operationMode)
-                % not exact one element: than set to empty
+                % not exact one element: set to empty
                 operationMode = categorical([]);
             elseif ~any(myCats == operationMode)
                 % not a valid parameter value : set to empty
@@ -1152,12 +1158,12 @@ classdef SMU24xx < VisaIF
             % actual set function
             if any(myCats(1:2) == operationMode)
                 % 'SVMI', 'Source:V_Sense:I'
-                obj.SenseMode  = 'Current';
-                obj.SourceMode = 'Voltage';
+                obj.SenseMode  = 'current';
+                obj.SourceMode = 'voltage';
             else
                 % 'SIMV', 'Source:I_Sense:V'
-                obj.SenseMode  = 'Voltage';
-                obj.SourceMode = 'Current';
+                obj.SenseMode  = 'voltage';
+                obj.SourceMode = 'current';
             end
         end
 
@@ -1271,15 +1277,138 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        function params = get.SenseParameters(obj)
+            % list of all existing parameters (params is a 'struct')
+            allFields = fieldnames(obj.DefaultSenseParameters);
+
+            % which function mode?
+            funcMode = obj.SenseMode; % 'voltage' or 'current'
+
+            % loop to get parameters sequentially
+            for idx = 1 : length(allFields)
+                paramName  = allFields{idx};
+                switch paramName
+                    case 'AverageCount'
+                        paramValue = obj.getSenseAverageCount(funcMode);
+                    case 'AverageMode'
+                        paramValue = obj.getSenseAverageMode(funcMode);
+                    % ToDo: extend fields
+                    case 'Unit'
+                        paramValue = obj.getSenseUnit(funcMode);
+                    otherwise
+                        disp(['Error, missing get command in struct ' ...
+                            '"SenseParameters"']);
+                end
+                % copy parameter value to output variable (struct)
+                params.(paramName) = paramValue;
+            end
+        end
+
+        function set.SenseParameters(obj, params)
+            % list of all existing parameters (params is a 'struct')
+            allFields = fieldnames(obj.DefaultSenseParameters);
+            % list of parameters to be set (parameters of input)
+            inFields  = allFields(isfield(params, allFields));
+
+            % which function mode?
+            funcMode = obj.SenseMode; % 'voltage' or 'current'
+
+            % loop to set parameters sequentially
+            for idx = 1 : length(inFields)
+                paramName  = inFields{idx};
+                paramValue = params.(paramName);
+                switch paramName
+                    case 'AverageCount'
+                        obj.setSenseAverageCount(paramValue, funcMode);
+                    case 'AverageMode'
+                        obj.setSenseAverageMode(paramValue, funcMode);
+                    % ToDo: extend fields
+                    case 'Unit'
+                        obj.setSenseUnit(paramValue, funcMode);
+                    otherwise
+                        disp(['Error, missing set command in struct ' ...
+                            '"SenseParameters"']);
+                end
+            end
+        end
+
         % -----------------------------------------------------------------
         % overload method that analyze input to detect patterns like
         % value = obj.myproperty.myfield ==> for get methods
-        %
-        % ToDo: same for subsref
+        function paramValue = subsref(obj, S)
+            propList = {'SourceParameters', 'SenseParameters'};
+
+            if numel(S) >= 2 && strcmp(S(1).type, '.') ...
+                    && any(strcmp(S(1).subs, propList)) ...
+                    && strcmp(S(2).type, '.')
+
+                % extract the struct and field name
+                myStruct = S(1).subs;
+                myField  = S(2).subs;
+
+                % which function mode?
+                switch myStruct
+                    case 'SourceParameters'
+                        funcMode = obj.SourceMode; % 'voltage' or 'current'
+                    case 'SenseParameters'
+                        funcMode = obj.SenseMode;  % 'voltage' or 'current'
+                end
+
+                % assign to internal property set method ==> identical switch
+                % case block as in methods get.SourceParameters&SenseParameters
+                switch myStruct
+                    case 'SourceParameters'
+                        switch myField
+                            case 'OutputValue'
+                                paramValue = obj.getSourceOutputValue(funcMode);
+                            case 'Readback'
+                                paramValue = obj.getSourceReadback(funcMode);
+                            case 'Range'
+                                paramValue = obj.getSourceRange(funcMode);
+                            case 'AutoRange'
+                                paramValue = obj.getSourceAutoRange(funcMode);
+                            case 'LimitValue'
+                                paramValue = obj.getSourceLimitValue(funcMode);
+                            case 'LimitTripped'
+                                paramValue = obj.getSourceLimitTripped(funcMode);
+                            case 'OVProtectionValue'
+                                paramValue = obj.getSourceOVProtectionValue(funcMode);
+                            case 'OVProtectionTripped'
+                                paramValue = obj.getSourceOVProtectionTripped(funcMode);
+                            case 'Delay'
+                                paramValue = obj.getSourceDelay(funcMode);
+                            case 'AutoDelay'
+                                paramValue = obj.getSourceAutoDelay(funcMode);
+                            case 'HighCapMode'
+                                paramValue = obj.getSourceHighCapMode(funcMode);
+                            otherwise
+                                disp(['Error, unknown field in struct ' ...
+                                    '"SourceParameters"']);
+                        end
+                    case 'SenseParameters'
+                        switch myField
+                            case 'AverageCount'
+                                paramValue = obj.getSenseAverageCount(funcMode);
+                            case 'AverageMode'
+                                paramValue = obj.getSenseAverageMode(funcMode);
+                                % ToDo: extend field list
+                            case 'Unit'
+                                paramValue = obj.getSenseUnit(funcMode);
+                            otherwise
+                                disp(['Error, unknown field in struct ' ...
+                                    '"SenseParameters"']);
+                        end
+                end
+                return
+            end
+
+            % otherwise, fall back to default behavior
+            paramValue = builtin('subsref', obj, S);
+        end
 
         % overload method that analyze input to detect patterns like
         % obj.myproperty.myfield = value ==> for set methods
-        function obj = subsasgn(obj, S, value)
+        function obj = subsasgn(obj, S, paramValue)
             % Wenn Sie in einer Klasse subsasgn überschreiben, ruft MATLAB diese
             % Methode automatisch auf, sobald eine Subskript- oder Punktzuweisung
             % erfolgt. Dabei übergibt MATLAB als zweiten Eingabeparameter genau
@@ -1299,25 +1428,75 @@ classdef SMU24xx < VisaIF
             %     Bei Punktzugriffen der Feldname als String
             %     Bei () oder {} der Index bzw. ein Zellarray der Indizes
 
-            % ToDo
-
-            myproperty = 'SourceParameters';
+            propList = {'SourceParameters', 'SenseParameters'};
 
             if numel(S) >= 2 && strcmp(S(1).type, '.') ...
-                    && strcmp(S(1).subs, myproperty) ...
+                    && any(strcmp(S(1).subs, propList)) ...
                     && strcmp(S(2).type, '.')
 
-                % Extract the field name and assign into propInternal
-                myfield = S(2).subs;
-                %obj.propInternal.(myfield) = value;
-                switch myfield
-                    case 'OutputValue'  , x = value;
-                    case 'LimitValue'   , x = value;
-                    otherwise           , disp('ToDo');
+                % extract the struct and field name
+                myStruct = S(1).subs;
+                myField  = S(2).subs;
+
+                % which function mode?
+                switch myStruct
+                    case 'SourceParameters'
+                        funcMode = obj.SourceMode; % 'voltage' or 'current'
+                    case 'SenseParameters'
+                        funcMode = obj.SenseMode;  % 'voltage' or 'current'
                 end
 
-                disp(value);
-
+                % assign to internal property set method ==> identical switch
+                % case block as in methods set.SourceParameters&SenseParameters
+                switch myStruct
+                    case 'SourceParameters'
+                        switch myField
+                            case 'OutputValue'
+                                obj.setSourceOutputValue(paramValue, funcMode);
+                            case 'Readback'
+                                obj.setSourceReadback(paramValue, funcMode);
+                            case 'Range'
+                                obj.setSourceRange(paramValue, funcMode);
+                            case 'AutoRange'
+                                obj.setSourceAutoRange(paramValue, funcMode);
+                            case 'LimitValue'
+                                obj.setSourceLimitValue(paramValue, funcMode);
+                            case 'LimitTripped'
+                                if ~strcmpi(obj.ShowMessages, 'none')
+                                    disp(['Parameter ''LimitTripped'' is ' ...
+                                        'read-only. Ignore and continue.']);
+                                end
+                            case 'OVProtectionValue'
+                                obj.setSourceOVProtectionValue(paramValue, funcMode);
+                            case 'OVProtectionTripped'
+                                if ~strcmpi(obj.ShowMessages, 'none')
+                                    disp(['Parameter ''OVProtectionTripped'' is ' ...
+                                        'read-only. Ignore and continue.']);
+                                end
+                            case 'Delay'
+                                obj.setSourceDelay(paramValue, funcMode);
+                            case 'AutoDelay'
+                                obj.setSourceAutoDelay(paramValue, funcMode);
+                            case 'HighCapMode'
+                                obj.setSourceHighCapMode(paramValue, funcMode);
+                            otherwise
+                                disp(['Error, unknown field in struct ' ...
+                                    '"SourceParameters"']);
+                        end
+                    case 'SenseParameters'
+                        switch myField
+                            case 'AverageCount'
+                                obj.setSenseAverageCount(paramValue, funcMode);
+                            case 'AverageMode'
+                                obj.setSenseAverageMode(paramValue, funcMode);
+                                % ToDo: extend field list
+                            case 'Unit'
+                                obj.setSenseUnit(paramValue, funcMode);
+                            otherwise
+                                disp(['Error, unknown field in struct ' ...
+                                    '"SenseParameters"']);
+                        end
+                end
                 return
             end
 
@@ -1493,7 +1672,7 @@ classdef SMU24xx < VisaIF
         end
 
         function mode = get.SenseMode(obj)
-            % mode: 'current' or 'voltage'
+            % mode: 'current' or 'voltage' ('resistance is also possible')
 
             % get property
             response = char(obj.query(':Sense:Function?'));
@@ -1502,7 +1681,7 @@ classdef SMU24xx < VisaIF
                 case '"curr:dc"', mode = 'current';
                 case '"res"'    , mode = 'resistance';
                 otherwise       , mode = 'Error, unknown mode';
-                    disp([mode '(get SourceMode)']);
+                    disp([mode '(get SenseMode)']);
             end
         end
 
@@ -1525,11 +1704,23 @@ classdef SMU24xx < VisaIF
         end
 
         function [param, paramAsMsg] = getSourceReadback(obj, funcMode)
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Source:' funcMode ':READ:BACK?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
-
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
         end
 
         function [param, paramAsMsg] = getSourceRange(obj, funcMode)
@@ -1579,13 +1770,13 @@ classdef SMU24xx < VisaIF
             % config: request either voltage or current limit value
             if strcmpi(funcMode, 'current')
                 limitMode    = 'Vlimit';
-                limitUnitMsg = ' (voltage-limit)';
+                limitUnitMsg = 'voltage';
             elseif strcmpi(funcMode, 'voltage')
                 limitMode    = 'Ilimit';
-                limitUnitMsg = ' (current-limit)';
+                limitUnitMsg = 'current';
             else
                 limitMode    = ' '; % will end up in an SCPI error
-                limitUnitMsg = ' Error, unknown source-function-mode';
+                limitUnitMsg = '(Error, unknown source-function-mode)';
             end
 
             % actual request (SCPI-command)
@@ -1600,13 +1791,13 @@ classdef SMU24xx < VisaIF
 
             % create more helpful message to display (method 'showSettings')
             if param == 0
-                paramAsMsg = 'No';
+                paramAsMsg = ['No - output does not exceed ' limitUnitMsg ...
+                    '-limit'];
             elseif param == 1
-                paramAsMsg = 'Yes - clipping is active';
+                paramAsMsg = ['Yes - ' limitUnitMsg '-clipping is active'];
             else
-                paramAsMsg = [char(tripped) ' unexpected response'];
+                paramAsMsg = [char(tripped) ' - unexpected response'];
             end
-            paramAsMsg = [paramAsMsg limitUnitMsg];
         end
 
         function [param, paramAsMsg] = getSourceOVProtectionValue(obj, ~)
@@ -1647,11 +1838,11 @@ classdef SMU24xx < VisaIF
 
             % create more helpful message to display (method 'showSettings')
             if param == 0
-                paramAsMsg = 'No';
+                paramAsMsg = 'No - output does not exceed OVP-limit';
             elseif param == 1
                 paramAsMsg = 'Yes - overvoltage protection is active';
             else
-                paramAsMsg = [char(tripped) ' unexpected response'];
+                paramAsMsg = [char(tripped) ' - unexpected response'];
             end
         end
 
@@ -1688,10 +1879,54 @@ classdef SMU24xx < VisaIF
         end
 
         function status = setSourceReadback(obj, param, funcMode)
+            propName = '''SourceParameters.SourceReadback''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Source:' funcMode ':READ:BACK ' num2str(param)]);
+
+                % readback and verify (max 1% difference)
+                paramSet = obj.getSourceReadback(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', ...
+                        param);
+                    fprintf('  actually set value: %g\n', ...
+                        paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceRange(obj, param, funcMode)
@@ -1756,8 +1991,8 @@ classdef SMU24xx < VisaIF
 
                 % readback and verify (max 1% difference)
                 limitSet = obj.getSourceLimitValue(funcMode);
-                if abs(limitSet - limit) > 1e-2*limit || ...
-                        isnan(limitSet)
+                if (abs(limitSet - limit) > 1e-2*limit || ...
+                        isnan(limitSet)) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
                     fprintf('  wanted value      : %3.6f %s\n', ...
@@ -1812,7 +2047,7 @@ classdef SMU24xx < VisaIF
             elseif limit >   5, setStr = 'PROT10';
             elseif limit >   2, setStr = 'PROT5';
             elseif limit >   0, setStr = 'PROT2';
-            else              , setStr = '';
+            else              , setStr = ''; % includes NaN
             end
 
             if ~isempty(setStr)
@@ -1821,7 +2056,7 @@ classdef SMU24xx < VisaIF
 
                 % readback and verify (max 1% difference)
                 getStr = obj.query(':Source:Voltage:Protection:Level?');
-                if ~strmpi(setStr, getStr)
+                if ~strmpi(setStr, getStr) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
                     disp(['  wanted value      : ' setStr '(voltage)']);
@@ -1867,11 +2102,56 @@ classdef SMU24xx < VisaIF
 
         % get: function mode (of sense) is either 'voltage' or 'current'
         %      manually it can also be set to 'resistance'
+        function [param, paramAsMsg] = getSenseAverageCount(obj, funcMode)
 
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
 
-        % ToDo
+        end
 
+        function [param, paramAsMsg] = getSenseAverageMode(obj, funcMode)
 
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        % ToDo: more fields ...
+
+        function [param, paramAsMsg] = getSenseUnit(obj, funcMode)
+
+            % init output
+            param      = NaN;
+            paramAsMsg = 'get method for this parameter is not implemented yet';
+
+        end
+
+        % set: function mode (of sense) is either 'voltage' or 'current'
+        %      manually it can also be set to 'resistance'
+        function status = setSenseAverageCount(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        function status = setSenseAverageMode(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
+
+        % ToDo: more fields ...
+
+        function status = setSenseUnit(obj, param, funcMode)
+
+            % init output
+            status = NaN;
+
+        end
 
         % -----------------------------------------------------------------
         % internal methods to memorize name of reading buffers at SMU

@@ -52,18 +52,6 @@ return
 %mySMU.reset;
 %mySMU.clear;
 
-%mySMU.LimitCurrentValue
-%mySMU.LimitCurrentValue = 0.5;
-%mySMU.LimitCurrentValue
-
-%mySMU.LimitVoltageValue
-%mySMU.LimitVoltageValue = 5.6;
-%mySMU.LimitVoltageValue
-
-mySMU.OverVoltageProtectionLevel
-mySMU.OverVoltageProtectionLevel = 2;
-mySMU.OverVoltageProtectionLevel
-
 %mySMU.configureDisplay(screen= 'X');
 %mySMU.configureDisplay(screen= 'hElp');
 %mySMU.configureDisplay(screen= 'home');
@@ -74,6 +62,10 @@ mySMU.configureDisplay(digits= '6');
 mySMU.configureDisplay(buffer= 'defbuffer2');
 %mySMU.configureDisplay(text= 'Running first tests;work in progress ...');
 
+
+mySMU.SourceParameters.LimitValue
+mySMU.SourceParameters.OVProtectionValue
+mySMU.SourceParameters.Readback = 'on';
 
 %mySMU.configureSenseMode(funct= 'current', mode= '4WIRE');
 
