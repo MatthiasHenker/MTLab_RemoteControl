@@ -228,7 +228,7 @@
 classdef SMU24xx < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-07-28'; % updated release date
+        SMUDate       = '2025-08-20'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -957,64 +957,61 @@ classdef SMU24xx < VisaIF
             end
         end
 
-
-
-
-        % ToDo
-        function status = showSettings(obj)
-
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                disp('  show SMU settings');
-            end
-
-            % init output
-            status = NaN;
-
+        function showSettings(obj)
             % save state of ShowMessages and set to silent operation
             showMessages     = obj.ShowMessages;
             obj.ShowMessages = 'none';
 
+            % -------------------------------------------------------------
             % actual code
-            operationMode                = obj.OperationMode;
-            sourceMode                   = obj.SourceMode;
-            senseMode                    = obj.SenseMode;
-            sourceParameters             = obj.SourceParameters;
-            senseParameters              = obj.SenseParameters;
+            sourceMode = obj.SourceMode;
+            senseMode  = obj.SenseMode;
+
+            disp(['Show settings of ' obj.DeviceName]);
+            disp(['  OperationMode        = ' char(obj.OperationMode)]);
             %
-            outputState                  = obj.OutputState;
-            triggerState                 = obj.TriggerState;
+            disp(['  SourceMode           = ' sourceMode]);
+            disp( '  SourceParameters :');
+            disp(['   .OutputValue        = ' obj.getSourceOutputValue(sourceMode, true)]);
+            disp(['   .Readback           = ' obj.getSourceReadback(sourceMode, true)]);
+            disp(['   .Range              = ' obj.getSourceRange(sourceMode, true)]);
+            disp(['   .AutoRange          = ' obj.getSourceAutoRange(sourceMode, true)]);
+            disp(['   .LimitValue         = ' obj.getSourceLimitValue(sourceMode, true)]);
+            disp(['   .LimitTripped       = ' obj.getSourceLimitTripped(sourceMode, true)]);
+            disp(['   .OVProtectionValue  = ' obj.getSourceOVProtectionValue(sourceMode, true)]);
+            disp(['   .OVProtectionTripped= ' obj.getSourceOVProtectionTripped(sourceMode, true)]);
+            disp(['   .Delay              = ' obj.getSourceDelay(sourceMode, true)]);
+            disp(['   .AutoDelay          = ' obj.getSourceAutoDelay(sourceMode, true)]);
+            disp(['   .HighCapMode        = ' obj.getSourceHighCapMode(sourceMode, true)]);
+            %
+            disp(['  SenseMode            = ' senseMode]);
+            disp( '  SenseParameters  :');
+            disp(['   .AverageCount       = ' obj.getSenseAverageCount(senseMode, true)]);
+            disp(['   .AverageMode        = ' obj.getSenseAverageMode(senseMode, true)]);
+            % ToDo: extent
+            disp(['   .Unit               = ' obj.getSenseUnit(senseMode, true)]);
+            %
+            switch obj.OutputState
+                case 0   , outputStateMsg = 'Off (0)';
+                case 1   , outputStateMsg = 'On  (1)';
+                otherwise, outputStateMsg = 'Error - unexpected response';
+            end
+            disp(['  Output State         = ' outputStateMsg]);
+            disp(['  Trigger State        = ' obj.TriggerState]);
 
-            disp(['  OperationMode      = ' char(operationMode)]);
-            disp(['  SourceMode         = ' char(sourceMode)]);
-            disp(['  SenseMode          = ' char(senseMode)]);
-            disp(['  Source Parameters  : ' '']);
-            disp(sourceParameters); % ToDo : with units !!!
-            disp(['  Sense Parameters  : ' '']);
-            disp(senseParameters);  % ToDo : with units !!!
-            disp(['  Output State       = ' num2str(outputState)]);
-            disp(['  Trigger State      = ' triggerState]);
+            % ToDo: ...
 
-
-            % ...
-
-
+            disp(' ');
+            % -------------------------------------------------------------
             % wait for operation complete
             obj.opc;
-
-            % set final status
-            if isnan(status)
-                % no error so far ==> set to 0 (fine)
-                status = 0;
-            end
 
             % restore state of ShowMessages
             obj.ShowMessages = showMessages;
 
-            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  showSettings failed');
-            end
         end
+
+
 
 
 
@@ -1049,14 +1046,14 @@ classdef SMU24xx < VisaIF
             %    1 for 'on'
             %  NaN for unknown state (error)
 
-            [outpState, status] = obj.query(':Output:State?');
+            [response, status] = obj.query(':Output:State?');
             %
             if status ~= 0
                 outputState = NaN; % unknown state, error
             else
                 % remap state
-                outpState = lower(char(outpState));
-                switch outpState
+                response = lower(char(response));
+                switch response
                     case '0'   , outputState = 0;
                     case '1'   , outputState = 1;
                     otherwise  , outputState = NaN;
@@ -1082,16 +1079,12 @@ classdef SMU24xx < VisaIF
                 disp(['SMU24xx Invalid parameter value for property ' ...
                     '''OutputState''.']);
                 return
+            else
+                param = double(logical(param)); % coerce to 0 or 1
             end
 
-            % map to on/off
-            if logical(param)
-                param = 'On';
-            else
-                param = 'Off';
-            end
             % set property
-            obj.write([':Output:State ' param]);
+            obj.write([':Output:State ' num2str(param)]);
 
             % readback and verify
             paramSet = obj.OutputState;
@@ -1292,7 +1285,7 @@ classdef SMU24xx < VisaIF
                         paramValue = obj.getSenseAverageCount(funcMode);
                     case 'AverageMode'
                         paramValue = obj.getSenseAverageMode(funcMode);
-                    % ToDo: extend fields
+                        % ToDo: extend fields
                     case 'Unit'
                         paramValue = obj.getSenseUnit(funcMode);
                     otherwise
@@ -1322,7 +1315,7 @@ classdef SMU24xx < VisaIF
                         obj.setSenseAverageCount(paramValue, funcMode);
                     case 'AverageMode'
                         obj.setSenseAverageMode(paramValue, funcMode);
-                    % ToDo: extend fields
+                        % ToDo: extend fields
                     case 'Unit'
                         obj.setSenseUnit(paramValue, funcMode);
                     otherwise
@@ -1335,8 +1328,10 @@ classdef SMU24xx < VisaIF
         % -----------------------------------------------------------------
         % overload method that analyze input to detect patterns like
         % value = obj.myproperty.myfield ==> for get methods
-        function paramValue = subsref(obj, S)
-            propList = {'SourceParameters', 'SenseParameters'};
+        function varargout = subsref(obj, S)
+            propList   = {'SourceParameters', 'SenseParameters'};
+            % list of methods wihout output arguments (nargout = 0)
+            methodList = {'doc', 'delete', 'showSettings'};
 
             if numel(S) >= 2 && strcmp(S(1).type, '.') ...
                     && any(strcmp(S(1).subs, propList)) ...
@@ -1399,11 +1394,17 @@ classdef SMU24xx < VisaIF
                                     '"SenseParameters"']);
                         end
                 end
+                varargout{1} = paramValue;
+                return
+            elseif numel(S) == 1 && strcmp(S(1).type, '.') ...
+                    && any(strcmp(S(1).subs, methodList)) %#ok<ISCL>
+                % executes obj.nameOfMethod
+                feval(S(1).subs, obj);
                 return
             end
 
             % otherwise, fall back to default behavior
-            paramValue = builtin('subsref', obj, S);
+            varargout{:} = builtin('subsref', obj, S);
         end
 
         % overload method that analyze input to detect patterns like
@@ -1501,7 +1502,7 @@ classdef SMU24xx < VisaIF
             end
 
             % otherwise, fall back to default behavior
-            obj = builtin('subsasgn', obj, S, value);
+            obj = builtin('subsasgn', obj, S, paramValue);
         end
 
         % -----------------------------------------------------------------
@@ -1695,17 +1696,39 @@ classdef SMU24xx < VisaIF
         % ==> combined in public struct-property 'SourceParameters'
 
         % get: function mode (of source) is either 'voltage' or 'current'
-        function [param, paramAsMsg] = getSourceOutputValue(obj, funcMode)
+        function param = getSourceOutputValue(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % config: request either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                UnitMsg = ' A (current-source)';
+            elseif strcmpi(funcMode, 'voltage')
+                UnitMsg = ' V (voltage-source)';
+            else
+                UnitMsg = ' Error, unknown source-function-mode';
+            end
 
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Source:' funcMode ...
+                ':Level:Amplitude?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) UnitMsg];
+            end
         end
 
-        function [param, paramAsMsg] = getSourceReadback(obj, funcMode)
+        function param = getSourceReadback(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
             % actual request (SCPI-command)
-            [state, status] = obj.query([':Source:' funcMode ':READ:BACK?']);
+            [state, status] = obj.query([':Source:' funcMode ':Read:Back?']);
             if status ~= 0
                 param = NaN; % unknown value, error
             else
@@ -1721,25 +1744,66 @@ classdef SMU24xx < VisaIF
             else
                 paramAsMsg = [char(state) ' - unexpected response'];
             end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
-        function [param, paramAsMsg] = getSourceRange(obj, funcMode)
+        function param = getSourceRange(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % config: request either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                UnitMsg = ' A (current-source)';
+            elseif strcmpi(funcMode, 'voltage')
+                UnitMsg = ' V (voltage-source)';
+            else
+                UnitMsg = ' Error, unknown source-function-mode';
+            end
 
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Source:' funcMode ':Range?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) UnitMsg];
+            end
         end
 
-        function [param, paramAsMsg] = getSourceAutoRange(obj, funcMode)
+        function param = getSourceAutoRange(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Source:' funcMode ':Range:Auto?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
 
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
-        function [param, paramAsMsg] = getSourceLimitValue(obj, funcMode)
+        function param = getSourceLimitValue(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
             % config: request either voltage or current limit value
             if strcmpi(funcMode, 'current')
                 limitMode    = 'Vlimit';
@@ -1763,10 +1827,14 @@ classdef SMU24xx < VisaIF
             end
 
             % create more helpful message to display (method 'showSettings')
-            paramAsMsg = [num2str(param) limitUnitMsg];
+            if outAsChar
+                param = [num2str(param) limitUnitMsg];
+            end
         end
 
-        function [param, paramAsMsg] = getSourceLimitTripped(obj, funcMode)
+        function param = getSourceLimitTripped(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
             % config: request either voltage or current limit value
             if strcmpi(funcMode, 'current')
                 limitMode    = 'Vlimit';
@@ -1798,9 +1866,14 @@ classdef SMU24xx < VisaIF
             else
                 paramAsMsg = [char(tripped) ' - unexpected response'];
             end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
-        function [param, paramAsMsg] = getSourceOVProtectionValue(obj, ~)
+        function param = getSourceOVProtectionValue(obj, ~, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
             % actual request (SCPI-command)
             [limit, status] = obj.query(':Source:Voltage:Protection:Level?');
             if status ~= 0
@@ -1818,10 +1891,14 @@ classdef SMU24xx < VisaIF
             end
 
             % create more helpful message to display (method 'showSettings')
-            paramAsMsg = [num2str(param) ' V (voltage-limit)'];
+            if outAsChar
+                param = [num2str(param) ' V (voltage-limit)'];
+            end
         end
 
-        function [param, paramAsMsg] = getSourceOVProtectionTripped(obj, ~)
+        function param = getSourceOVProtectionTripped(obj, ~, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
             % get OVP state:
             %    0 for 'not exceed the OVP limit',
             %    1 for 'overvoltage protection is active, voltage is restricted'
@@ -1844,42 +1921,146 @@ classdef SMU24xx < VisaIF
             else
                 paramAsMsg = [char(tripped) ' - unexpected response'];
             end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
-        function [param, paramAsMsg] = getSourceDelay(obj, funcMode)
+        function param = getSourceDelay(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Source:' funcMode ':Delay?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
 
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) ' s'];
+            end
         end
 
-        function [param, paramAsMsg] = getSourceAutoDelay(obj, funcMode)
+        function param = getSourceAutoDelay(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Source:' funcMode ':Delay:Auto?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
 
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
-        function [param, paramAsMsg] = getSourceHighCapMode(obj, funcMode)
+        function param = getSourceHighCapMode(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Source:' funcMode ':High:Cap?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
 
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
+            end
         end
 
         % set: function mode (of source) is either 'voltage' or 'current'
         function status = setSourceOutputValue(obj, param, funcMode)
+            propName = '''SourceParameters.OutputValue''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % config: check either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                paramMin  = -1.05;  % +/- 1.05 A for Keithley 2450
+                paramMax  =  1.05;
+                paramUnit = 'A';
+            elseif strcmpi(funcMode, 'voltage')
+                paramMin  = -210;   % +/- 210 V  for Keithley 2450
+                paramMax  =  210;
+                paramUnit = 'V';
+            else
+                paramMin  = [];
+                paramMax  = [];
+                paramUnit = '';
+            end
+
+            % further checks and clipping
+            param = min(param, paramMax);
+            param = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Source:' funcMode ':Level:Amplitude ' ...
+                    num2str(param)]);
+
+                % readback and verify (max 1% difference)
+                paramSet = obj.getSourceOutputValue(funcMode);
+                if (abs(paramSet - param) > 1e-2*param || ...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %3.6f %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %3.6f %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceReadback(obj, param, funcMode)
-            propName = '''SourceParameters.SourceReadback''';
+            propName = '''SourceParameters.Readback''';
 
             % check input argument
             if ischar(param) || isStringScalar(param)
@@ -1906,17 +2087,15 @@ classdef SMU24xx < VisaIF
             if ~isempty(param) && ~isnan(param)
                 param = double(logical(param));
                 % set property
-                obj.write([':Source:' funcMode ':READ:BACK ' num2str(param)]);
+                obj.write([':Source:' funcMode ':Read:Back ' num2str(param)]);
 
-                % readback and verify (max 1% difference)
+                % readback and verify
                 paramSet = obj.getSourceReadback(funcMode);
                 if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
-                    disp(['SMU24xx parameter value for property ' propName ...
-                        ' was not set properly.']);
-                    fprintf('  wanted value      : %g\n', ...
-                        param);
-                    fprintf('  actually set value: %g\n', ...
-                        paramSet);
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
                     % readback reported mismatch
                     status = 2;
                 else
@@ -1930,17 +2109,115 @@ classdef SMU24xx < VisaIF
         end
 
         function status = setSourceRange(obj, param, funcMode)
+            propName = '''SourceParameters.Range''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % config: check either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                paramMin  = 1e-11;  % 10 nA to 1 A   for Keithley 2450
+                paramMax  = 1;
+                paramUnit = 'A';
+            elseif strcmpi(funcMode, 'voltage')
+                paramMin  = 0.02;   % 20 mV to 200 V for Keithley 2450
+                paramMax  = 200;
+                paramUnit = 'V';
+            else
+                paramMin  = [];
+                paramMax  = [];
+                paramUnit = '';
+            end
+
+            % further checks and clipping
+            param = min(param, paramMax);
+            param = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Source:' funcMode ':Range ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSourceRange(funcMode);
+                if (1.05*paramSet < param || paramSet > 9.6*param ||...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %3.6f %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %3.6f %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceAutoRange(obj, param, funcMode)
+            propName = '''SourceParameters.AutoRange''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Source:' funcMode ':Range:Auto ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSourceAutoRange(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceLimitValue(obj, param, funcMode)
@@ -1961,7 +2238,7 @@ classdef SMU24xx < VisaIF
                     'property ' propName '.']);
             end
 
-            % config: request either voltage or current limit value
+            % config: check either voltage or current limit value
             if strcmpi(funcMode, 'current')
                 limitMode = 'Vlimit';
                 limitMin  = 0.002; % min 0.002 V for Keithley 2450
@@ -2056,7 +2333,7 @@ classdef SMU24xx < VisaIF
 
                 % readback and verify (max 1% difference)
                 getStr = obj.query(':Source:Voltage:Protection:Level?');
-                if ~strmpi(setStr, getStr) && ~strcmpi(obj.ShowMessages, 'none')
+                if ~strcmpi(setStr, getStr) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
                     disp(['  wanted value      : ' setStr '(voltage)']);
@@ -2076,24 +2353,154 @@ classdef SMU24xx < VisaIF
         % no setSourceOVProtectionTripped method (parameter is read-only)
 
         function status = setSourceDelay(obj, param, funcMode)
+            propName = '''SourceParameters.Delay''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % config: coerce value
+            paramMin  = 0;    % (0 to 10000)s for Keithley 2450
+            paramMax  = 1;    % 1e4 : reduce this number to 1 second to
+            paramUnit = 's';  % avoid timeout
+
+            % further checks and clipping
+            param = min(param, paramMax);
+            param = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Source:' funcMode ':Delay ' num2str(param)]);
+
+                % readback and verify (max 1% difference)
+                paramSet = obj.getSourceDelay(funcMode);
+                if (abs(paramSet - param) > 1e-2*param || ...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %3.6f %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %3.6f %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceAutoDelay(obj, param, funcMode)
+            propName = '''SourceParameters.AutoDelay''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Source:' funcMode ':Delay:Auto ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSourceAutoDelay(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSourceHighCapMode(obj, param, funcMode)
+            propName = '''SourceParameters.HighCapMode''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Source:' funcMode ':High:Cap ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSourceHighCapMode(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         % -----------------------------------------------------------------
@@ -2102,30 +2509,36 @@ classdef SMU24xx < VisaIF
 
         % get: function mode (of sense) is either 'voltage' or 'current'
         %      manually it can also be set to 'resistance'
-        function [param, paramAsMsg] = getSenseAverageCount(obj, funcMode)
+        function param = getSenseAverageCount(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
             % init output
             param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
-
+            if outAsChar
+                param = 'get method for this parameter is not implemented yet';
+            end
         end
 
-        function [param, paramAsMsg] = getSenseAverageMode(obj, funcMode)
+        function param = getSenseAverageMode(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
             % init output
             param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
-
+            if outAsChar
+                param = 'get method for this parameter is not implemented yet';
+            end
         end
 
         % ToDo: more fields ...
 
-        function [param, paramAsMsg] = getSenseUnit(obj, funcMode)
+        function param = getSenseUnit(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
 
             % init output
             param      = NaN;
-            paramAsMsg = 'get method for this parameter is not implemented yet';
-
+            if outAsChar
+                param = 'get method for this parameter is not implemented yet';
+            end
         end
 
         % set: function mode (of sense) is either 'voltage' or 'current'

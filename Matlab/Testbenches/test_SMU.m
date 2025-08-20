@@ -7,8 +7,8 @@ clc;
 SMUName = 'KEITHLEY-2450';
 
 %interface = 'visa-usb';
-%interface = 'visa-tcpip';
-interface = 'demo';
+interface = 'visa-tcpip';
+%interface = 'demo';
 %interface = '';
 
 showmsg   = 'all';
@@ -88,27 +88,11 @@ disp(eventLog);
 % low level commands
 if false
 
-    mySMU.query('Source:Function?');
-    mySMU.write('Source:Function Current');
-    mySMU.write('Source:Function Voltage');
-    mySMU.query('Source:Function?');
-
-    mySMU.query('Sense:Function?');
-    mySMU.write('Sense:Function "Current"');
-    mySMU.write('Sense:Function "Voltage"');
-    mySMU.query('Sense:Function?');
-
-
-
-
-    mySMU.write('Source:Function:Mode Current');
-    mySMU.write('Source:Current:Range 100e-3'); % or ':Auto On'
+    mySMU.query(':Measure? "defbuffer1",reading,unit,source,sourunit,tstamp');
 
     mySMU.write('Sense:Function "Voltage"');
     mySMU.write('Sense:Voltage:Range 20');      % or ':Auto On'
     mySMU.write('Sense:Voltage:Rsense Off');    % On
-
-    mySMU.LimitVoltageValue = 3.5;
 
     start  = 10e-6;
     stop   = 30e-3;
