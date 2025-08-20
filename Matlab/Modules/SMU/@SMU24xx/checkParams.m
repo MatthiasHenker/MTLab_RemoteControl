@@ -41,12 +41,6 @@ end
 
 % -------------------------------------------------------------------------
 % initialize all parameter values (empty)
-func         = ''; % configureSource, configureMeasure
-level        = ''; % configureSource
-limit        = ''; % configureSource
-range        = ''; % configureSource, configureMeasure
-nplc         = ''; % configureMeasure
-fileName     = ''; % tbd.
 frequency    = ''; % outputTone
 duration     = ''; % outputTone
 screen       = ''; % configureDisplay
@@ -86,35 +80,6 @@ for nArgsIn = 2:2:length(inVars)
         % copy coerced parameter value to the right variable
         switch lower(char(paramName))
             % list of supported parameters
-            case {'funct', 'func', 'fun'}
-                % accept all scalar values [+-a-zA-Z0-9.] no spaces
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    func = paramValue;
-                end
-            case {'level', 'lvl'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    level = paramValue;
-                end
-            case {'limit', 'lim'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    limit = paramValue;
-                end
-            case {'range', 'rng'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    range = paramValue;
-                end
-            case {'nplc'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    nplc = paramValue;
-                end
-            case {'filename', 'fname'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-\\/:]+$', 'once'))
-                    try
-                        fileName = char(java.io.File(paramValue).toPath);
-                    catch
-                        fileName = '';
-                    end
-                end
             case {'frequeny', 'freq'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     frequency = paramValue;
@@ -167,17 +132,6 @@ end
 % -------------------------------------------------------------------------
 % copy command-relevant parameters
 switch command
-    case 'configureSource'
-        outVars = { ...
-            'function'  , func       , ...
-            'level'     , level      , ...
-            'limit'     , limit      , ...
-            'range'     , range      };
-    case 'configureMeasure'
-        outVars = { ...
-            'function'  , func       , ...
-            'range'     , range      , ...
-            'nplc'      , nplc       };
     case 'outputTone'
         outVars = { ...
             'frequency' , frequency  , ...
@@ -192,12 +146,6 @@ switch command
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
-            'function'  , func       , ...
-            'level'     , level      , ...
-            'limit'     , limit      , ...
-            'range'     , range      , ...
-            'nplc'      , nplc       , ...
-            'filename'  , fileName   , ...
             'frequency' , frequency  , ...
             'duration'  , duration   , ...
             'screen'    , screen     , ...
