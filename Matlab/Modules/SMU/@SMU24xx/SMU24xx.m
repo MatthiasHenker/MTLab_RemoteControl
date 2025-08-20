@@ -962,14 +962,26 @@ classdef SMU24xx < VisaIF
             showMessages     = obj.ShowMessages;
             obj.ShowMessages = 'none';
 
+            % ToDo: add more properties
+
             % -------------------------------------------------------------
             % actual code
             sourceMode = obj.SourceMode;
             senseMode  = obj.SenseMode;
 
+            disp( ' ');
             disp(['Show settings of ' obj.DeviceName]);
+            disp(['  AvailableBuffers     = ' ...
+                char(join(obj.AvailableBuffers, ', '))]);
+            switch obj.OutputState
+                case 0   , outputStateMsg = 'Off (0)';
+                case 1   , outputStateMsg = 'On  (1)';
+                otherwise, outputStateMsg = 'Error - unexpected response';
+            end
+            disp(['  OutputState          = ' outputStateMsg]);
+            disp(['  TriggerState         = ' obj.TriggerState]);
+            disp( ' ');
             disp(['  OperationMode        = ' char(obj.OperationMode)]);
-            %
             disp(['  SourceMode           = ' sourceMode]);
             disp( '  SourceParameters :');
             disp(['   .OutputValue        = ' obj.getSourceOutputValue(sourceMode, true)]);
@@ -991,17 +1003,16 @@ classdef SMU24xx < VisaIF
             % ToDo: extent
             disp(['   .Unit               = ' obj.getSenseUnit(senseMode, true)]);
             %
-            switch obj.OutputState
-                case 0   , outputStateMsg = 'Off (0)';
-                case 1   , outputStateMsg = 'On  (1)';
-                otherwise, outputStateMsg = 'Error - unexpected response';
+            disp( ' ');
+            errTable = obj.ErrorMessages;
+            if ~isempty(errTable)
+                disp( '  ErrorMessages        :');
+                disp(errTable);
+            else
+                disp( '  ErrorMessages        = none');
+                disp( ' ');
             end
-            disp(['  Output State         = ' outputStateMsg]);
-            disp(['  Trigger State        = ' obj.TriggerState]);
 
-            % ToDo: ...
-
-            disp(' ');
             % -------------------------------------------------------------
             % wait for operation complete
             obj.opc;
