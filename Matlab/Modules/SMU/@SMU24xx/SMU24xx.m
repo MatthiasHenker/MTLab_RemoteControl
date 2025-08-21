@@ -2654,10 +2654,25 @@ classdef SMU24xx < VisaIF
         function param = getSenseAutoRange(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Sense:' funcMode ':Range:Auto?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
             end
         end
 
@@ -2674,10 +2689,25 @@ classdef SMU24xx < VisaIF
         function param = getSenseAutoRangeRebound(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Sense:' funcMode ':Range:Auto:Rebound?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
             end
         end
 
@@ -2747,30 +2777,76 @@ classdef SMU24xx < VisaIF
         function param = getSenseRemoteSensing(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Sense:' funcMode ':Rsense?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0) : 2-wire sensing';
+            elseif param == 1
+                paramAsMsg = 'On  (1) : 4-wire sensing';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
             end
         end
 
         function param = getSenseAutoZero(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Sense:' funcMode ':Azero:State?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = 'Off (0)';
+            elseif param == 1
+                paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
             end
         end
 
         function param = getSenseOffsetCompensation(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [state, status] = obj.query([':Sense:' funcMode ':Ocompensated?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = ['Off (0)'];
+            elseif param == 1
+                paramAsMsg = ['On  (1) : only applied to ' ...
+                    'resistance measurements (Unit = "ohm")'];
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
             end
         end
 
