@@ -228,7 +228,7 @@
 classdef SMU24xx < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-08-20'; % updated release date
+        SMUDate       = '2025-08-21'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -260,23 +260,30 @@ classdef SMU24xx < VisaIF
             {'SVMI', 'Source:V_Sense:I',  ...
             'SIMV', 'Source:I_Sense:V'});
         %
-        DefaultSourceParameters   = struct( ...
-            OutputValue           = 0     , ...
-            Readback              = true  , ...
-            Range                 = 0     , ...
-            AutoRange             = true  , ...
-            LimitValue            = 0     , ...
-            LimitTripped          = []    , ... % read-only
-            OVProtectionValue     = 0     , ...
-            OVProtectionTripped   = []    , ... % read-only
-            Delay                 = 0     , ...
-            AutoDelay             = true  , ...
-            HighCapMode           = false);
-        DefaultSenseParameters    = struct( ...
-            AverageCount          = 0     , ...
-            AverageMode           = 'repeat' , ...
-            ToDo                  = NaN   , ...  % ToDo: extend fields
-            Unit                  = 'ohm');
+        DefaultSourceParameters    = struct(   ...
+            OutputValue            = 0       , ...
+            Readback               = true    , ...
+            Range                  = 0       , ...
+            AutoRange              = true    , ...
+            LimitValue             = 0       , ...
+            LimitTripped           = []      , ... % read-only
+            OVProtectionValue      = 0       , ...
+            OVProtectionTripped    = []      , ... % read-only
+            Delay                  = 0       , ...
+            AutoDelay              = true    , ...
+            HighCapMode            = false)  ;
+        DefaultSenseParameters     = struct(   ...
+            Unit                   = 'ohm'   , ...
+            Range                  = 0       , ...
+            AutoRange              = true    , ...
+            AutoRangeLowerLimit    = 0       , ...
+            AutoRangeRebound       = false   , ...
+            NPLCycles              = 1       , ...
+            AverageCount           = 0       , ...
+            AverageMode            = 'repeat', ...
+            RemoteSensing          = false   , ...
+            AutoZero               = true    , ...
+            OffsetCompensation     = false   );
         %
         DefaultBuffers             = {'defbuffer1', 'defbuffer2'};
         DefaultOutputToneFrequency = 1e3; % 1 kHz
@@ -560,6 +567,78 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        function showSettings(obj)
+            % save state of ShowMessages and set to silent operation
+            showMessages     = obj.ShowMessages;
+            obj.ShowMessages = 'none';
+
+            % ToDo: add more properties
+
+            % -------------------------------------------------------------
+            % actual code
+            sourceMode = obj.SourceMode;
+            senseMode  = obj.SenseMode;
+
+            disp( ' ');
+            disp(['Show settings of ' obj.DeviceName]);
+            disp(['  AvailableBuffers     = ' ...
+                char(join(obj.AvailableBuffers, ', '))]);
+            switch obj.OutputState
+                case 0   , outputStateMsg = 'Off (0)';
+                case 1   , outputStateMsg = 'On  (1)';
+                otherwise, outputStateMsg = 'Error - unexpected response';
+            end
+            disp(['  OutputState          = ' outputStateMsg]);
+            disp(['  TriggerState         = ' obj.TriggerState]);
+            disp( ' ');
+            disp(['  OperationMode        = ' char(obj.OperationMode)]);
+            disp(['  SourceMode           = ' sourceMode]);
+            disp( '  SourceParameters :');
+            disp(['   .OutputValue        = ' obj.getSourceOutputValue(sourceMode, true)]);
+            disp(['   .Readback           = ' obj.getSourceReadback(sourceMode, true)]);
+            disp(['   .Range              = ' obj.getSourceRange(sourceMode, true)]);
+            disp(['   .AutoRange          = ' obj.getSourceAutoRange(sourceMode, true)]);
+            disp(['   .LimitValue         = ' obj.getSourceLimitValue(sourceMode, true)]);
+            disp(['   .LimitTripped       = ' obj.getSourceLimitTripped(sourceMode, true)]);
+            disp(['   .OVProtectionValue  = ' obj.getSourceOVProtectionValue(sourceMode, true)]);
+            disp(['   .OVProtectionTripped= ' obj.getSourceOVProtectionTripped(sourceMode, true)]);
+            disp(['   .Delay              = ' obj.getSourceDelay(sourceMode, true)]);
+            disp(['   .AutoDelay          = ' obj.getSourceAutoDelay(sourceMode, true)]);
+            disp(['   .HighCapMode        = ' obj.getSourceHighCapMode(sourceMode, true)]);
+            %
+            disp(['  SenseMode            = ' senseMode]);
+            disp( '  SenseParameters  :');
+            disp(['   .Unit               = ' obj.getSenseUnit(senseMode, true)]);
+            disp(['   .Range              = ' obj.getSenseRange(senseMode, true)]);
+            disp(['   .AutoRange          = ' obj.getSenseAutoRange(senseMode, true)]);
+            disp(['   .AutoRangeLowerLimit= ' obj.getSenseAutoRangeLowerLimit(senseMode, true)]);
+            disp(['   .AutoRangeRebound   = ' obj.getSenseAutoRangeRebound(senseMode, true)]);
+            disp(['   .NPLCycles          = ' obj.getSenseNPLCycles(senseMode, true)]);
+            disp(['   .AverageCount       = ' obj.getSenseAverageCount(senseMode, true)]);
+            disp(['   .AverageMode        = ' obj.getSenseAverageMode(senseMode, true)]);
+            disp(['   .RemoteSensing      = ' obj.getSenseRemoteSensing(senseMode, true)]);
+            disp(['   .AutoZero           = ' obj.getSenseAutoZero(senseMode, true)]);
+            disp(['   .OffsetCompensation = ' obj.getSenseOffsetCompensation(senseMode, true)]);
+            %
+            disp( ' ');
+            errTable = obj.ErrorMessages;
+            if ~isempty(errTable)
+                disp( '  ErrorMessages        :');
+                disp(errTable);
+            else
+                disp( '  ErrorMessages        = none');
+                disp( ' ');
+            end
+
+            % -------------------------------------------------------------
+            % wait for operation complete
+            obj.opc;
+
+            % restore state of ShowMessages
+            obj.ShowMessages = showMessages;
+
+        end
+
         function status = outputEnable(obj)
             % Enable SMU output
             if ~strcmpi(obj.ShowMessages, 'none')
@@ -714,8 +793,36 @@ classdef SMU24xx < VisaIF
                 % ==> no readback for verification
             end
 
+            % add a pause to allow activation of trigger
+            pause(1); % 1 second
+
             % set final status
             if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  restartTrigger failed');
+            end
+        end
+
+        function status = refreshZeroReference(obj)
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  refresh of the reference and zero measurement');
+            end
+
+            status = NaN; % init
+
+            if obj.write(':Sense:Azero:Once')
+                status = -1;
+            end
+
+            [~, opcStatus] = obj.opc;
+
+            % set final status
+            if isnan(status) && ~logical(opcStatus)
                 % no error so far ==> set to 0 (fine)
                 status = 0;
             end
@@ -956,72 +1063,6 @@ classdef SMU24xx < VisaIF
                 disp('  configureDisplay failed');
             end
         end
-
-        function showSettings(obj)
-            % save state of ShowMessages and set to silent operation
-            showMessages     = obj.ShowMessages;
-            obj.ShowMessages = 'none';
-
-            % ToDo: add more properties
-
-            % -------------------------------------------------------------
-            % actual code
-            sourceMode = obj.SourceMode;
-            senseMode  = obj.SenseMode;
-
-            disp( ' ');
-            disp(['Show settings of ' obj.DeviceName]);
-            disp(['  AvailableBuffers     = ' ...
-                char(join(obj.AvailableBuffers, ', '))]);
-            switch obj.OutputState
-                case 0   , outputStateMsg = 'Off (0)';
-                case 1   , outputStateMsg = 'On  (1)';
-                otherwise, outputStateMsg = 'Error - unexpected response';
-            end
-            disp(['  OutputState          = ' outputStateMsg]);
-            disp(['  TriggerState         = ' obj.TriggerState]);
-            disp( ' ');
-            disp(['  OperationMode        = ' char(obj.OperationMode)]);
-            disp(['  SourceMode           = ' sourceMode]);
-            disp( '  SourceParameters :');
-            disp(['   .OutputValue        = ' obj.getSourceOutputValue(sourceMode, true)]);
-            disp(['   .Readback           = ' obj.getSourceReadback(sourceMode, true)]);
-            disp(['   .Range              = ' obj.getSourceRange(sourceMode, true)]);
-            disp(['   .AutoRange          = ' obj.getSourceAutoRange(sourceMode, true)]);
-            disp(['   .LimitValue         = ' obj.getSourceLimitValue(sourceMode, true)]);
-            disp(['   .LimitTripped       = ' obj.getSourceLimitTripped(sourceMode, true)]);
-            disp(['   .OVProtectionValue  = ' obj.getSourceOVProtectionValue(sourceMode, true)]);
-            disp(['   .OVProtectionTripped= ' obj.getSourceOVProtectionTripped(sourceMode, true)]);
-            disp(['   .Delay              = ' obj.getSourceDelay(sourceMode, true)]);
-            disp(['   .AutoDelay          = ' obj.getSourceAutoDelay(sourceMode, true)]);
-            disp(['   .HighCapMode        = ' obj.getSourceHighCapMode(sourceMode, true)]);
-            %
-            disp(['  SenseMode            = ' senseMode]);
-            disp( '  SenseParameters  :');
-            disp(['   .AverageCount       = ' obj.getSenseAverageCount(senseMode, true)]);
-            disp(['   .AverageMode        = ' obj.getSenseAverageMode(senseMode, true)]);
-            % ToDo: extent
-            disp(['   .Unit               = ' obj.getSenseUnit(senseMode, true)]);
-            %
-            disp( ' ');
-            errTable = obj.ErrorMessages;
-            if ~isempty(errTable)
-                disp( '  ErrorMessages        :');
-                disp(errTable);
-            else
-                disp( '  ErrorMessages        = none');
-                disp( ' ');
-            end
-
-            % -------------------------------------------------------------
-            % wait for operation complete
-            obj.opc;
-
-            % restore state of ShowMessages
-            obj.ShowMessages = showMessages;
-
-        end
-
 
 
 
@@ -1292,13 +1333,28 @@ classdef SMU24xx < VisaIF
             for idx = 1 : length(allFields)
                 paramName  = allFields{idx};
                 switch paramName
+                    case 'Unit'
+                        paramValue = obj.getSenseUnit(funcMode);
+                    case 'Range'
+                        paramValue = obj.getSenseRange(funcMode);
+                    case 'AutoRange'
+                        paramValue = obj.getSenseAutoRange(funcMode);
+                    case 'AutoRangeLowerLimit'
+                        paramValue = obj.getSenseAutoRangeLowerLimit(funcMode);
+                    case 'AutoRangeRebound'
+                        paramValue = obj.getSenseAutoRangeRebound(funcMode);
+                    case 'NPLCycles'
+                        paramValue = obj.getSenseNPLCycles(funcMode);
                     case 'AverageCount'
                         paramValue = obj.getSenseAverageCount(funcMode);
                     case 'AverageMode'
                         paramValue = obj.getSenseAverageMode(funcMode);
-                        % ToDo: extend fields
-                    case 'Unit'
-                        paramValue = obj.getSenseUnit(funcMode);
+                    case 'RemoteSensing'
+                        paramValue = obj.getSenseRemoteSensing(funcMode);
+                    case 'AutoZero'
+                        paramValue = obj.getSenseAutoZero(funcMode);
+                    case 'OffsetCompensation'
+                        paramValue = obj.getSenseOffsetCompensation(funcMode);
                     otherwise
                         disp(['Error, missing get command in struct ' ...
                             '"SenseParameters"']);
@@ -1322,13 +1378,28 @@ classdef SMU24xx < VisaIF
                 paramName  = inFields{idx};
                 paramValue = params.(paramName);
                 switch paramName
+                    case 'Unit'
+                        obj.setSenseUnit(paramValue, funcMode);
+                    case 'Range'
+                        obj.setSenseRange(paramValue, funcMode);
+                    case 'AutoRange'
+                        obj.setSenseAutoRange(paramValue, funcMode);
+                    case 'AutoRangeLowerLimit'
+                        obj.setSenseAutoRangeLowerLimit(paramValue, funcMode);
+                    case 'AutoRangeRebound'
+                        obj.setSenseAutoRangeRebound(paramValue, funcMode);
+                    case 'NPLCycles'
+                        obj.setSenseNPLCycles(paramValue, funcMode);
                     case 'AverageCount'
                         obj.setSenseAverageCount(paramValue, funcMode);
                     case 'AverageMode'
                         obj.setSenseAverageMode(paramValue, funcMode);
-                        % ToDo: extend fields
-                    case 'Unit'
-                        obj.setSenseUnit(paramValue, funcMode);
+                    case 'RemoteSensing'
+                        obj.setSenseRemoteSensing(paramValue, funcMode);
+                    case 'AutoZero'
+                        obj.setSenseAutoZero(paramValue, funcMode);
+                    case 'OffsetCompensation'
+                        obj.setSenseOffsetCompensation(paramValue, funcMode);
                     otherwise
                         disp(['Error, missing set command in struct ' ...
                             '"SenseParameters"']);
@@ -1393,13 +1464,28 @@ classdef SMU24xx < VisaIF
                         end
                     case 'SenseParameters'
                         switch myField
+                            case 'Unit'
+                                paramValue = obj.getSenseUnit(funcMode);
+                            case 'Range'
+                                paramValue = obj.getSenseRange(funcMode);
+                            case 'AutoRange'
+                                paramValue = obj.getSenseAutoRange(funcMode);
+                            case 'AutoRangeLowerLimit'
+                                paramValue = obj.getSenseAutoRangeLowerLimit(funcMode);
+                            case 'AutoRangeRebound'
+                                paramValue = obj.getSenseAutoRangeRebound(funcMode);
+                            case 'NPLCycles'
+                                paramValue = obj.getSenseNPLCycles(funcMode);
                             case 'AverageCount'
                                 paramValue = obj.getSenseAverageCount(funcMode);
                             case 'AverageMode'
                                 paramValue = obj.getSenseAverageMode(funcMode);
-                                % ToDo: extend field list
-                            case 'Unit'
-                                paramValue = obj.getSenseUnit(funcMode);
+                            case 'RemoteSensing'
+                                paramValue = obj.getSenseRemoteSensing(funcMode);
+                            case 'AutoZero'
+                                paramValue = obj.getSenseAutoZero(funcMode);
+                            case 'OffsetCompensation'
+                                paramValue = obj.getSenseOffsetCompensation(funcMode);
                             otherwise
                                 disp(['Error, unknown field in struct ' ...
                                     '"SenseParameters"']);
@@ -1497,13 +1583,28 @@ classdef SMU24xx < VisaIF
                         end
                     case 'SenseParameters'
                         switch myField
+                            case 'Unit'
+                                obj.setSenseUnit(paramValue, funcMode);
+                            case 'Range'
+                                obj.setSenseRange(paramValue, funcMode);
+                            case 'AutoRange'
+                                obj.setSenseAutoRange(paramValue, funcMode);
+                            case 'AutoRangeLowerLimit'
+                                obj.setSenseAutoRangeLowerLimit(paramValue, funcMode);
+                            case 'AutoRangeRebound'
+                                obj.setSenseAutoRangeRebound(paramValue, funcMode);
+                            case 'NPLCycles'
+                                obj.setSenseNPLCycles(paramValue, funcMode);
                             case 'AverageCount'
                                 obj.setSenseAverageCount(paramValue, funcMode);
                             case 'AverageMode'
                                 obj.setSenseAverageMode(paramValue, funcMode);
-                                % ToDo: extend field list
-                            case 'Unit'
-                                obj.setSenseUnit(paramValue, funcMode);
+                            case 'RemoteSensing'
+                                obj.setSenseRemoteSensing(paramValue, funcMode);
+                            case 'AutoZero'
+                                obj.setSenseAutoZero(paramValue, funcMode);
+                            case 'OffsetCompensation'
+                                obj.setSenseOffsetCompensation(paramValue, funcMode);
                             otherwise
                                 disp(['Error, unknown field in struct ' ...
                                     '"SenseParameters"']);
@@ -2344,6 +2445,8 @@ classdef SMU24xx < VisaIF
 
                 % readback and verify (max 1% difference)
                 getStr = obj.query(':Source:Voltage:Protection:Level?');
+                getStr = char(getStr);
+
                 if ~strcmpi(setStr, getStr) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
@@ -2520,61 +2623,373 @@ classdef SMU24xx < VisaIF
 
         % get: function mode (of sense) is either 'voltage' or 'current'
         %      manually it can also be set to 'resistance'
+        function param = getSenseUnit(obj, funcMode, ~)
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ':Unit?']);
+            if status ~= 0
+                param = 'Error - communication problem';
+            else
+                % convert value
+                param = lower(char(response));
+                switch param
+                    case 'volt', param = 'volt';
+                    case 'amp' , param = 'ampere';
+                    case 'ohm' , param = 'ohm';
+                    case 'watt', param = 'watt';
+                    otherwise  , param = 'Error - unexpected response';
+                end
+            end
+        end
+
+        function param = getSenseRange(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseAutoRange(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseAutoRangeLowerLimit(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseAutoRangeRebound(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseNPLCycles(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
         function param = getSenseAverageCount(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ...
+                ':Average:State?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
+
+            if param == 0
+                paramAsMsg = '0 (disabled averaging)';
+            elseif param == 1
+                % now also request actual filter count
+                [response, status] = obj.query([':Sense:' funcMode ...
+                    ':Average:Count?']);
+                if status ~= 0
+                    param = NaN; % unknown value, error
+                else
+                    % convert value
+                    param = str2double(char(response));
+                end
+                paramAsMsg = num2str(param, '%d');
+            else
+                paramAsMsg = 'error - unexpected response';
+            end
+
+            % create more helpful message to display (method 'showSettings')
             if outAsChar
-                param = 'get method for this parameter is not implemented yet';
+                param = paramAsMsg;
             end
         end
 
-        function param = getSenseAverageMode(obj, funcMode, outAsChar)
-            if nargin < 3, outAsChar = false; end
-
-            % init output
-            param      = NaN;
-            if outAsChar
-                param = 'get method for this parameter is not implemented yet';
+        function param = getSenseAverageMode(obj, funcMode, ~)
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ...
+                ':Average:Tcontrol?']);
+            if status ~= 0
+                param = 'Error - communication problem';
+            else
+                % convert value
+                param = lower(char(response));
+                switch param
+                    case 'rep', param = 'repeatingAverage';
+                    case 'mov', param = 'movingAverage';
+                    otherwise , param = 'Error - unexpected response';
+                end
             end
         end
 
-        % ToDo: more fields ...
-
-        function param = getSenseUnit(obj, funcMode, outAsChar)
+        function param = getSenseRemoteSensing(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            % init output
-            param      = NaN;
             if outAsChar
-                param = 'get method for this parameter is not implemented yet';
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseAutoZero(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
+            end
+        end
+
+        function param = getSenseOffsetCompensation(obj, funcMode, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            if outAsChar
+                param = 'not implemented yet';
+            else
+                param = [];
             end
         end
 
         % set: function mode (of sense) is either 'voltage' or 'current'
         %      manually it can also be set to 'resistance'
+        function status = setSenseUnit(obj, param, funcMode)
+            propName = '''SenseParameters.Unit''';
+
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = lower(char(param));
+            elseif isempty(param)
+                param = '';
+            else
+                param = 'invalid';
+            end
+
+            switch param
+                case {'volt', 'v'}         , param = 'volt';
+                case {'ampere', 'amp', 'a'}, param = 'amp';
+                case {'ohm', 'o'}          , param = 'ohm';
+                case {'watt', 'w'}         , param = 'watt';
+                case ''                    , param = '';
+                otherwise                  , param = '';
+                    if ~strcmpi(obj.ShowMessages, 'none')
+                        disp(['SMU24xx Invalid parameter value for ' ...
+                            'property ' propName '.']);
+                    end
+            end
+
+            % write value to SMU
+            if ~isempty(param)
+                % set property
+                obj.write([':Sense:' funcMode ':Unit ' param]);
+
+                % readback and verify
+                paramSet = char(obj.query([':Sense:' funcMode ':Unit?']));
+                if ~strcmpi(param, paramSet) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %s\n', param);
+                    fprintf('  actually set value: %s\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
+        end
+
+        function status = setSenseRange(obj, param, funcMode)
+            propName = '''SenseParameters.Range''';
+
+            status = 0;
+        end
+
+        function status = setSenseAutoRange(obj, param, funcMode)
+            propName = '''SenseParameters.AutoRange''';
+
+            status = 0;
+        end
+
+        function status = setSenseAutoRangeLowerLimit(obj, param, funcMode)
+            propName = '''SenseParameters.AutoRangeLowerLimit''';
+
+            status = 0;
+        end
+
+        function status = setSenseAutoRangeRebound(obj, param, funcMode)
+            propName = '''SenseParameters.AutoRangeRebound''';
+
+            status = 0;
+        end
+
+        function status = setSenseNPLCycles(obj, param, funcMode)
+            propName = '''SenseParameters.NPLCycles''';
+
+            status = 0;
+        end
+
         function status = setSenseAverageCount(obj, param, funcMode)
+            propName = '''SenseParameters.AverageCount''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = round(str2double(param));
+            elseif isscalar(param) && isreal(param)
+                param = round(double(param));
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
 
+            % further checks and clipping
+            paramMin =   0;  % 0 = off (no averaging)
+            paramMax = 100;  % 1 ... 100 for Keithley 2450
+            param    = min(param, paramMax);
+            param    = max(param, paramMin);
+            if param == 0
+                averState = '0';                  % disable averaging
+                averCnt   = '';                   % do not set counter
+            elseif param > 0
+                averState = '1';                  % enable averaging
+                averCnt   = num2str(param, '%d'); % set counter
+            else
+                averState = ''; % skip
+                averCnt   = ''; % skip
+            end
+
+            if ~isempty(averState)
+                % set property
+                obj.write([':Sense:' funcMode ':Average:State ' ...
+                    averState]);
+                % readback and verify
+                averStateSet = char(obj.query([':Sense:' funcMode ...
+                    ':Average:State?']));
+                if ~isempty(averCnt)
+                    % set property
+                    obj.write([':Sense:' funcMode ':Average:Count ' ...
+                        averCnt]);
+                    % readback and verify
+                    averCntSet = char(obj.query([':Sense:' funcMode ...
+                        ':Average:Count?']));
+                else
+                    averCntSet = '';
+                end
+
+                if ~strcmpi(averState, averStateSet) && ...
+                        ~strcmpi(averCnt, averCntSet) && ...
+                        ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAverageMode(obj, param, funcMode)
+            propName = '''SenseParameters.AverageMode''';
 
-            % init output
-            status = NaN;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = lower(char(param));
+            elseif isempty(param)
+                param = '';
+            else
+                param = 'invalid';
+            end
 
+            switch param
+                case {'repeatingaverage', 'repeating', 'repeat', 'rep'}
+                    param = 'rep';
+                case {'movingaverage', 'moving', 'mov'}
+                    param = 'mov';
+                case ''                    , param = '';
+                otherwise                  , param = '';
+                    if ~strcmpi(obj.ShowMessages, 'none')
+                        disp(['SMU24xx Invalid parameter value for ' ...
+                            'property ' propName '.']);
+                    end
+            end
+
+            % write value to SMU
+            if ~isempty(param)
+                % set property
+                obj.write([':Sense:' funcMode ':Average:Tcontrol ' param]);
+
+                % readback and verify
+                paramSet = char(obj.query([':Sense:' funcMode ...
+                    ':Average:Tcontrol?']));
+                if ~strcmpi(param, paramSet) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %s\n', param);
+                    fprintf('  actually set value: %s\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
-        % ToDo: more fields ...
+        function status = setSenseRemoteSensing(obj, param, funcMode)
+            propName = '''SenseParameters.RemoteSensing''';
 
-        function status = setSenseUnit(obj, param, funcMode)
+            status = 0;
+        end
 
-            % init output
-            status = NaN;
+        function status = setSenseAutoZero(obj, param, funcMode)
+            propName = '''SenseParameters.AutoZero''';
 
+            status = 0;
+        end
+
+        function status = setSenseOffsetCompensation(obj, param, funcMode)
+            propName = '''SenseParameters.OffsetCompensation''';
+
+            status = 0;
         end
 
         % -----------------------------------------------------------------

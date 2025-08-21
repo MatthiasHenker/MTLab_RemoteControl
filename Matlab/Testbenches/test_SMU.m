@@ -11,8 +11,8 @@ interface = 'visa-tcpip';
 %interface = 'demo';
 %interface = '';
 
-showmsg   = 'all';
-%showmsg   = 'few';
+%showmsg   = 'all';
+showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
@@ -46,11 +46,25 @@ mySMU = SMU24xx(SMUName, interface, showmsg);
 % display details (properties) of SMU object
 %mySMU
 
-return
-
-
 %mySMU.reset;
 %mySMU.clear;
+
+testCase = 1;
+
+switch testCase
+    case 1
+        mySMU.OperationMode                      = 'SVMI';
+        mySMU.SourceParameters.OutputValue       = 2.5;
+        mySMU.SourceParameters.OVProtectionValue = 3;
+        mySMU.SourceParameters.LimitValue        = 15e-3;
+        %
+        mySMU.outputEnable;
+        mySMU.restartTrigger;
+        mySMU.showSettings;
+    otherwise, return;
+end
+
+return
 
 %mySMU.configureDisplay(screen= 'X');
 %mySMU.configureDisplay(screen= 'hElp');
