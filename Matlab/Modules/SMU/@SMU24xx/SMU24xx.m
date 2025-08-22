@@ -228,7 +228,7 @@
 classdef SMU24xx < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.0';      % updated release version
-        SMUDate       = '2025-08-21'; % updated release date
+        SMUDate       = '2025-08-22'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -236,7 +236,7 @@ classdef SMU24xx < VisaIF
     end
 
     properties(Dependent)
-        OutputState                  double  % 0, false for 'off' ...
+        OutputState         % 0, false, 'off', 'no' or 1, true, 'on', 'yes' 
         OperationMode       % get: categorical; set: char, string or categorical
         SourceParameters             struct
         SenseParameters              struct
@@ -567,12 +567,11 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        % ToDo: add further properties (when add new ones)
         function showSettings(obj)
             % save state of ShowMessages and set to silent operation
             showMessages     = obj.ShowMessages;
             obj.ShowMessages = 'none';
-
-            % ToDo: add more properties
 
             % -------------------------------------------------------------
             % actual code
@@ -1125,9 +1124,24 @@ classdef SMU24xx < VisaIF
         end
 
         function set.OutputState(obj, param)
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
 
-            % check input argument (already coerced to type double)
-            if ~isscalar(param) || isnan(param) || ~isreal(param)
+            if isnan(param)
                 disp(['SMU24xx Invalid parameter value for property ' ...
                     '''OutputState''.']);
                 return
@@ -1143,8 +1157,8 @@ classdef SMU24xx < VisaIF
             if (paramSet - param) ~= 0 || isnan(paramSet)
                 disp(['SMU24xx parameter value for property ' ...
                     '''OutputState'' was not set properly.']);
-                fprintf('  wanted value      : %d \n', param);
-                fprintf('  actually set value: %d \n', paramSet);
+                fprintf('  wanted value      : %g \n', param);
+                fprintf('  actually set value: %g \n', paramSet);
             end
         end
 
@@ -2267,9 +2281,9 @@ classdef SMU24xx < VisaIF
                         isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
-                    fprintf('  wanted value      : %3.6f %s\n', ...
+                    fprintf('  wanted value      : %g %s\n', ...
                         param   , paramUnit);
-                    fprintf('  actually set value: %3.6f %s\n', ...
+                    fprintf('  actually set value: %g %s\n', ...
                         paramSet, paramUnit);
                     % readback reported mismatch
                     status = 2;
@@ -2644,10 +2658,29 @@ classdef SMU24xx < VisaIF
         function param = getSenseRange(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % config: request either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                UnitMsg = ' A (current-Sense)';
+            elseif strcmpi(funcMode, 'voltage')
+                UnitMsg = ' V (voltage-sense)';
+            elseif strcmpi(funcMode, 'resistance')
+                UnitMsg = ' Error, resistance-sense function is not supported';
             else
-                param = [];
+                UnitMsg = ' Error, unknown sense-function-mode';
+            end
+
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ':Range?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) UnitMsg];
             end
         end
 
@@ -2679,10 +2712,30 @@ classdef SMU24xx < VisaIF
         function param = getSenseAutoRangeLowerLimit(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % config: request either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                UnitMsg = ' A (current-Sense)';
+            elseif strcmpi(funcMode, 'voltage')
+                UnitMsg = ' V (voltage-sense)';
+            elseif strcmpi(funcMode, 'resistance')
+                UnitMsg = ' Error, resistance-sense function is not supported';
             else
-                param = [];
+                UnitMsg = ' Error, unknown sense-function-mode';
+            end
+
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ...
+                ':Range:Auto:LLimit?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value
+                param = str2double(char(response));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) UnitMsg];
             end
         end
 
@@ -2714,10 +2767,18 @@ classdef SMU24xx < VisaIF
         function param = getSenseNPLCycles(obj, funcMode, outAsChar)
             if nargin < 3, outAsChar = false; end
 
-            if outAsChar
-                param = 'not implemented yet';
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Sense:' funcMode ':NPLCycles?']);
+            if status ~= 0
+                param = NaN; % unknown value, error
             else
-                param = [];
+                % convert value
+                param = str2double(char(response));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if outAsChar
+                param = [num2str(param) ' (range: 0.01 .. 10)'];
             end
         end
 
@@ -2746,7 +2807,7 @@ classdef SMU24xx < VisaIF
                     % convert value
                     param = str2double(char(response));
                 end
-                paramAsMsg = num2str(param, '%d');
+                paramAsMsg = [num2str(param, '%d') ' (range: 1 ... 100)'];
             else
                 paramAsMsg = 'error - unexpected response';
             end
@@ -2813,7 +2874,8 @@ classdef SMU24xx < VisaIF
 
             % create more helpful message to display (method 'showSettings')
             if param == 0
-                paramAsMsg = 'Off (0)';
+                paramAsMsg = ['Off (0) : use ''obj.refreshZeroReference''' ...
+                    ' to force a refresh manually'];
             elseif param == 1
                 paramAsMsg = 'On  (1)';
             else
@@ -2838,7 +2900,7 @@ classdef SMU24xx < VisaIF
 
             % create more helpful message to display (method 'showSettings')
             if param == 0
-                paramAsMsg = ['Off (0)'];
+                paramAsMsg = 'Off (0)';
             elseif param == 1
                 paramAsMsg = ['On  (1) : only applied to ' ...
                     'resistance measurements (Unit = "ohm")'];
@@ -2904,31 +2966,283 @@ classdef SMU24xx < VisaIF
         function status = setSenseRange(obj, param, funcMode)
             propName = '''SenseParameters.Range''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % config: check either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                paramMin  = 1e-11;  % 10 nA to 1 A   for Keithley 2450
+                paramMax  = 1;
+                paramUnit = 'A';
+            elseif strcmpi(funcMode, 'voltage')
+                paramMin  = 0.02;   % 20 mV to 200 V for Keithley 2450
+                paramMax  = 200;
+                paramUnit = 'V';
+            else
+                paramMin  = [];
+                paramMax  = [];
+                paramUnit = '';
+            end
+
+            % further checks and clipping
+            param = min(param, paramMax);
+            param = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Sense:' funcMode ':Range ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseRange(funcMode);
+                if (1.05*paramSet < param || paramSet > 9.6*param ||...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %g %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %g %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAutoRange(obj, param, funcMode)
             propName = '''SenseParameters.AutoRange''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Sense:' funcMode ':Range:Auto ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseAutoRange(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAutoRangeLowerLimit(obj, param, funcMode)
             propName = '''SenseParameters.AutoRangeLowerLimit''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % config: check either voltage or current source value
+            if strcmpi(funcMode, 'current')
+                paramMin  = 1e-11;  % 10 nA to 1 A   for Keithley 2450
+                paramMax  = 1;
+                paramUnit = 'A';
+            elseif strcmpi(funcMode, 'voltage')
+                paramMin  = 0.02;   % 20 mV to 200 V for Keithley 2450
+                paramMax  = 200;
+                paramUnit = 'V';
+            else
+                paramMin  = [];
+                paramMax  = [];
+                paramUnit = '';
+            end
+
+            % the lower limit must be less than the upper limit
+            uLimit = str2double(char(obj.query( ...
+                ':sense:current:range:auto:ulimit?')));
+            if ~isnan(uLimit) && ~isempty(paramMin)
+                paramMax = uLimit;
+            end
+            % further checks and clipping
+            param = min(param, paramMax);
+            param = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Sense:' funcMode ':Range:Auto:LLimit ' ...
+                    num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseAutoRangeLowerLimit(funcMode);
+                if (1.05*paramSet < param || paramSet > 9.6*param ||...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %g %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %g %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAutoRangeRebound(obj, param, funcMode)
             propName = '''SenseParameters.AutoRangeRebound''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Sense:' funcMode ':Range:Auto:Rebound ' ...
+                    num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseAutoRangeRebound(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseNPLCycles(obj, param, funcMode)
             propName = '''SenseParameters.NPLCycles''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = str2double(param);
+            elseif isscalar(param) && isreal(param)
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % further checks and clipping
+            paramMin = 0.01;  % 0.01 to 10 for Keithley 2450
+            paramMax = 10;
+            param    = min(param, paramMax);
+            param    = max(param, paramMin);
+
+            if ~isempty(param) && ~isnan(param)
+                % set property
+                obj.write([':Sense:' funcMode ':NPLCycles ' num2str(param)]);
+
+                % readback and verify (max 1% difference)
+                paramSet = obj.getSenseNPLCycles(funcMode);
+                if (abs(paramSet - param) > 1e-2*param || ...
+                        isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' propName ...
+                        ' was not set properly.']);
+                    fprintf('  wanted value      : %g %s\n', ...
+                        param   , paramUnit);
+                    fprintf('  actually set value: %g %s\n', ...
+                        paramSet, paramUnit);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAverageCount(obj, param, funcMode)
@@ -3053,19 +3367,151 @@ classdef SMU24xx < VisaIF
         function status = setSenseRemoteSensing(obj, param, funcMode)
             propName = '''SenseParameters.RemoteSensing''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Sense:' funcMode ':Rsense ' ...
+                    num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseRemoteSensing(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseAutoZero(obj, param, funcMode)
             propName = '''SenseParameters.AutoZero''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Sense:' funcMode ':Azero:State ' ...
+                    num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseAutoZero(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         function status = setSenseOffsetCompensation(obj, param, funcMode)
             propName = '''SenseParameters.OffsetCompensation''';
 
-            status = 0;
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Sense:' funcMode ':Ocompensated ' ...
+                    num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSenseOffsetCompensation(funcMode);
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
         end
 
         % -----------------------------------------------------------------
