@@ -227,32 +227,35 @@
 
 classdef SMU24xx < VisaIF
     properties(Constant = true)
-        SMUVersion    = '0.9.0';      % updated release version
+        SMUVersion    = '0.9.1';      % updated release version
         SMUDate       = '2025-08-22'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
-        TriggerState                 char
+        TriggerState            char
+        PowerLineFrequency      double
     end
 
     properties(Dependent)
-        OutputState         % 0, false, 'off', 'no' or 1, true, 'on', 'yes' 
-        OperationMode       % get: categorical; set: char, string or categorical
-        SourceParameters             struct
-        SenseParameters              struct
+        Terminals               char
+        OutputState    % 0, false, 'off', 'no' or 1, true, 'on', 'yes'
+        OperationMode  % get: categorical; set: char, string or categorical
+        SourceParameters        struct
+        SenseParameters         struct
     end
 
     properties(SetAccess = private, GetAccess = public)
-        ErrorMessages                table = table(Size= [0, 4], ...
+        ErrorMessages           table = table(Size= [0, 4], ...
             VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
             VariableTypes= {'datetime', 'double', 'string', 'string'});
-        AvailableBuffers             cell  = {''};
+        AvailableBuffers        cell  = {''};
+        ActiveBuffer            char
     end
 
     % ---------------------------------------------------------------------
     properties(SetAccess = private, GetAccess = private)
-        SourceMode                 char
-        SenseMode                  char
+        SourceMode              char
+        SenseMode               char
     end
 
     properties(Constant = true, GetAccess = private)
@@ -265,6 +268,9 @@ classdef SMU24xx < VisaIF
             Readback               = true    , ...
             Range                  = 0       , ...
             AutoRange              = true    , ...
+            OutputOffState         = ''      , ...
+            Interlock              = false   , ...
+            InterlockSignal        = []      , ... % read-only
             LimitValue             = 0       , ...
             LimitTripped           = []      , ... % read-only
             OVProtectionValue      = 0       , ...
@@ -273,7 +279,7 @@ classdef SMU24xx < VisaIF
             AutoDelay              = true    , ...
             HighCapMode            = false)  ;
         DefaultSenseParameters     = struct(   ...
-            Unit                   = 'ohm'   , ...
+            Unit                   = ''      , ...
             Range                  = 0       , ...
             AutoRange              = true    , ...
             AutoRangeLowerLimit    = 0       , ...
@@ -567,7 +573,6 @@ classdef SMU24xx < VisaIF
             end
         end
 
-        % ToDo: add further properties (when add new ones)
         function showSettings(obj)
             % save state of ShowMessages and set to silent operation
             showMessages     = obj.ShowMessages;
@@ -580,8 +585,9 @@ classdef SMU24xx < VisaIF
 
             disp( ' ');
             disp(['Show settings of ' obj.DeviceName]);
-            disp(['  AvailableBuffers     = ' ...
-                char(join(obj.AvailableBuffers, ', '))]);
+            %disp(['  AvailableBuffers     = ' ...
+            %    char(join(obj.AvailableBuffers, ', '))]);
+            disp(['  ActiveBuffer         = ' obj.ActiveBuffer]);
             switch obj.OutputState
                 case 0   , outputStateMsg = 'Off (0)';
                 case 1   , outputStateMsg = 'On  (1)';
@@ -589,6 +595,9 @@ classdef SMU24xx < VisaIF
             end
             disp(['  OutputState          = ' outputStateMsg]);
             disp(['  TriggerState         = ' obj.TriggerState]);
+            disp(['  Terminals            = ' obj.Terminals]);
+            disp(['  PowerLineFrequency   = ' num2str( ...
+                obj.PowerLineFrequency) ' Hz : used for NPLC calculations']);
             disp( ' ');
             disp(['  OperationMode        = ' char(obj.OperationMode)]);
             disp(['  SourceMode           = ' sourceMode]);
@@ -597,6 +606,9 @@ classdef SMU24xx < VisaIF
             disp(['   .Readback           = ' obj.getSourceReadback(sourceMode, true)]);
             disp(['   .Range              = ' obj.getSourceRange(sourceMode, true)]);
             disp(['   .AutoRange          = ' obj.getSourceAutoRange(sourceMode, true)]);
+            disp(['   .OutputOffState     = ' obj.getSourceOutputOffState(sourceMode, true)]);
+            disp(['   .Interlock          = ' obj.getSourceInterlock(sourceMode, true)]);
+            disp(['   .InterlockSignal    = ' obj.getSourceInterlockSignal(sourceMode, true)]);
             disp(['   .LimitValue         = ' obj.getSourceLimitValue(sourceMode, true)]);
             disp(['   .LimitTripped       = ' obj.getSourceLimitTripped(sourceMode, true)]);
             disp(['   .OVProtectionValue  = ' obj.getSourceOVProtectionValue(sourceMode, true)]);
@@ -803,6 +815,31 @@ classdef SMU24xx < VisaIF
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  restartTrigger failed');
+            end
+        end
+
+        function status = abortTrigger(obj)
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  abort trigger');
+            end
+
+            status = NaN; % init
+
+            if obj.write(':Abort')
+                status = -1;
+            end
+
+            obj.opc;
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  abortTrigger failed');
             end
         end
 
@@ -1063,18 +1100,74 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        function result = runSingleMeasurement(obj, showResults)
+            % init
+            if nargin < 2, showResults = true; end
+            result.status      = NaN; %
+            result.senseValue  = NaN; % actual measurement value (double)
+            result.senseUnit   = '';  % corresponding unit       (char)
+            result.sourceValue = NaN; % source (readback) value  (double)
+            result.sourceUnit  = '';  % corresponding unit       (char)
+            result.timestamp   = [];  % time stamp               (datetime)
 
+            if showResults
+                disp([obj.DeviceName ':']);
+                disp('  request single measurement value:');
+            end
+
+            % set number of measurements to one (to avoid timeout)
+            if obj.write(':Sense:Count 1')
+                result.status = -1;
+            end
+
+            activeBuffer = obj.ActiveBuffer;
+            response     = obj.query([':Read? "' activeBuffer '"' ...
+                ',reading,unit,source,sourunit,tstamp']);
+            tmpResult    = split(char(response), ',');
+            if size(tmpResult, 1) == 5 && size(tmpResult, 2) == 1
+                result.senseValue = str2double(tmpResult{1});
+                result.senseUnit  = tmpResult{2};
+                result.sourceValue= str2double(tmpResult{3});
+                result.sourceUnit = tmpResult{4};
+                result.timestamp  = tmpResult{5};
+                % remap units
+                switch lower(result.senseUnit)
+                    case 'amp dc' , result.senseUnit  = 'A';
+                    case 'volt dc', result.senseUnit  = 'V';
+                    case 'ohm'    , result.senseUnit  = 'Ohm';
+                    case 'watt dc', result.senseUnit  = 'W';
+                end
+                switch lower(result.sourceUnit)
+                    case 'amp dc' , result.sourceUnit = 'A';
+                    case 'volt dc', result.sourceUnit = 'V';
+                end
+                % timestamp
+                result.timestamp = datetime(result.timestamp);
+            else
+                result.status = -2;
+            end
+
+            % set final status
+            if isnan(result.status)
+                % no error so far ==> set to 0 (fine)
+                result.status = 0;
+            end
+
+            if showResults
+                if result.status ~= 0
+                    disp(['  .status     : Error - code = ' ...
+                        num2str(result.status) ]);
+                end
+                disp(['  .senseValue : ' num2str(result.senseValue)]);
+                disp(['  .senseUnit  : ' result.senseUnit]);
+                disp(['  .sourceValue: ' num2str(result.sourceValue)]);
+                disp(['  .sourceUnit : ' result.sourceUnit]);
+                disp(['  .timestamp  : ' char(result.timestamp)]);
+            end
+        end
 
 
         % ToDo
-        %configureTerminales (front / rear)
-        %configureOutput (mode = Normal / HiZ / Zero / Guard
-        %                 interlock = On / Off)
-        % property InterlockTripped
-
-
-
-        % check: readback value is also filtered like sense value?
 
         %runSweepMeasurement
         % configure sweep (linear, log, list)
@@ -1090,6 +1183,69 @@ classdef SMU24xx < VisaIF
 
         % -----------------------------------------------------------------
         % get/set methods for dependent properties (read/write)
+
+        function terminals = get.Terminals(obj)
+            %  'front', 'rear' or 'error'
+            %  NaN for unknown state (error)
+
+            [response, status] = obj.query(':Route:Terminals?');
+            %
+            if status ~= 0
+                terminals = 'error - communication problem';
+            else
+                % remap state
+                response = lower(char(response));
+                switch response
+                    case 'fron' , terminals = 'front';
+                    case 'rear' , terminals = 'rear';
+                    otherwise   , terminals = 'error - unexpected response';
+                end
+            end
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  terminals = ' terminals]);
+            end
+        end
+
+        function set.Terminals(obj, param)
+            % check input argument (already coerced to char)
+            if isvector(param)
+                param = lower(param);
+            elseif isempty(param)
+                param = '';
+            else
+                param = 'invalid';
+            end
+
+            switch param
+                case {'f', 'fr', 'fro', 'fron', 'front'}
+                    param = 'front';
+                case {'r', 're', 'rea', 'rear'}
+                    param = 'rear';
+                case ''                    , param = '';
+                otherwise                  , param = '';
+                    if ~strcmpi(obj.ShowMessages, 'none')
+                        disp(['SMU24xx Invalid parameter value for ' ...
+                            'property ''Terminals'' .']);
+                    end
+            end
+
+            if ~isempty(param)
+                % set property
+                obj.write([':Route:Terminals ' param]);
+
+                % readback and verify
+                paramSet = obj.Terminals;
+                if ~strcmpi(paramSet, param)
+                    disp(['SMU24xx parameter value for property ' ...
+                        '''Terminals'' was not set properly.']);
+                    fprintf('  wanted value      : %s \n', param);
+                    fprintf('  actually set value: %s \n', paramSet);
+                end
+            end
+        end
 
         function outputState = get.OutputState(obj)
             % get output state:
@@ -1264,6 +1420,12 @@ classdef SMU24xx < VisaIF
                         paramValue = obj.getSourceRange(funcMode);
                     case 'AutoRange'
                         paramValue = obj.getSourceAutoRange(funcMode);
+                    case 'OutputOffState'
+                        paramValue = obj.getSourceOutputOffState(funcMode);
+                    case 'Interlock'
+                        paramValue = obj.getSourceInterlock(funcMode);
+                    case 'InterlockSignal'
+                        paramValue = obj.getSourceInterlockSignal(funcMode);
                     case 'LimitValue'
                         paramValue = obj.getSourceLimitValue(funcMode);
                     case 'LimitTripped'
@@ -1309,6 +1471,15 @@ classdef SMU24xx < VisaIF
                         obj.setSourceRange(paramValue, funcMode);
                     case 'AutoRange'
                         obj.setSourceAutoRange(paramValue, funcMode);
+                    case 'OutputOffState'
+                        obj.setSourceOutputOffState(paramValue, funcMode);
+                    case 'Interlock'
+                        obj.setSourceInterlock(paramValue, funcMode);
+                    case 'InterlockSignal'
+                        if ~strcmpi(obj.ShowMessages, 'none')
+                            disp(['Parameter ''InterlockSignal'' is ' ...
+                                'read-only. Ignore and continue.']);
+                        end
                     case 'LimitValue'
                         obj.setSourceLimitValue(paramValue, funcMode);
                     case 'LimitTripped'
@@ -1458,6 +1629,12 @@ classdef SMU24xx < VisaIF
                                 paramValue = obj.getSourceRange(funcMode);
                             case 'AutoRange'
                                 paramValue = obj.getSourceAutoRange(funcMode);
+                            case 'OutputOffState'
+                                paramValue = obj.getSourceOutputOffState(funcMode);
+                            case 'Interlock'
+                                paramValue = obj.getSourceInterlock(funcMode);
+                            case 'InterlockSignal'
+                                paramValue = obj.getSourceInterlockSignal(funcMode);
                             case 'LimitValue'
                                 paramValue = obj.getSourceLimitValue(funcMode);
                             case 'LimitTripped'
@@ -1571,6 +1748,15 @@ classdef SMU24xx < VisaIF
                                 obj.setSourceRange(paramValue, funcMode);
                             case 'AutoRange'
                                 obj.setSourceAutoRange(paramValue, funcMode);
+                            case 'OutputOffState'
+                                obj.setSourceOutputOffState(paramValue, funcMode);
+                            case 'Interlock'
+                                obj.setSourceInterlock(paramValue, funcMode);
+                            case 'InterlockSignal'
+                                if ~strcmpi(obj.ShowMessages, 'none')
+                                    disp(['Parameter ''InterlockSignal'' is ' ...
+                                        'read-only. Ignore and continue.']);
+                                end
                             case 'LimitValue'
                                 obj.setSourceLimitValue(paramValue, funcMode);
                             case 'LimitTripped'
@@ -1647,6 +1833,18 @@ classdef SMU24xx < VisaIF
             end
         end
 
+        function buffer = get.ActiveBuffer(obj)
+            % get name of active buffer for measurements
+
+            [response, status] = obj.query(':Display:Buffer:Active?');
+            %
+            if status ~= 0
+                buffer = 'Error - communication problem';
+            else
+                buffer = lower(char(response));
+            end
+        end
+
         function TrigState = get.TriggerState(obj)
             % read trigger state
 
@@ -1669,6 +1867,24 @@ classdef SMU24xx < VisaIF
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
                 disp(['  trigger state = ' TrigState]);
+            end
+        end
+
+        function freq = get.PowerLineFrequency(obj)
+            % read power line frequency
+
+            [response, status] = obj.query(':System:LFrequency?');
+            %
+            if status ~= 0
+                freq = NaN;
+            else
+                freq = str2double(char(response));
+            end
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp(['  Power line frequency = ' num2str(freq) ' Hz']);
             end
         end
 
@@ -1919,6 +2135,79 @@ classdef SMU24xx < VisaIF
                 paramAsMsg = 'Off (0)';
             elseif param == 1
                 paramAsMsg = 'On  (1)';
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
+            end
+        end
+
+        function param = getSourceOutputOffState(obj, funcMode, ~)
+            % actual request (SCPI-command)
+            [response, status] = obj.query([':Output:' funcMode ...
+                ':SMode?']);
+            if status ~= 0
+                param = 'Error - communication problem';
+            else
+                % convert value
+                param = lower(char(response));
+                switch param
+                    case 'norm', param = 'normal';
+                    case 'himp', param = 'himpedance';
+                    case 'zero', param = 'zero';
+                    case 'guar', param = 'guard';
+                    otherwise , param = 'Error - unexpected response';
+                end
+            end
+        end
+
+        function param = getSourceInterlock(obj, ~, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            % actual request (SCPI-command)
+            [state, status] = obj.query(':Output:Interlock:State?');
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = ['Off (0) : output voltage is limited to ' ...
+                    'less than ±42 V'];
+            elseif param == 1
+                paramAsMsg = ['On  (1) : output can only be enabled ' ...
+                    'when ''InterlockSignal'' is asserted'];
+            else
+                paramAsMsg = [char(state) ' - unexpected response'];
+            end
+            if outAsChar
+                param = paramAsMsg;
+            end
+        end
+
+        function param = getSourceInterlockSignal(obj, ~, outAsChar)
+            if nargin < 3, outAsChar = false; end
+
+            % actual request (SCPI-command)
+            [state, status] = obj.query(':Output:Interlock:Tripped?');
+            if status ~= 0
+                param = NaN; % unknown value, error
+            else
+                % convert value ('0' or '1' else error)
+                param = str2double(char(state));
+            end
+
+            % create more helpful message to display (method 'showSettings')
+            if param == 0
+                paramAsMsg = ['Off (0) : safety interlock signal (rear) ' ...
+                    'is missing'];
+            elseif param == 1
+                paramAsMsg = ['On  (1) : safety interlock signal (rear) ' ...
+                    'is present'];
             else
                 paramAsMsg = [char(state) ' - unexpected response'];
             end
@@ -2345,6 +2634,110 @@ classdef SMU24xx < VisaIF
                 status = 1;
             end
         end
+
+        function status = setSourceOutputOffState(obj, param, funcMode)
+            propName = '''SourceParameters.OutputOffState''';
+
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                param = lower(char(param));
+            elseif isempty(param)
+                param = '';
+            else
+                param = 'invalid';
+            end
+
+            switch param
+                case {'normal', 'norm', 'nor', 'no', 'n'}
+                    param = 'norm';
+                case {'himpedance', 'himp', 'him', 'hiz', 'hi', 'h'}
+                    param = 'himp';
+                case {'zero', 'zer', 'ze', 'z'}
+                    param = 'zero';
+                case {'guard', 'guar', 'gua', 'gu', 'g'}
+                    param = 'guar';
+                case ''                    , param = '';
+                otherwise                  , param = '';
+                    if ~strcmpi(obj.ShowMessages, 'none')
+                        disp(['SMU24xx Invalid parameter value for ' ...
+                            'property ' propName '.']);
+                    end
+            end
+
+            % write value to SMU
+            if ~isempty(param)
+                % set property
+                obj.write([':Output:' funcMode ':SMode ' param]);
+
+                % readback and verify
+                paramSet = char(obj.query([':Output:' funcMode ':SMode?']));
+                if ~strcmpi(param, paramSet) && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %s\n', param);
+                    fprintf('  actually set value: %s\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
+        end
+
+        function status = setSourceInterlock(obj, param, ~)
+            propName = '''SourceParameters.Interlock''';
+
+            % check input argument
+            if ischar(param) || isStringScalar(param)
+                if strcmpi('yes', param) || strcmpi('on', param)
+                    param = 1;
+                elseif strcmpi('no', param) || strcmpi('off', param)
+                    param = 0;
+                else
+                    param = str2double(param);
+                end
+            elseif isscalar(param) && (isreal(param) || islogical(param))
+                param = double(param);
+            elseif isempty(param)
+                param = [];
+            else
+                param = NaN;
+            end
+            if isnan(param) && ~strcmpi(obj.ShowMessages, 'none')
+                disp(['SMU24xx Invalid parameter value for ' ...
+                    'property ' propName '.']);
+            end
+
+            % coerce input parameter and write value to SMU
+            if ~isempty(param) && ~isnan(param)
+                param = double(logical(param));
+                % set property
+                obj.write([':Output:Interlock:State ' num2str(param)]);
+
+                % readback and verify
+                paramSet = obj.getSourceInterlock();
+                if param ~= paramSet && ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['SMU24xx parameter value for property ' ...
+                        propName ' was not set properly.']);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
+                    % readback reported mismatch
+                    status = 2;
+                else
+                    % okay
+                    status = 0;
+                end
+            else
+                % no parameter was sent to SMU
+                status = 1;
+            end
+        end
+
+        % no setSourceInterlockSignal method (parameter is read-only)
 
         function status = setSourceLimitValue(obj, param, funcMode)
             propName = '''SourceParameters.LimitValue''';

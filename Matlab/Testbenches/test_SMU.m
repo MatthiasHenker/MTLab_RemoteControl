@@ -61,6 +61,10 @@ switch testCase
         mySMU.outputEnable;
         mySMU.restartTrigger;
         mySMU.showSettings;
+        %
+        result = mySMU.runSingleMeasurement;
+        %
+        mySMU.restartTrigger;
     otherwise, return;
 end
 
@@ -102,7 +106,7 @@ disp(eventLog);
 % low level commands
 if false
 
-    mySMU.query(':Measure? "defbuffer1",reading,unit,source,sourunit,tstamp');
+    mySMU.query(':Read? "defbuffer1",reading,unit,source,sourunit,tstamp');
 
     mySMU.write('Sense:Function "Voltage"');
     mySMU.write('Sense:Voltage:Range 20');      % or ':Auto On'
