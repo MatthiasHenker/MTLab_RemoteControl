@@ -227,8 +227,8 @@
 
 classdef SMU24xx < VisaIF
     properties(Constant = true)
-        SMUVersion    = '0.9.1';      % updated release version
-        SMUDate       = '2025-08-22'; % updated release date
+        SMUVersion    = '0.9.3';      % updated release version
+        SMUDate       = '2025-08-25'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1100,51 +1100,187 @@ classdef SMU24xx < VisaIF
             end
         end
 
-        function result = runSingleMeasurement(obj, showResults)
-            % init
-            if nargin < 2, showResults = true; end
-            result.status      = NaN; %
-            result.senseValue  = NaN; % actual measurement value (double)
-            result.senseUnit   = '';  % corresponding unit       (char)
-            result.sourceValue = NaN; % source (readback) value  (double)
-            result.sourceUnit  = '';  % corresponding unit       (char)
-            result.timestamp   = [];  % time stamp               (datetime)
+        function result = runMeasurement(obj, varargin)
 
-            if showResults
+            if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  request single measurement value:');
+                disp('  request measurement value(s)');
+                params = obj.checkParams(varargin, 'runMeasurement', true);
+            else
+                params = obj.checkParams(varargin, 'runMeasurement');
             end
 
-            % set number of measurements to one (to avoid timeout)
-            if obj.write(':Sense:Count 1')
+            % init output
+            result.status       = NaN; %
+            result.length       = NaN; % number of meas. values   (double)
+            result.senseValues  = NaN; % actual measurement value (double)
+            result.senseUnit    = '';  % corresponding unit       (char)
+            result.sourceValues = NaN; % source (readback) value  (double)
+            result.sourceUnit   = '';  % corresponding unit       (char)
+            result.timestamp    = [];  % time stamp               (datetime)
+
+            % initialize all supported parameters
+            timeout        = [];
+            count          = [];
+            %
+            timeoutDefault = 100; % 80 s for NPLC = 10 & Averaging = 100
+            countDefault   = 1;   % single measurement value
+            %
+            for idx = 1:2:length(params)
+                paramName  = params{idx};
+                paramValue = params{idx+1};
+                switch paramName
+                    case 'timeout'
+                        if ~isempty(paramValue)
+                            coerced = false;
+                            timeout = str2double(paramValue);
+                            if isnan(timeout)
+                                coerced = true;
+                                timeout = timeoutDefault;
+                            else
+                                timeoutNew = min(timeout, 1e3); % max 1000 s
+                                timeoutNew = max(timeoutNew, 1);% min 1 s
+                                if timeoutNew ~= timeout
+                                    coerced = true;
+                                end
+                                timeout = timeoutNew;
+                            end
+                            if ~strcmpi(obj.ShowMessages, 'none') && coerced
+                                disp(['  - timeout      : ' ...
+                                    num2str(timeout, '%g') ' (coerced)']);
+                            end
+                        else
+                            timeout = timeoutDefault;
+                        end
+                    case 'count'
+                        if ~isempty(paramValue)
+                            coerced = false;
+                            count   = str2double(paramValue);
+                            if isnan(count)
+                                coerced = true;
+                                count   = countDefault;
+                            else
+                                % limit due to max timeout setting
+                                countNew = round(count);
+                                countNew = min(countNew, 1e3); % maybe more ?
+                                countNew = max(countNew, 1);
+                                if countNew ~= count
+                                    coerced = true;
+                                end
+                                count = countNew;
+                            end
+                            if ~strcmpi(obj.ShowMessages, 'none') && coerced
+                                disp(['  - count        : ' ...
+                                    num2str(count, '%g') ' (coerced)']);
+                            end
+                        else
+                            count = countDefault;
+                        end
+                    otherwise
+                        if ~isempty(paramValue)
+                            disp(['SMU24xx Warning - ''runMeasurement'' ' ...
+                                'parameter ''' paramName ''' is ' ...
+                                'unknown --> ignore and continue']);
+                        end
+                end
+            end
+
+            % -------------------------------------------------------------
+            % actual code
+            % -------------------------------------------------------------
+
+            % set number of measurements
+            if obj.write([':Sense:Count ' num2str(count)])
                 result.status = -1;
             end
 
             activeBuffer = obj.ActiveBuffer;
-            response     = obj.query([':Read? "' activeBuffer '"' ...
-                ',reading,unit,source,sourunit,tstamp']);
-            tmpResult    = split(char(response), ',');
-            if size(tmpResult, 1) == 5 && size(tmpResult, 2) == 1
-                result.senseValue = str2double(tmpResult{1});
-                result.senseUnit  = tmpResult{2};
-                result.sourceValue= str2double(tmpResult{3});
-                result.sourceUnit = tmpResult{4};
-                result.timestamp  = tmpResult{5};
-                % remap units
-                switch lower(result.senseUnit)
-                    case 'amp dc' , result.senseUnit  = 'A';
-                    case 'volt dc', result.senseUnit  = 'V';
-                    case 'ohm'    , result.senseUnit  = 'Ohm';
-                    case 'watt dc', result.senseUnit  = 'W';
-                end
-                switch lower(result.sourceUnit)
-                    case 'amp dc' , result.sourceUnit = 'A';
-                    case 'volt dc', result.sourceUnit = 'V';
-                end
-                % timestamp
-                result.timestamp = datetime(result.timestamp);
-            else
+            % ckear buffer and start measurement
+            if obj.write([':Trace:Clear "' activeBuffer '"'])
                 result.status = -2;
+            end
+            if obj.write([':Trace:Trigger "' activeBuffer '"'])
+                result.status = -3;
+            end
+
+            % save timeout setting and replace locally (finally restore)
+            timeoutSaved = obj.Timeout;
+            obj.Timeout  = timeout;
+
+            % all measurements done or still running?
+            % there is no option to check state of measurement
+            % any query is delayed until measurement is done
+            try
+                OPCresponse = str2double(char(obj.query('*OPC?')));
+            catch
+                OPCresponse = NaN;
+                warning(['SMU24xx (runMeasurement): timeout while executing ' ...
+                    'measurements. Please, increase timeout parameter.']);
+                disp('ATTENTION: delete SMU object and create new object!');
+            end
+
+            if OPCresponse == 1
+                % restore timeout setting
+                obj.Timeout = timeoutSaved;
+                % fine
+                traceStart = str2double(char(obj.query(':Trace:Actual:Start?')));
+                traceEnd   = str2double(char(obj.query(':Trace:Actual:End?')));
+                if traceStart ~= 1 || traceEnd ~= count
+                    % unexpected response ==> skip actual download of data
+                    result.status = -5;
+                end
+            else
+                % unexpected response ==> skip actual download of data
+                result.status = -4;
+            end
+
+            if isnan(result.status)
+                % all fine: download data
+                response     = obj.query([':Trace:Data? ' ...
+                    num2str(traceStart) ', ' num2str(traceEnd) ', "' ...
+                    activeBuffer '", reading, unit, source, sourunit, tstamp']);
+                tmpResult    = split(char(response), ',');
+                % check right number of received values
+                if size(tmpResult, 1) == 5*count && size(tmpResult, 2) == 1
+                    tmpResult = reshape(tmpResult, 5, count);
+                    result.length = count;
+                    % convert numerical values
+                    result.senseValues  = str2double(tmpResult(1, :));
+                    result.sourceValues = str2double(tmpResult(3, :));
+                    % check units (are identical?)
+                    if all(strcmpi(tmpResult{2, 1}, tmpResult(2, :)))
+                        result.senseUnit   = tmpResult{2, 1};
+                    else
+                        result.status = -7;
+                    end
+                    if all(strcmpi(tmpResult{4, 1}, tmpResult(4, :)))
+                        result.sourceUnit   = tmpResult{4, 1};
+                    else
+                        result.status = -8;
+                    end
+                    % remap units
+                    switch lower(result.senseUnit)
+                        case 'amp dc' , result.senseUnit  = 'A';
+                        case 'volt dc', result.senseUnit  = 'V';
+                        case 'ohm'    , result.senseUnit  = 'Ohm';
+                        case 'watt dc', result.senseUnit  = 'W';
+                    end
+                    switch lower(result.sourceUnit)
+                        case 'amp dc' , result.sourceUnit = 'A';
+                        case 'volt dc', result.sourceUnit = 'V';
+                    end
+                    % timestamp
+                    try
+                        result.timestamp = datetime(tmpResult(5, :));
+                    catch
+                        warning(['SMU24xx (runMeasurement): Could not ' ...
+                            'recognize the format of the timestamp.']);
+                        result.timestamp = datetime(''); % NaT
+                        result.status = -9;
+                    end
+                else
+                    result.status = -6;
+                end
             end
 
             % set final status
@@ -1153,33 +1289,74 @@ classdef SMU24xx < VisaIF
                 result.status = 0;
             end
 
-            if showResults
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
                 if result.status ~= 0
-                    disp(['  .status     : Error - code = ' ...
+                    disp(['  .status     : Error with code = ' ...
                         num2str(result.status) ]);
+                else
+                    disp(['  Number of values : ' num2str(result.length)]);
+                    disp(['  Sense  (' obj.SenseMode ') : ' ...
+                        num2str(result.senseValues(end)) ' ' ...
+                        result.senseUnit]);
+                    disp(['  Source (' obj.SourceMode ') : ' ...
+                        num2str(result.sourceValues(end)) ' ' ...
+                        result.sourceUnit]);
+                    disp(['  Timestamp        : ' ...
+                        char(result.timestamp(end))]);
                 end
-                disp(['  .senseValue : ' num2str(result.senseValue)]);
-                disp(['  .senseUnit  : ' result.senseUnit]);
-                disp(['  .sourceValue: ' num2str(result.sourceValue)]);
-                disp(['  .sourceUnit : ' result.sourceUnit]);
-                disp(['  .timestamp  : ' char(result.timestamp)]);
             end
         end
 
-
         % ToDo
+        function result = runMeasurementSweep(obj, varargin)
+            % init output
+            result.status       = NaN; %
+            result.length       = NaN; % number of meas. values   (double)
+            result.senseValues  = NaN; % actual measurement value (double)
+            result.senseUnit    = '';  % corresponding unit       (char)
+            result.sourceValues = NaN; % source (readback) value  (double)
+            result.sourceUnit   = '';  % corresponding unit       (char)
+            result.timestamp    = NaT; % time stamp               (datetime)
 
-        %runSweepMeasurement
-        % configure sweep (linear, log, list)
-        % obj.TriggerState check (= building)
-        % :Initiate
-        % while loop until done or timeout (:Abort to stop trigger)
-        %   :trigger:state?  (running 'running' or 'idle')
-        % download data
+
+
+            % ToDo
+            % configure sweep (linear, log, list)
+            % obj.TriggerState check (= building)
+            % :Initiate
+            % while loop until done or timeout (:Abort to stop trigger)
+            %   :trigger:state?  (running 'running' or 'idle')
+            % download data
 
 
 
 
+
+            % set final status
+            if isnan(result.status)
+                % no error so far ==> set to 0 (fine)
+                result.status = 0;
+            end
+
+            % optionally display results
+            if ~strcmpi(obj.ShowMessages, 'none')
+                if result.status ~= 0
+                    disp(['  .status     : Error with code = ' ...
+                        num2str(result.status) ]);
+                else
+                    disp(['  Number of values : ' num2str(result.length)]);
+                    disp(['  Sense  (' obj.SenseMode ') : ' ...
+                        num2str(result.senseValues(end)) ' ' ...
+                        result.senseUnit]);
+                    disp(['  Source (' obj.SourceMode ') : ' ...
+                        num2str(result.sourceValues(end)) ' ' ...
+                        result.sourceUnit]);
+                    disp(['  Timestamp        : ' ...
+                        char(result.timestamp(end))]);
+                end
+            end
+        end
 
         % -----------------------------------------------------------------
         % get/set methods for dependent properties (read/write)

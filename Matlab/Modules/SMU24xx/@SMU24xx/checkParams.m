@@ -25,9 +25,9 @@ narginchk(1,3);
 if isempty(inVars)
     inVars = {};
 elseif ~iscell(inVars) || ~isvector(inVars)
-    error('SMU: invalid state.');
+    error('SMU24xx: invalid state.');
 elseif mod(length(inVars), 2) ~= 0
-    disp(['SMU: Warning - Odd number of parameters. ' ...
+    disp(['SMU24xx: Warning - Odd number of parameters. ' ...
         'Ignore last input.']);
 end
 
@@ -48,6 +48,17 @@ digits       = ''; % configureDisplay
 brightness   = ''; % configureDisplay
 buffer       = ''; % configureDisplay
 text         = ''; % configureDisplay
+timeout      = ''; % runMeasurement, runMeasurementSweep
+count        = ''; % runMeasurement, runMeasurementSweep
+mode         = ''; % runMeasurementSweep
+list         = ''; % runMeasurementSweep
+start        = ''; % runMeasurementSweep
+stop         = ''; % runMeasurementSweep
+dual         = ''; % runMeasurementSweep
+points       = ''; % runMeasurementSweep
+delay        = ''; % runMeasurementSweep
+rangetype    = ''; % runMeasurementSweep
+failabort    = ''; % runMeasurementSweep
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -64,7 +75,7 @@ for nArgsIn = 2:2:length(inVars)
         % {'0', '1'} ["0", "1"], '0;1', [0 1] [false true ] ==> '0;1'
         if ~isvector(paramValue)
             paramValue = '';
-            disp(['SMU: Invalid type of ''' paramName '''. ' ...
+            disp(['SMU24xx: Invalid type of ''' paramName '''. ' ...
                 'Ignore input.']);
         elseif ischar(paramValue)
             paramValue = paramValue; %#ok<ASGSL> % do nothing
@@ -118,13 +129,58 @@ for nArgsIn = 2:2:length(inVars)
                     % ';' is used as delimiter ==> cannot be used in text
                     text = paramValue;
                 end
+            case {'timeout'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    timeout = paramValue;
+                end
+            case {'count', 'cnt'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    count = paramValue;
+                end
+            case {'mode'}
+                if ~isempty(regexp(paramValue, '^\w+$', 'once'))
+                    mode = paramValue;
+                end
+            case {'list'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-;,]+$', 'once'))
+                    list = paramValue;
+                    list = replace(list, ';', ','); % delimiter = ','
+                end
+            case {'start'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    start = paramValue;
+                end
+            case {'stop'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    stop = paramValue;
+                end
+            case {'dual'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    dual = paramValue;
+                end
+            case {'points', 'point'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    points = paramValue;
+                end
+            case {'delay', 'dly'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    delay = paramValue;
+                end
+            case {'rangetype'}
+                if ~isempty(regexp(paramValue, '^\w+$', 'once'))
+                    rangetype = paramValue;
+                end
+            case {'failabort'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    failabort = paramValue;
+                end
             otherwise
-                disp(['SMU: Warning - Parameter name ''' ...
+                disp(['SMU24xx: Warning - Parameter name ''' ...
                     paramName ''' is unknown. ' ...
                     'Ignore parameter.']);
         end
     else
-        disp(['SMU: Parameter names have to be ' ...
+        disp(['SMU24xx: Parameter names have to be ' ...
             'character arrays. Ignore input.']);
     end
 end
@@ -143,6 +199,23 @@ switch command
             'brightness', brightness , ...
             'buffer'    , buffer     , ...
             'text'      , text       };
+    case 'runMeasurement'
+        outVars = { ...
+            'timeout'   , timeout    , ...
+            'count'     , count      };
+    case 'runMeasurementSweep'
+        outVars = { ...
+            'timeout'   , timeout    , ...
+            'count'     , count      , ...
+            'mode'      , mode       , ...
+            'list'      , list       , ...
+            'start'     , start      , ...
+            'stop'      , stop       , ...
+            'dual'      , dual       , ...
+            'points'    , points     , ...
+            'delay'     , delay      , ...
+            'rangetype' , rangetype  , ...
+            'failabort' , failabort  };
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
@@ -152,7 +225,18 @@ switch command
             'digits'    , digits     , ...
             'brightness', brightness , ...
             'buffer'    , buffer     , ...
-            'text'      , text       };
+            'text'      , text       , ...
+            'timeout'   , timeout    , ...
+            'count'     , count      , ...
+            'mode'      , mode       , ...
+            'list'      , list       , ...
+            'start'     , start      , ...
+            'stop'      , stop       , ...
+            'dual'      , dual       , ...
+            'points'    , points     , ...
+            'delay'     , delay      , ...
+            'rangetype' , rangetype  , ...
+            'failabort' , failabort  };
         outVars = cell(0);
         idx = 1;
         for cnt = 1:2:length(allVars)

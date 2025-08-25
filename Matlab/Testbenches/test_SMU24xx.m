@@ -56,13 +56,17 @@ switch testCase
         mySMU.OperationMode                      = 'SVMI';
         mySMU.SourceParameters.OutputValue       = 2.5;
         mySMU.SourceParameters.OVProtectionValue = 3;
-        mySMU.SourceParameters.LimitValue        = 15e-3;
+        mySMU.SourceParameters.LimitValue        = 10e-3;
+        %
+        %mySMU.SenseParameters.NPLCycles          = 5;
+        %mySMU.SenseParameters.AverageCount       = 3;
         %
         mySMU.outputEnable;
-        mySMU.restartTrigger;
         mySMU.showSettings;
         %
-        result = mySMU.runSingleMeasurement;
+        tic
+        result = mySMU.runMeasurement;
+        toc
         %
         mySMU.restartTrigger;
     otherwise, return;
@@ -106,31 +110,26 @@ disp(eventLog);
 % low level commands
 if false
 
-    mySMU.query(':Read? "defbuffer1",reading,unit,source,sourunit,tstamp');
-
-    mySMU.write('Sense:Function "Voltage"');
-    mySMU.write('Sense:Voltage:Range 20');      % or ':Auto On'
-    mySMU.write('Sense:Voltage:Rsense Off');    % On
-
     start  = 10e-6;
     stop   = 30e-3;
-    points = 1001;
-    delay  = 10e-3;
+    points = 30;
+    delay  = -1;
     cmd    = sprintf( ...
         'Source:Sweep:Current:Log %f, %f, %d, %f, 1, Fixed, Off, On, "defbuffer1"', ...
         start, stop, points, delay);
     mySMU.write(cmd);
 
-    mySMU.query('Trace:Actual?');
-    mySMU.query('Trace:Actual:Start?');
-    mySMU.query('Trace:Actual:End?');
+    % mySMU.query('Trace:Actual?');
+    % mySMU.query('Trace:Actual:Start?');
+    % mySMU.query('Trace:Actual:End?');
     %
-    mySMU.write(':Trace:Clear');
+    %mySMU.write(':Trace:Clear');
 
     mySMU.write(':Initiate'); % init trigger and enables output
-    %pause;
-    mySMU.query(':Trigger:State?');
-    mySMU.write('*WAI'); % wait until measurement done
+
+    % loop with pause and trigger state request
+    %mySMU.query(':Trigger:State?');
+    mySMU.TriggerState
 
     % ATTENTION: timeout can kill script
     % also disables output again
