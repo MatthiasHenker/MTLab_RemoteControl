@@ -48,17 +48,17 @@ digits       = ''; % configureDisplay
 brightness   = ''; % configureDisplay
 buffer       = ''; % configureDisplay
 text         = ''; % configureDisplay
-timeout      = ''; % runMeasurement, runMeasurementSweep
-count        = ''; % runMeasurement, runMeasurementSweep
-mode         = ''; % runMeasurementSweep
-list         = ''; % runMeasurementSweep
-start        = ''; % runMeasurementSweep
-stop         = ''; % runMeasurementSweep
-dual         = ''; % runMeasurementSweep
-points       = ''; % runMeasurementSweep
-delay        = ''; % runMeasurementSweep
-rangetype    = ''; % runMeasurementSweep
-failabort    = ''; % runMeasurementSweep
+timeout      = ''; % runMeasurement
+mode         = ''; % runMeasurement
+count        = ''; % runMeasurement
+list         = ''; % runMeasurement
+points       = ''; % runMeasurement
+start        = ''; % runMeasurement
+stop         = ''; % runMeasurement
+dual         = ''; % runMeasurement
+delay        = ''; % runMeasurement
+rangetype    = ''; % runMeasurement
+failabort    = ''; % runMeasurement
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -73,7 +73,9 @@ for nArgsIn = 2:2:length(inVars)
         % coerce parameter value (array) to comma separated char array
         % '1', {'1'}, "1", 1, true                          ==> '1'
         % {'0', '1'} ["0", "1"], '0;1', [0 1] [false true ] ==> '0;1'
-        if ~isvector(paramValue)
+        if isempty(paramValue)
+            paramValue = '';
+        elseif ~isvector(paramValue)
             paramValue = '';
             disp(['SMU24xx: Invalid type of ''' paramName '''. ' ...
                 'Ignore input.']);
@@ -82,6 +84,12 @@ for nArgsIn = 2:2:length(inVars)
         elseif iscellstr(paramValue) || isstring(paramValue)
             paramValue = char(strjoin(paramValue, ';')); % no final upper()
         elseif isa(paramValue, 'double') || islogical(paramValue)
+            if length(paramValue) > 2500
+                % no input parameter is longer than 2500 elements ('list')
+                paramValue = paramValue(1:2500);
+                disp(['SMU24xx: Length of ''' paramName ''' exceeds ' ...
+                'limit of 2500 elements. Ignore remaining elements.']);
+            end
             paramValue = regexprep( ...
                 num2str(paramValue, 10), '\s+', ';');    % no final upper()
         else
@@ -133,18 +141,22 @@ for nArgsIn = 2:2:length(inVars)
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     timeout = paramValue;
                 end
-            case {'count', 'cnt'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    count = paramValue;
-                end
             case {'mode'}
                 if ~isempty(regexp(paramValue, '^\w+$', 'once'))
                     mode = paramValue;
+                end
+            case {'count', 'cnt'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    count = paramValue;
                 end
             case {'list'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-;,]+$', 'once'))
                     list = paramValue;
                     list = replace(list, ';', ','); % delimiter = ','
+                end
+            case {'points', 'point'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    points = paramValue;
                 end
             case {'start'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
@@ -157,10 +169,6 @@ for nArgsIn = 2:2:length(inVars)
             case {'dual'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     dual = paramValue;
-                end
-            case {'points', 'point'}
-                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
-                    points = paramValue;
                 end
             case {'delay', 'dly'}
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
@@ -202,17 +210,13 @@ switch command
     case 'runMeasurement'
         outVars = { ...
             'timeout'   , timeout    , ...
-            'count'     , count      };
-    case 'runMeasurementSweep'
-        outVars = { ...
-            'timeout'   , timeout    , ...
-            'count'     , count      , ...
             'mode'      , mode       , ...
+            'count'     , count      , ...
             'list'      , list       , ...
+            'points'    , points     , ...
             'start'     , start      , ...
             'stop'      , stop       , ...
             'dual'      , dual       , ...
-            'points'    , points     , ...
             'delay'     , delay      , ...
             'rangetype' , rangetype  , ...
             'failabort' , failabort  };
@@ -227,13 +231,13 @@ switch command
             'buffer'    , buffer     , ...
             'text'      , text       , ...
             'timeout'   , timeout    , ...
-            'count'     , count      , ...
             'mode'      , mode       , ...
+            'count'     , count      , ...
             'list'      , list       , ...
+            'points'    , points     , ...
             'start'     , start      , ...
             'stop'      , stop       , ...
             'dual'      , dual       , ...
-            'points'    , points     , ...
             'delay'     , delay      , ...
             'rangetype' , rangetype  , ...
             'failabort' , failabort  };
@@ -250,9 +254,17 @@ end
 
 if showmsg
     for cnt = 1 : 2 : length(outVars)
-        if ~isempty(outVars{cnt+1})
-            disp(['  - ' pad(outVars{cnt}, 13) ': ' ...
-                lower(outVars{cnt+1})]);
+        paramNameOut  = outVars{cnt};
+        paramValueOut = outVars{cnt+1};
+        if ~isempty(paramValueOut)
+            if length(paramValueOut) < 50
+                disp(['  - ' pad(paramNameOut, 13) ': ' ...
+                    lower(paramValueOut)]);
+            else
+                disp(['  - ' pad(paramNameOut, 13) ': ' ...
+                    lower(paramValueOut(1:23)) ' ... ' ...
+                    lower(paramValueOut(end-22:end))]);
+            end
         end
     end
 end
