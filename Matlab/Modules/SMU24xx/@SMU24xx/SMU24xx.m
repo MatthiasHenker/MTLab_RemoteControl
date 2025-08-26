@@ -228,7 +228,7 @@
 classdef SMU24xx < VisaIF
     properties(Constant = true)
         SMUVersion    = '0.9.3';      % updated release version
-        SMUDate       = '2025-08-25'; % updated release date
+        SMUDate       = '2025-08-26'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)

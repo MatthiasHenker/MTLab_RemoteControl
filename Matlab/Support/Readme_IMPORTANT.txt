@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# 2025-07-10
+# 2025-08-26
 # Prof. Matthias Henker (HTW Dresden, Germany)
 # ----------------------------------------------------------------------------
 
@@ -19,11 +19,11 @@ ACTIONS:
   ==> Matlab will find these files now
 
 # ----------------------------------------------------------------------------
-VisaIF       : VisaIF             class    v3.0.2   (2025-07-09)
-  - addons   : VisaDemo           class    v3.0.0   (2024-08-18)
+VisaIF       : VisaIF             class    v3.0.2   (2025-08-26)
+  - addons   : VisaDemo           class    v3.0.2   (2025-07-25)
                VisaIFLogger       class    v3.0.0   (2024-08-20)
                VisaIFLogEventData class    v2.0.1   (2021-01-09)
-  - configs  : VisaIF_HTW_Labs.csv                  (2025-07-07)
+  - configs  : VisaIF_HTW_Labs.csv                  (2025-07-12)
                VisaIF_HTW_Henker.csv                (2024-08-20)
 
 # ----------------------------------------------------------------------------
@@ -42,9 +42,7 @@ FGen         : FGen               class    v3.0.0   (2024-08-22)
                Siglent.SDG6000X            v3.0.0   (2024-08-23)
 
 # ----------------------------------------------------------------------------
-!!! SMU class and packackes still in preparation !!!
-SMU          : SMU                class    v0.9.0   (2025-07-10)
-  - packages : Keithley.Model2450          v0.9.0   (2025-07-10)
+SMU24xx      : SMU24xx            class    v0.9.3   (2025-08-26)
  
 # ----------------------------------------------------------------------------
 HandheldDMM  : HandheldDMM        class    v2.1.0   (2022-08-10)
