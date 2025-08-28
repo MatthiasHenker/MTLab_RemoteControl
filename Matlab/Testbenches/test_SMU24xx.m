@@ -49,7 +49,7 @@ mySMU = SMU24xx(SMUName, interface, showmsg);
 % -------------------------------------------------------------------------
 % config
 visaLogging = false;
-testCase    = 1;
+testCase    = 5;
 % -------------------------------------------------------------------------
 
 if visaLogging
@@ -58,81 +58,137 @@ if visaLogging
     myLog.ShowMessages = 0;
 end
 
+% show home screen
+mySMU.configureDisplay(screen= 'home', brightness= 25, digits= '6');
+
 switch testCase
     case 1
+        mySMU.outputDisable;
         mySMU.OperationMode                      = 'SVMI';
         %
         mySMU.SourceParameters.OutputValue       = 2.5;
         mySMU.SourceParameters.OVProtectionValue = 3;
-        mySMU.SourceParameters.LimitValue        = 10e-3;
+        mySMU.SourceParameters.LimitValue        = 20e-3;
         mySMU.SourceParameters.Readback          = 'on'; % def: on
         %
-        mySMU.SenseParameters.NPLCycles          = 2; % def: 1
-        %mySMU.SenseParameters.AverageCount       = 3; % def: 0
+        mySMU.SenseParameters.NPLCycles          = 1; % def: 1
+        mySMU.SenseParameters.AverageCount       = 0; % def: 0
         mySMU.SenseParameters.RemoteSensing      = 'off'; % def: 'off'
         %
-        mySMU.outputEnable;
+        %mySMU.outputEnable;
         mySMU.showSettings;
         %
-        tic
-        result = mySMU.runMeasurement;
-        toc
+        result = mySMU.runMeasurement(count = 100, timeout = 20);
+        %
+        figure(1);
+        plot(result.timestamps, result.senseValues , '-r*');
+        %
+        figure(2);
+        plot(result.timestamps, result.sourceValues, '-b*');
         %
         return
-        mySMU.restartTrigger;
+        %mySMU.restartTrigger;
     case 2
-        tic
+        % single measurement value
         result = mySMU.runMeasurement;
-        toc
     case 3
-        tic
+        % slower measurements
+        mySMU.SenseParameters.NPLCycles    = 10; % def: 1
+        mySMU.SenseParameters.AverageCount =  5; % def: 0
+        %
         result = mySMU.runMeasurement( ...
             timeout   = 10           , ...
             mode      = 'simple'     , ...
-            count     = 3            );
-        toc
+            count     = 30           );
     case 4
-        tic
+        % user defined sweep
+        mySMU.outputDisable;
+        mySMU.OperationMode                      = 'SVMI';
+        %
+        mySMU.SourceParameters.OVProtectionValue = 3;
+        mySMU.SourceParameters.LimitValue        = 20e-3;
+        %
         result = mySMU.runMeasurement( ...
-            timeout   = 10           , ...
+            timeout   = 100          , ...
             mode      = 'list'       , ...
             count     = 1            , ...
-            list      = (1 : 1e-3 : 2), ...
-            delay     = 0            , ...
+            list      = (2.5 - 1)*rand(1, 100) + 1, ...
+            delay     = -1           , ...
             failabort = false        );
-        toc
+        %
+        figure(1);
+        plot(result.timestamps  , result.senseValues , '-r*');
+        %
+        figure(2);
+        plot(result.timestamps  , result.sourceValues, '-b*');
+        %
+        figure(3);
+        plot(result.sourceValues, result.senseValues, 'g*');
+        %
+        return
     case 5
-        tic
+        % linear sweep
+        mySMU.outputDisable;
+        mySMU.OperationMode                      = 'SVMI';
+        %
+        mySMU.SourceParameters.OVProtectionValue = 3;
+        mySMU.SourceParameters.LimitValue        = 20e-3;
+        %
         result = mySMU.runMeasurement( ...
-            timeout   = 10           , ...
+            timeout   = 100          , ...
             mode      = 'lin'        , ...
             count     = 1            , ...
-            points    = 30           , ...
-            start     = -2           , ...
-            stop      = 3            , ...
-            dual      = true         , ...
+            points    = 50           , ...
+            start     = 0            , ...
+            stop      = 2.5          , ...
+            dual      = 1            , ...
             delay     = -1           , ...
-            rangetype = 'fixed'      , ...
+            rangetype = 'best'       , ...
             failabort = false        );
-        toc
+        %
+        figure(1);
+        plot(result.timestamps  , result.senseValues , '-r*');
+        %
+        figure(2);
+        plot(result.timestamps  , result.sourceValues, '-b*');
+        %
+        figure(3);
+        plot(result.sourceValues, result.senseValues, '-g*');
+        %
+        return
     case 6
-        tic
         % ToDo: test log sweep through zero !!!
         % ToDo: test direction of sweep (start < stop?)
+        % logarithmic sweep
+        mySMU.outputDisable;
+        mySMU.OperationMode                      = 'SVMI';
+        %
+        mySMU.SourceParameters.OVProtectionValue = 3;
+        mySMU.SourceParameters.LimitValue        = 20e-3;
+        %
         result = mySMU.runMeasurement( ...
-            timeout   = 10           , ...
+            timeout   = 40           , ...
             mode      = 'log'        , ...
             count     = 1            , ...
-            points    = 30           , ...
-            start     = -2           , ...
-            stop      = 3            , ...
+            points    = 20           , ...
+            start     = -0.1         , ...
+            stop      =  2.5         , ...
             dual      = true         , ...
             delay     = -1           , ...
-            rangetype = 'fixed'      , ...
+            rangetype = 'best'       , ...
             failabort = false        );
-        toc
+        %
+        figure(1);
+        plot(result.timestamps  , result.senseValues , '-r*');
+        %
+        figure(2);
+        plot(result.timestamps  , result.sourceValues, '-b*');
+        %
+        figure(3);
+        plot(result.sourceValues, result.senseValues, '-g*');
+        %
+        return
     case 7
-        tic
         result = mySMU.runMeasurement( ...
             timeout   = 10           , ...
             mode      = 'simple'     , ...
@@ -145,7 +201,6 @@ switch testCase
             delay     = 0            , ...
             rangetype = 'fixed'      , ...
             failabort = false        );
-        toc
     case 14
         %mySMU.configureDisplay(screen= 'X');
         %mySMU.configureDisplay(screen= 'hElp');
@@ -166,57 +221,7 @@ switch testCase
     case 20
         % -------------------------------------------------------------------------
         % low level commands
-        start  = 10e-6;
-        stop   = 30e-3;
-        points = 30;
-        delay  = -1;
-        cmd    = sprintf( ...
-            'Source:Sweep:Current:Log %f, %f, %d, %f, 1, Fixed, 0, 0, "defbuffer1"', ...
-            start, stop, points, delay);
-        mySMU.write(cmd);
-
-        % mySMU.query('Trace:Actual?');
-        % mySMU.query('Trace:Actual:Start?');
-        % mySMU.query('Trace:Actual:End?');
-        %
-        %mySMU.write(':Trace:Clear');
-
-        mySMU.write(':Initiate'); % init trigger and enables output
-
-        % loop with pause and trigger state request
-        %mySMU.query(':Trigger:State?');
-        mySMU.TriggerState
-
-        % ATTENTION: timeout can kill script
-        % also disables output again
-        %mySMU.write('OUTP OFF');
-
-        % better read points = numOfElements
-        % specify buffer
-        response = mySMU.query(':Trace:Actual:End? "defbuffer1"');
-        points   = str2double(char(response));
-        response = mySMU.query(sprintf('Trace:Data? 1, %d, "defbuffer1", SOUR, READ', points));
-        response = char(response);
-
-
-        % Parse response
-        data = str2double(strsplit(strtrim(response), ','));
-
-        % Split data into currents and voltages
-        currents = data(1:2:end);
-        voltages = data(2:2:end);
-
-        % Plot results
-        if (~isempty(currents) && ~any(isnan(currents)) && ...
-                ~isempty(voltages) && ~any(isnan(voltages)))
-            figure(2);
-            plot(voltages, currents, '*r-');
-            title('V-I Characterization');
-            xlabel('Voltage (V)');
-            ylabel('Current (A)');
-            grid on;
-            drawnow;
-        end
+        mySMU.write(':Trace:Clear');
     case 21
         disp('further test cases ...');
         %
