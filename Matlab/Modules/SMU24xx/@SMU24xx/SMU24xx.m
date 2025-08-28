@@ -1100,8 +1100,10 @@ classdef SMU24xx < VisaIF
             end
         end
 
-        % ToDo
         function result = runMeasurement(obj, varargin)
+            % start stopwatch timer to report elapsed time for method
+            tMeasStart = tic;
+
             % init output
             result.status       = NaN; %
             result.length       = NaN; % number of meas. values   (double)
@@ -1110,6 +1112,7 @@ classdef SMU24xx < VisaIF
             result.sourceValues = NaN; % source (readback) value  (double)
             result.sourceUnit   = '';  % corresponding unit       (char)
             result.timestamps   = NaT; % time stamp               (datetime)
+            result.elapsedTime  = NaN; % total time (in s)        (double)
 
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
@@ -1601,8 +1604,13 @@ classdef SMU24xx < VisaIF
                 return
             end
 
-            % enable output and start trigger model
-            obj.OutputState = 'on';
+            % save output state, enable output and start trigger model
+            if obj.OutputState ~= 1
+                obj.OutputState         = 'on';
+                disableOutputAtEndAgain = true;
+            else
+                disableOutputAtEndAgain = false;
+            end
             if obj.write(':Initiate')
                 result.status = -8;
             end
@@ -1610,6 +1618,11 @@ classdef SMU24xx < VisaIF
             % check trigger state: running or idle (ready)
             for cnt = 1 : ceil(timeout)
                 % assumption: one loop takes about one second
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp(['Measurement started. Check trigger State: ' ...
+                        pad(num2str(cnt), 3, 'left') ...
+                        ' / ' num2str(ceil(timeout))]);
+                end
                 switch obj.TriggerState
                     case 'idle'
                         break;
@@ -1626,15 +1639,21 @@ classdef SMU24xx < VisaIF
                 obj.abortTrigger;
             end
 
+            % optionally disable output again
+            if disableOutputAtEndAgain
+                obj.OutputState         = 'off';
+            end
+
             % data available?
             traceStart = str2double(char(obj.query(':Trace:Actual:Start?')));
             traceEnd   = str2double(char(obj.query(':Trace:Actual:End?')));
+            dataLength = traceEnd - traceStart + 1;
 
             if traceStart >= 1 && traceEnd >= 1
                 % fine
                 if ~strcmpi(obj.ShowMessages, 'none')
                     disp(['  Data available: download ' ...
-                        num2str(traceEnd - traceStart + 1) ...
+                        num2str(dataLength) ...
                         ' measurement values']);
                 end
             else
@@ -1646,14 +1665,6 @@ classdef SMU24xx < VisaIF
                 return
             end
 
-
-            return
-            % ToDo
-            % download data
-
-
-
-
             if isnan(result.status)
                 % all fine: download data
                 response     = obj.query([':Trace:Data? ' ...
@@ -1661,9 +1672,10 @@ classdef SMU24xx < VisaIF
                     activeBuffer '", reading, unit, source, sourunit, tstamp']);
                 tmpResult    = split(char(response), ',');
                 % check right number of received values
-                if size(tmpResult, 1) == 5*count && size(tmpResult, 2) == 1
-                    tmpResult = reshape(tmpResult, 5, count);
-                    result.length = count;
+                if size(tmpResult, 1) == 5*dataLength && ...
+                        size(tmpResult, 2) == 1
+                    tmpResult = reshape(tmpResult, 5, dataLength);
+                    result.length = dataLength;
                     % convert numerical values
                     result.senseValues  = str2double(tmpResult(1, :));
                     result.sourceValues = str2double(tmpResult(3, :));
@@ -1709,6 +1721,9 @@ classdef SMU24xx < VisaIF
                 result.status = 0;
             end
 
+            % stop timer
+            result.elapsedTime = toc(tMeasStart);
+
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
                 if result.status ~= 0
@@ -1724,6 +1739,8 @@ classdef SMU24xx < VisaIF
                         result.sourceUnit]);
                     disp(['  Timestamp        : ' ...
                         char(result.timestamps(end))]);
+                    disp(['  Elapsed time     : ' ...
+                        num2str(result.elapsedTime) ' s']);
                 end
             end
         end
@@ -1757,6 +1774,7 @@ classdef SMU24xx < VisaIF
         end
 
         function set.Terminals(obj, param)
+
             % check input argument (already coerced to char)
             if isvector(param)
                 param = lower(param);
