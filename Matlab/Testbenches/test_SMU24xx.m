@@ -49,7 +49,7 @@ mySMU = SMU24xx(SMUName, interface, showmsg);
 % -------------------------------------------------------------------------
 % config
 visaLogging = false;
-testCase    = 1;
+testCase    = 0;
 % -------------------------------------------------------------------------
 
 if visaLogging

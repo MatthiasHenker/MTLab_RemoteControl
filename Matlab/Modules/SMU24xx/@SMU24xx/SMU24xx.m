@@ -227,8 +227,8 @@
 
 classdef SMU24xx < VisaIF
     properties(Constant = true)
-        SMUVersion    = '0.9.3';      % updated release version
-        SMUDate       = '2025-08-26'; % updated release date
+        SMUVersion    = '0.9.5';      % updated release version
+        SMUDate       = '2025-08-28'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1259,7 +1259,8 @@ classdef SMU24xx < VisaIF
                                 else
                                     disp(['  - list         : [' ...
                                         num2str(list(1), '%g') ' ... ' ...
-                                        num2str(list(end), '%g') '] (coerced)']);
+                                        num2str(list(end), '%g') ...
+                                        '] (coerced)']);
                                 end
                             end
                         end
