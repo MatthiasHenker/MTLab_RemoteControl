@@ -59,6 +59,7 @@ dual         = ''; % runMeasurement
 delay        = ''; % runMeasurement
 rangetype    = ''; % runMeasurement
 failabort    = ''; % runMeasurement
+asymptote    = ''; % runMeasurement
 
 % -------------------------------------------------------------------------
 % assign parameter values
@@ -182,6 +183,10 @@ for nArgsIn = 2:2:length(inVars)
                 if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
                     failabort = paramValue;
                 end
+            case {'asymptote', 'asym'}
+                if ~isempty(regexp(paramValue, '^[\w\.\+\-]+$', 'once'))
+                    asymptote = paramValue;
+                end
             otherwise
                 disp(['SMU24xx: Warning - Parameter name ''' ...
                     paramName ''' is unknown. ' ...
@@ -219,7 +224,8 @@ switch command
             'dual'      , dual       , ...
             'delay'     , delay      , ...
             'rangetype' , rangetype  , ...
-            'failabort' , failabort  };
+            'failabort' , failabort  , ...
+            'asymptote' , asymptote  };
     otherwise
         % create full list of parameter name+value pairs
         allVars = { ...
@@ -240,7 +246,8 @@ switch command
             'dual'      , dual       , ...
             'delay'     , delay      , ...
             'rangetype' , rangetype  , ...
-            'failabort' , failabort  };
+            'failabort' , failabort  , ...
+            'asymptote' , asymptote  };
         outVars = cell(0);
         idx = 1;
         for cnt = 1:2:length(allVars)

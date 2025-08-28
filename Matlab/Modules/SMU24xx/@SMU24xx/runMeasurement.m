@@ -36,6 +36,7 @@ dual      = []; % logical: for lin/logSweep
 delay     = []; % double : -1 = auto, 0 = off, 0..1 = delay
 rangetype = ''; % char   : for lin/logSweep
 failabort = []; % logical: for lin/log/listSweep
+asymptote = []; % double: for logSweep through zero
 %
 timeoutDefault   = 10;  % 80 s for NPLC = 10 & Averaging = 100
 modeDefault      = 'simple';
@@ -48,6 +49,7 @@ dualDefault      = 1;   % yes
 delayDefault     = -1;  % auto delay
 rangetypeDefault = 'best';
 failabortDefault = 0;   % off: continue if source limit is exceeded
+asymptoteDefault = 0;   % for log sweep when not sweeping through zero
 
 senseMode  = obj.SenseMode;
 sourceMode = obj.SourceMode;
@@ -204,8 +206,6 @@ for idx = 1:2:length(params)
                     start   = [];
                 else
                     % limit to max range
-                    % ToDo: test logSweep through zero
-                    %   ==> modify start/stop checks ???
                     startNew = min(start   , maxValue);
                     startNew = max(startNew, minValue);
                     if startNew ~= start
@@ -229,8 +229,6 @@ for idx = 1:2:length(params)
                     stop    = [];
                 else
                     % limit to max range
-                    % ToDo: test logSweep through zero
-                    %   ==> modify start/stop checks ???
                     stopNew = min(stop   , maxValue);
                     stopNew = max(stopNew, minValue);
                     if stopNew ~= stop
@@ -374,6 +372,26 @@ for idx = 1:2:length(params)
                 disp(['  - failabort    : ' ...
                     num2str(failabort, '%g') ' (coerced)']);
             end
+        case 'asymptote'
+            coerced = false;
+            if ~isempty(paramValue)
+                asymptote = str2double(paramValue);
+                if isnan(asymptote)
+                    asymptote = asymptoteDefault;
+                    coerced   = true;
+                else
+                    % it is any number
+                    %
+                end
+            else
+                asymptote = asymptoteDefault;
+                coerced   = true;
+            end
+            if ~strcmpi(obj.ShowMessages, 'none') ...
+                    && coerced && strcmpi(mode, 'log')
+                disp(['  - asymptote    : ' ...
+                    num2str(asymptote, '%g') ' (coerced)']);
+            end
         otherwise
             if ~isempty(paramValue)
                 disp(['SMU24xx Warning - ''runMeasurement'' ' ...
@@ -391,20 +409,31 @@ if isempty(list) && strcmpi(mode, 'list')
         disp('  parameter ''list'' is missing ==> exit');
     end
 end
-if isempty(start) && (strcmpi(mode, 'lin') || ...
-        strcmpi(mode, 'log'))
+if isempty(start) && (strcmpi(mode, 'lin') || strcmpi(mode, 'log'))
     allFine = false;
     if ~strcmpi(obj.ShowMessages, 'none')
         disp('  parameter ''start'' is missing ==> exit');
     end
 end
-if isempty(stop) && (strcmpi(mode, 'lin') || ...
-        strcmpi(mode, 'log'))
+if isempty(stop) && (strcmpi(mode, 'lin') || strcmpi(mode, 'log'))
     allFine = false;
     if ~strcmpi(obj.ShowMessages, 'none')
         disp('  parameter ''stop'' is missing ==> exit');
     end
 end
+
+% invalid parameters?
+if allFine && strcmpi(mode, 'log')
+    % start and stop are not empty
+    if (min(start, stop) <= asymptote) && (asymptote <= max(start, stop))
+        allFine = false;
+        if ~strcmpi(obj.ShowMessages, 'none')
+            disp(['  parameter ''asymptote'' has to be outside the ' ...
+                'log sweep range ==> exit']);
+        end
+    end
+end
+
 % exit when mandatory parameters are missing
 if ~allFine
     result.status = 1;
@@ -430,7 +459,7 @@ switch mode
             result.status = -5;
             return
         end
-    case {'lin', 'log'}
+    case 'lin'
         if obj.write([':Source:Sweep:' sourceMode ':' mode ' ' ...
                 num2str(start)     ', ' ...
                 num2str(stop)      ', ' ...
@@ -441,6 +470,21 @@ switch mode
                 num2str(failabort) ', ' ...
                 num2str(dual)      ', ' ...
                 '"' activeBuffer   '"'])
+            result.status = -5;
+            return
+        end
+    case 'log'
+        if obj.write([':Source:Sweep:' sourceMode ':' mode ' ' ...
+                num2str(start)     ', ' ...
+                num2str(stop)      ', ' ...
+                num2str(points)    ', ' ...
+                num2str(delay)     ', ' ...
+                num2str(count)     ', ' ...
+                rangetype          ', ' ...
+                num2str(failabort) ', ' ...
+                num2str(dual)      ', ' ...
+                '"' activeBuffer  '", ' ...
+                num2str(asymptote) ])
             result.status = -5;
             return
         end
