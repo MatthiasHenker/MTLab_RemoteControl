@@ -17,7 +17,7 @@
 % All public properties and methods from superclass 'VisaIF' can also
 % be used. See 'VisaIF.doc' for details (min. VisaIFVersion 3.0.2).
 %
-% Use 'SMU24xx.doc' or 'doc SMU24xx' for help page.
+% Use 'doc SMU24xx' (or 'SMU24xx.doc') for help page.
 %
 %   - SMU24xx : constructor of subclass (class name)
 %     * use this function to create an object for your SMU
@@ -29,17 +29,23 @@
 %     * the output parameter 'status' has the same meaning for all
 %       listed methods
 %           status   : == 0 when okay
-%                      != 0 when something went wrong
+%                      ~= 0 when something went wrong
 %     * all parameter names and values (varargin) are NOT case sensitive
 %     * varargin are input as pairs NAME = VALUE
 %     * any number and order of NAME = VALUE pairs can be specified
-%     * not all parameters and values are supported by all SMUs
 %     * check for warnings and errors
 %
 % methods (static) of class 'SMU24xx':
-%   - doc            : open window with this help text
+%   - doc            : open window with this help text (problems with Win11)
 %
 % methods (public) of class 'SMU24xx':
+%   - showSettings : display (nearly) all SMU settings, set internally and
+%                    temporarily mySMU.ShowMessages = 0 to avoid
+%                    disturbing debug messages
+%     * usage:
+%                    mySMU.showSettings
+%       with no input or output arguments
+%
 %   - clear          : clear status at SMU
 %     * send SCPI command '*CLS' to SMU
 %     * usage:
@@ -48,12 +54,12 @@
 %   - outputEnable     : enable the SMU output
 %     * usage:
 %           status = mySMU.outputEnable
-%     alternatively set property mySMU.OutputState = 1 (or true)
+%     alternatively set property mySMU.OutputState = 1 (or true , 'on')
 %
 %   - outputDisable    : disable the SMU output
 %     * usage:
 %           status = mySMU.outputDisable
-%     alternatively set property mySMU.OutputState = 0 (or false)
+%     alternatively set property mySMU.OutputState = 0 (or false, 'off')
 %
 %   - outputTone       : emit a tone
 %     * usage:
@@ -66,13 +72,6 @@
 %                        range: 1e-3 ... 1e2
 %                        optional parameter, default: 1 (1 s)
 %
-%   - restartTrigger   : set the instrument into local control and start
-%                        continuous measurements, aborts any running trigger
-%                        models ==> any following remote control command
-%                        stops continuous measurements again
-%     * usage:
-%           status = mySMU.restartTrigger
-%
 %   - configureDisplay : configure SMU display
 %     * usage:
 %           status = mySMU.configureDisplay(varargin)
@@ -81,7 +80,8 @@
 %                        'clear' to delete user defined text ('text')
 %                        'help' to print out list of screen options
 %                        'home' to select home screen ...
-%             'digits' : determines the number of digits that are displayed
+%             'digits' : determines the number of digits (3 ... 6) that
+%                        are displayed
 %             'brightness': scalar double to adjust brightness (-1 ... 100)
 %             'buffer' : determines which buffer is used for measurements
 %                        that are displayed
@@ -90,119 +90,198 @@
 %                        'ABC;abc' for dual line with ';' as delimiter
 %                        use either 'X;Y', {'X', 'Y'} or ["X", "Y"]
 %
-%
-%
-%
-%
-% ToDo
-%
-%    showSettings
-%
-%
-%
-%
-%
-%   - configureSource : configure the source function and parameters
+%   - restartTrigger   : set the instrument into local control and start
+%                        continuous measurements, aborts any running trigger
+%                        models ==> any following remote control command
+%                        stops continuous measurements again
 %     * usage:
-%           status = mySMU.configureSource(varargin)
-%       with varargin: pairs of parameters NAME = VALUE
-%           'function' : 'voltage' or 'current'
-%           'level'    : source level in volts or amps (numeric)
-%           'limit'    : compliance limit (current for voltage source,
-%                        voltage for current source, numeric)
-%           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
+%           status = mySMU.restartTrigger
 %
-%   - configureMeasure : configure the measurement function
+%   - abortTrigger     : aborts any running trigger models, this command is
+%                        normally not needed ==> runMeasurement method is
+%                        the only method which start a trigger model and
+%                        also abort trigger when reaching timeout or done
 %     * usage:
-%           status = mySMU.configureMeasure(varargin)
-%       with varargin: pairs of parameters NAME = VALUE
-%           'function' : 'voltage', 'current', or 'resistance'
-%           'range'    : measurement range (e.g., 'auto', '100mV', '1A')
-%           'nplc'     : number of power line cycles (e.g., 0.01 to 10)
+%           status = mySMU.abortTrigger
 %
-%   - measure          : perform a measurement
+%   - clearErrorMessageBuffer : clears event log buffer at SMU
+%                        (==> also empties mySMU.ErrorMessages)
 %     * usage:
-%           result = mySMU.measure(varargin)
+%           status = mySMU.clearErrorMessageBuffer
+%
+%   - refreshZeroReference : causes the SMU to refresh the reference and
+%                        zero measurements once, when
+%                        mySMU.SenseParameters.AutoZero is set to off, the
+%                        instrument may gradually drift out of
+%                        specification. To minimize the drift, you can send
+%                        the once command to make a reference and zero
+%                        measurement immediately before a test sequence.
+%     * usage:
+%           status = mySMU.refreshZeroReference
+%
+%   - runMeasurement : most important method of SMU class which actually
+%                      configure measurements, defines trigger models and
+%                      run measurements including data downloads
+%     * usage:
+%           result = mySMU.runMeasurement(varargin)
 %       with output
-%           result.status : status = 0 for okay, -1 for error
-%           result.value  : measured value (double)
-%           result.unit   : unit of measurement ('V', 'A', 'Ohm')
-%           result.function : measurement function ('voltage',
-%                           'current', 'resistance')
+%           result.status      : status = 0 for okay, else error
+%           result.length      : number of measurement values ==> length of
+%                                senseValues, sourceValues, timestamps
+%           result.senseValues : vector with measured sense values (double)
+%           result.senseUnit   : sense unit (char) - 'V', 'A', 'Ohm', 'W'
+%           result.sourceValues: vector with measured source values (double)
+%           result.sourceUnit  : source unit (char) - 'V', 'A'
+%           result.timestamps  : vector of time stamps (datetime)
+%           result.elapsedTime : total time (in s)        (double)
+%       with varargin: pairs of parameters NAME = VALUE
+%             'timeout'  : timeout in s (1 ... 1e3), default is 10
+%                          trigger model will be stopped after timeout
+%                          already available measurement values will be
+%                          downloaded
+%             'mode'     : defines measurement mode, default is 'simple'
+%                    'simple': fetches 'count' values with current SMU
+%                          settings
+%                    'lin'   : perform a linear sweep from 'start' to
+%                          'stop' with 'points' steps
+%                    'log'   : same as 'lin' but fpr logarithmical sweep
+%                    'list'  : sweep with user defined steps according to
+%                          parameter 'list'
+%             'count'    : number of sweep cycles (mode = 'list', 'lin',
+%                          'log') or measurement runs (mode = 'simple'),
+%                          default is 1
+%             'list'     : vector with user defined source values (currents
+%                          or voltages), no default value, required when
+%                          mode = 'list'
+%             'start'    : start source value for sweeps, no default value,
+%                          required when mode = 'lin' or 'log'
 %
+%             'stop'     : stop source value for sweeps, see start value
+%             'points'   : number of points for sweep (mode = 'lin', 'log')
+%                          for mode = 'list' then points = length(list)
+%                          for mode = 'simple' then points = not available
+%             'asymptote': only required when mode = 'log', default is 0,
+%                          asymptote value has to be outside the sweep
+%                          range (start ... stop)
+%             'delay'    : additional delay between steps, default is -1
+%                      -1 for auto delay (only for mode = 'lin', 'log')
+%                       0 for zero delay
+%                      >0 for additional delay in s (0 ... 1)
+%             'dual'     : boolean, default is true
+%                    0, false, 'off', 'no'  for sweep from start to stop
+%                          only
+%                    1, true , 'on' , 'yes' for sweep from start to stop,
+%                          then back from stop to start
+%             'failabort': boolean, default is false
+%                    0, false, 'off', 'no'  for complete the sweep even if
+%                          the source limit is exceeded
+%                    1, true , 'on' , 'yes' for abort the sweep if the
+%                          source limit is exceeded
+%             'rangetype': defines source range, default is 'best'
+%                    'best'  for best fixed range for entire sweep
+%                    'fixed' for present source range for the entire sweep
+%                    'auto'  for most sensitive source range for each
+%                            source level in the sweep
 %
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-%
-% additional properties of class 'SMU':
-%   - with read access only
+% additional properties of class 'SMU24xx':
+%   - with read access only (constants)
 %     * SMUVersion         : version of this class file (char)
 %     * SMUDate            : release date of this class file (char)
-%     * AvailableBuffers   : list of available reading buffers
-%     * OverVoltageProtectionTripped : OVP active (1 = 'on' or 0 = 'off')
-%     * TriggerState       : 'idle', 'running', 'aborted' ...
-%     * ErrorMessages      : table with event log buffer
-%                    .Time      time when the event occurred ('datetime')
-%                    .Code      event code                     ('double')
-%                    .Type      error, warning or information  ('string')
-%                    .Description event message                ('string')
-%
-%   - with read/write access (numeric values as 'double')
-%     * OutputState                : output state (1 = 'on' or 0 = 'off')
-
-
-% method refreshAutoZero ':Sense:Azero:Once' When autozero is set to off,
-% the instrument may gradually drift out of specification. To minimize the
-% drift, you can send the once command to make a reference and zero
-% measurement immediately before a test sequence.
-
-% SenseMode       measurement function
-%                 either 'current = I' or 'voltage = V'
-% SenseUnit       either Ohm/Watt/Amp for SenseI or Ohm/Watt/Volt for SenseV
-% SenseCount
-% SenseRSense     either 0/false for off/2-wire or 1/true for on/4-wire
-% SenseAutoRange++ ==> configureAutoRange??
-% SenseOffsetCompensated only applied to resistance measurements
-%                 (unit = Ohm)
-% SenseAutoZero
-% SenseNPLC
-% SenseAverage++ ==> configureAverage??
-%
-
-% InterlockState
-% InterlockTripped  read-only
-
-% SorceParameters
-%     * LimitValue        : safety limit, max current in A or max voltage in V
-%     * OVProtectionValue : max. source output in V (coerced)
-
-
-
+%     * AvailableBuffers   : list of available reading buffers (for future)
+%   - with read access only (dependent on SMU)
+%     * TriggerState       : actual trigger state, nomally 'idle'
+%     * PowerLineFrequency : 50 or 60 (Hz), used for NPLC calculations
+%     * ErrorMessages      : table with all event log notifications
+%          .Time             time when the event occurred ('datetime')
+%          .Code             event code                     ('double')
+%          .Type             error, warning or information  ('string')
+%          .Description      event message                  ('string')
+%     * ActiveBuffer       : currently used reading buffer for measurements
+%   - with read/write access (dependent on SMU)
+%     * Terminals          : 'front' or 'rear' terminals
+%     * OutputState        : enables or disables source output
+%                            'on' , 'yes', 1, true or
+%                            'off', 'no' , 0, false
+%     * OperationMode      : first and most important (main) setting,
+%                            defines source and sense functions
+%                            'SVMI', 'Source:V_Sense:I'
+%                            'SIMV', 'Source:I_Sense:V'
+%     * SourceParameters   : struct with source parameters
+%          .OutputValue        : fixed value for source value
+%          .Readback           : determines if the instrument records the
+%                                measured source value or the configured
+%                                source value when making a measurement
+%          .Range              : selects the range for the source
+%          .AutoRange          : determines if the range is selected
+%                                manually or automatically
+%          .OutputOffState     : defines the state of the source when the
+%                                output is turned off, 'normal', 'zero',
+%                                'guard' or 'himpedance'
+%          .Interlock          : determines if the output can be turned on
+%                                when the interlock signal is not engaged
+%          .InterlockSignal    : (read-only) indicates that the interlock
+%                                signal is active (1) or missing (0)
+%          .LimitValue         : detemines the source limit for meas,
+%                                is a current value for voltage sources
+%                                is a voltage value for current sources
+%          .LimitTripped       : (read-only) indicates if the source
+%                                exceeded the limits that were set
+%          .OVProtectionValue  : sets the overvoltage protection setting of
+%                                the source output in V,
+%                                2, 5, 10, 20, 40, 60, 80, 100, 120, 140,
+%                                160, 180, none (210)
+%          .OVProtectionTripped: (read-only) indicates if the overvoltage
+%                                source protection feature is active
+%          .Delay              : source delay
+%          .AutoDelay          : enables or disables the automatic delay
+%          .HighCapMode        : enables or disables high-capacitance mode
+%     * SenseParameters    : struct with source parameters
+%          .Unit               : sets the units of measurement that are
+%                                displayed on the front panel of the
+%                                instrument and stored in meas. results
+%                                'A', Ohm, 'W' for current sense
+%                                'V', Ohm, 'W' for voltage sense
+%          .Range              : sense range
+%          .AutoRange          : determines if the range is selected
+%                                manually or automatically
+%          .AutoRangeLowerLimit: selects the lower limit for measurements
+%                                of the selected function when the range is
+%                                selected automatically
+%          .AutoRangeRebound   : determines if the instrument restores the
+%                                measure range to match the limit range
+%                                after making a measurement
+%          .NPLCycles          : sets the time that the input signal is
+%                                measured, (0.01 .. 10) power-line cycles
+%          .AverageCount       : enables or disables the averaging filter
+%                                for measurements, 0 = disabled, (1 .. 100)
+%                                for enabled averaging with number of
+%                                measurements that are averaged
+%          .AverageMode        : sets the type of averaging filter,
+%                                'repeat' or 'moving'
+%          .RemoteSensing      : selects local or remote(sensing
+%                                1, true , 'on' for remote (4-wire) sensing
+%                                0, false, 'off' for local (2-wire) sensing
+%          .AutoZero           : enables or disables automatic updates to
+%                                the internal reference measurements
+%          .OffsetCompensation : determines if offset compensation is used,
+%                                voltage offsets caused by the presence of
+%                                thermoelectric EMFs, feature is only
+%                                applied when unit = 'Ohm'
 %
 % ---------------------------------------------------------------------
 % example for usage of class 'SMU24xx': (Keithley 24xx has to be listed in
 % config file)
 %
-%   SMU24xx.listContentOfConfigFiles; % list all known devices
 %   mySMU = SMU24xx('2450');      % create object and open interface
 %
-%   disp(['Version of SMU class   : ' mySMU.SMUVersion]);
-%   disp(['Version of VisaIF class: ' mySMU.VisaIFVersion]);
-%
 %   mySMU.reset; % reset SMU (optional command)
+%   mySMU.OperationMode                      = 'SVMI'; % voltage source
+%   mySMU.SourceParameters.OVProtectionValue = 5;      % 5 V
+%   mySMU.SourceParameters.LimitValue        = 25e-3;  % 25 mA
 %
-% ToDo
-%   mySMU.outputEnable;
-%
-%   mySMU.outputDisable;
+%   result = mySMU.runMeasurement(mode = 'log', start = 0.5, stop = 2.5);
+%   figure;
+%   plot(result.sourceValues, result.senseValues , '-g*');
 %
 %   mySMU.delete;                     % close interface and delete object
 %
@@ -221,14 +300,13 @@
 %   - no severe bugs reported (version 1.0.0) ==> winter term 2025/26
 %
 % development, support and contact:
-%   - ShanShan Chan (student, E124b Information and Electronics)
 %   - Matthias Henker (professor)
 % -------------------------------------------------------------------------
 
 classdef SMU24xx < VisaIF
     properties(Constant = true)
-        SMUVersion    = '0.9.5';      % updated release version
-        SMUDate       = '2025-08-28'; % updated release date
+        SMUVersion    = '1.0.0';      % updated release version
+        SMUDate       = '2025-08-29'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -393,13 +471,15 @@ classdef SMU24xx < VisaIF
             % destructor
 
             % execute device specific macros before closing connection
-            if ~strcmpi(obj.ShowMessages, 'none') && ~isempty(obj.DeviceName)
-                disp([obj.DeviceName ':']);
-                disp('  execute macro-before-closing');
-            end
+            if ~isempty(obj.DeviceName)
+                if ~strcmpi(obj.ShowMessages, 'none')
+                    disp([obj.DeviceName ':']);
+                    disp('  execute macro-before-closing');
+                end
 
-            if obj.runBeforeClose
-                error('Reconfiguration of SMU before closing connecting failed.');
+                if obj.runBeforeClose
+                    error('Reconfiguration of SMU before closing connecting failed.');
+                end
             end
 
             % regular deletion of this class object follows now
@@ -663,7 +743,10 @@ classdef SMU24xx < VisaIF
 
         end
 
-        function clearErrorMessageBuffer(obj)
+        function status = clearErrorMessageBuffer(obj)
+            % init output
+            status = NaN;
+
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp(['Clear event log buffer of ' obj.DeviceName ...
                     ' and history in property ''ErrorMessages''']);
@@ -673,10 +756,22 @@ classdef SMU24xx < VisaIF
             obj.ErrorMessageBuffer(1:end, :) = [];
 
             % clear event log buffer at SMU
-            obj.write('System:Clear');
+            if obj.write('System:Clear')
+                status = -1;
+            end
+
+            % set final status
+            if isnan(status)
+                % no error so far ==> set to 0 (fine)
+                status = 0;
+            end
 
             if ~strcmpi(obj.ShowMessages, 'none')
-                disp('  done');
+                if status == 0
+                    disp('  done');
+                else
+                    disp('  clearing error buffer failed');
+                end
                 disp( ' ');
             end
         end
@@ -1318,8 +1413,7 @@ classdef SMU24xx < VisaIF
         function varargout = subsref(obj, S)
             propList   = {'SourceParameters', 'SenseParameters'};
             % list of methods wihout output arguments (nargout = 0)
-            methodList = {'doc', 'delete', 'showSettings', ...
-                'clearErrorMessageBuffer'};
+            methodList = {'doc', 'delete', 'showSettings'};
 
             if numel(S) >= 2 && strcmp(S(1).type, '.') ...
                     && any(strcmp(S(1).subs, propList)) ...

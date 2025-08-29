@@ -87,7 +87,7 @@ for idx = 1:2:length(params)
                 end
                 % convert to command string (char)
                 if brightness < 0
-                    brightness = 'blackout';
+                    brightness = 'blac'; % 'blackout'
                 elseif brightness < 5
                     brightness = 'off';
                 elseif brightness < 30
