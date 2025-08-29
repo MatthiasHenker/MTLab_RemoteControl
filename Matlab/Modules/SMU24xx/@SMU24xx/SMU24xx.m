@@ -244,16 +244,20 @@ classdef SMU24xx < VisaIF
         SenseParameters         struct
     end
 
+    properties(Dependent, SetAccess = private, GetAccess = public)
+        ErrorMessages           table
+    end
+
     properties(SetAccess = private, GetAccess = public)
-        ErrorMessages           table = table(Size= [0, 4], ...
-            VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
-            VariableTypes= {'datetime', 'double', 'string', 'string'});
         AvailableBuffers        cell  = {''};
         ActiveBuffer            char
     end
 
     % ---------------------------------------------------------------------
     properties(SetAccess = private, GetAccess = private)
+        ErrorMessageBuffer      table = table(Size= [0, 4], ...
+            VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
+            VariableTypes= {'datetime', 'double', 'string', 'string'});
         SourceMode              char
         SenseMode               char
     end
@@ -657,6 +661,24 @@ classdef SMU24xx < VisaIF
             % restore state of ShowMessages
             obj.ShowMessages = showMessages;
 
+        end
+
+        function clearErrorMessageBuffer(obj)
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp(['Clear event log buffer of ' obj.DeviceName ...
+                    ' and history in property ''ErrorMessages''']);
+            end
+
+            % clear internal table with stored error messages
+            obj.ErrorMessageBuffer(1:end, :) = [];
+
+            % clear event log buffer at SMU
+            obj.write('System:Clear');
+
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp('  done');
+                disp( ' ');
+            end
         end
 
         function status = outputEnable(obj)
@@ -1296,7 +1318,8 @@ classdef SMU24xx < VisaIF
         function varargout = subsref(obj, S)
             propList   = {'SourceParameters', 'SenseParameters'};
             % list of methods wihout output arguments (nargout = 0)
-            methodList = {'doc', 'delete', 'showSettings'};
+            methodList = {'doc', 'delete', 'showSettings', ...
+                'clearErrorMessageBuffer'};
 
             if numel(S) >= 2 && strcmp(S(1).type, '.') ...
                     && any(strcmp(S(1).subs, propList)) ...
@@ -1589,7 +1612,7 @@ classdef SMU24xx < VisaIF
         % -----------------------------------------------------------------
         % more get methods (public properties, read-only)
 
-        function errTable = get.ErrorMessages(obj)
+        function eventTable = get.ErrorMessages(obj)
             % read error list from the SMU's error buffer
             %
             % read all types of events (error, warning, informational)
@@ -1601,23 +1624,33 @@ classdef SMU24xx < VisaIF
             % how many unread events are available?
             numOfEvents = obj.query(':System:Eventlog:Count? All');
             numOfEvents = str2double(char(numOfEvents));
-            if isnan(numOfEvents)
-                errTable  = table(datetime('now', ...
-                    InputFormat= datetimeFmt), NaN, "<missing>", ...
-                    "ERROR: Could not read event buffer from SMU!", ...
-                    VariableNames= {'Time', 'Code', 'Type', 'Description'});
-                return
-            else
-                % intialize table for events
-                eventTable  = table( ...
-                    Size=[numOfEvents, 4], ...
-                    VariableNames= {'Time', 'Code', 'Type', 'Description'}, ...
-                    VariableTypes= {'datetime', 'double', 'string', ...
-                    'string'});
+
+            % append new error messages to already stored error buffer
+            eventTable  = obj.ErrorMessageBuffer;
+            %
+            tableLength = size(eventTable, 1);
+            tableWidth  = size(eventTable, 2);
+            newTableRow = table(Size = [1 tableWidth], ...
+                VariableNames = eventTable.Properties.VariableNames, ...
+                VariableTypes = eventTable.Properties.VariableTypes);
+
+            if isnan(numOfEvents) || numOfEvents < 0
+                eventTable = [eventTable; newTableRow];
+                %
+                eventTable.Time(tableLength+1)        = ...
+                    datetime('now', InputFormat= datetimeFmt);
+                eventTable.Code(tableLength+1)        = NaN;
+                eventTable.Type(tableLength+1)        = '<missing>';
+                eventTable.Description(tableLength+1) = ...
+                    'ERROR: Could not read event buffer from SMU!';
+                %
+                numOfEvents = 0;
             end
 
             % read events from buffer
-            for cnt = 1 : numOfEvents
+            for cnt = (1 : numOfEvents) + tableLength
+                eventTable = [eventTable; newTableRow]; %#ok<AGROW>
+                %
                 eventMsg = obj.query(':System:Eventlog:Next?');
                 eventMsg = char(eventMsg);
                 % format: 'Code, "Description;Type;Time"'
@@ -1646,22 +1679,18 @@ classdef SMU24xx < VisaIF
 
             % optionally display results
             if ~strcmpi(obj.ShowMessages, 'none')
-                if ~isempty(eventTable)
-                    disp('SMU event list:');
-                    disp(eventTable);
+                if numOfEvents > 0
+                    disp('SMU event list (new messages):');
+                    disp(eventTable(tableLength+1:end, :));
                 else
-                    disp('SMU event list is empty');
+                    disp('No new messages for SMU event list.');
                 end
             end
 
             % reading out the error buffer again results in an empty return
             % value ==> therefore history is saved in 'SMU24xx' class
-
-            % append event list to table
-            obj.ErrorMessages = [obj.ErrorMessages; eventTable];
-
-            % copy result to output
-            errTable = obj.ErrorMessages;
+            % save new (extended) table internally
+            obj.ErrorMessageBuffer = eventTable;
         end
 
         % -----------------------------------------------------------------
@@ -3320,10 +3349,8 @@ classdef SMU24xx < VisaIF
                         isnan(paramSet)) && ~strcmpi(obj.ShowMessages, 'none')
                     disp(['SMU24xx parameter value for property ' propName ...
                         ' was not set properly.']);
-                    fprintf('  wanted value      : %g %s\n', ...
-                        param   , paramUnit);
-                    fprintf('  actually set value: %g %s\n', ...
-                        paramSet, paramUnit);
+                    fprintf('  wanted value      : %g\n', param);
+                    fprintf('  actually set value: %g\n', paramSet);
                     % readback reported mismatch
                     status = 2;
                 else

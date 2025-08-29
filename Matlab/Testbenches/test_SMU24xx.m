@@ -4,58 +4,75 @@ clear variables;
 close all;
 clc;
 
-SMUName = 'KEITHLEY-2450';
+% -------------------------------------------------------------------------
+% configuration of measurement device
+% -------------------------------------------------------------------------
 
+SMUName = 'KEITHLEY-2450';
+%
 %interface = 'visa-usb';
 interface = 'visa-tcpip';
 %interface = 'demo';
 %interface = '';
-
+%
 %showmsg   = 'all';
 showmsg   = 'few';
 %showmsg   = 'none';
 
 % -------------------------------------------------------------------------
-% display versions
-disp(['Version of SMU               : ' SMU24xx.SMUVersion ...
-    ' (' SMU24xx.SMUDate ')']);
-disp(['Version of VisaIF            : ' SMU24xx.VisaIFVersion ...
-    ' (' SMU24xx.VisaIFDate ')']);
-disp(['Version of VisaIFLogEventData: ' ...
-    VisaIFLogEventData.VisaIFLogEventVersion ...
-    ' (' VisaIFLogEventData.VisaIFLogEventDate ')']);
-disp(['Version of VisaIFLogger      : ' ...
-    VisaIFLogger.VisaIFLoggerVersion ...
-    ' (' VisaIFLogger.VisaIFLoggerDate ')']);
-disp(' ');
+% configuration of test script
+% -------------------------------------------------------------------------
+displayClassVersions        = false; % or 0 for false and 1 for true
+displayInfoAboutConfigFiles = false;
+visaLogging                 = 0;
+%
+resetSMUatBeginOfTest       = false;
+testCase                    = 0;
 
 % -------------------------------------------------------------------------
-% print out some information
-SMU24xx.listAvailableConfigFiles;
-SMU24xx.listContentOfConfigFiles;
-SMU24xx.listAvailableVisaUsbDevices;
-disp(' ');
+if displayClassVersions
+    disp(['Version of SMU               : ' SMU24xx.SMUVersion ...
+        ' (' SMU24xx.SMUDate ')']);
+    disp(['Version of VisaIF            : ' SMU24xx.VisaIFVersion ...
+        ' (' SMU24xx.VisaIFDate ')']);
+    disp(['Version of VisaIFLogEventData: ' ...
+        VisaIFLogEventData.VisaIFLogEventVersion ...
+        ' (' VisaIFLogEventData.VisaIFLogEventDate ')']);
+    disp(['Version of VisaIFLogger      : ' ...
+        VisaIFLogger.VisaIFLoggerVersion ...
+        ' (' VisaIFLogger.VisaIFLoggerDate ')']);
+    disp(' ');
+end
 
-%mySMU = SMU24xx({SMUName, SMUID}, interface);
+% -------------------------------------------------------------------------
+if displayInfoAboutConfigFiles
+    SMU24xx.listAvailableConfigFiles;
+    SMU24xx.listContentOfConfigFiles;
+    SMU24xx.listAvailableVisaUsbDevices;
+    disp(' ');
+end
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% actual code starts here
+% -------------------------------------------------------------------------
+% create object for SMU device
 mySMU = SMU24xx(SMUName, interface, showmsg);
-%mySMU.ShowMessages     = 'few';
-
-% display details (properties) of SMU object
-%mySMU
-
-%mySMU.reset;
-%mySMU.clear;
-
-% -------------------------------------------------------------------------
-% config
-visaLogging = false;
-testCase    = 6;
-% -------------------------------------------------------------------------
 
 if visaLogging
     mySMU.EnableCommandLog = true; %#ok<*UNRCH>
     myLog = VisaIFLogger();
     myLog.ShowMessages = 0;
+end
+
+% display details (properties) of SMU object
+%mySMU
+%mySMU.ShowMessages = 'few'; % change verbose level at runtime
+%mySMU.clear;
+
+if resetSMUatBeginOfTest
+    mySMU.reset;
 end
 
 % show home screen
@@ -195,7 +212,7 @@ switch testCase
         mySMU.SourceParameters.OVProtectionValue = 5;
         mySMU.SourceParameters.LimitValue        = 25e-3;
         mySMU.SourceParameters.Readback          = 'on'; % def: on
-        mySMU.SenseParameters.NPLCycles          = 2; % def: 1
+        mySMU.SenseParameters.NPLCycles          = 5; % def: 1
         mySMU.SenseParameters.AverageCount       = 0; % def: 0
         mySMU.SenseParameters.RemoteSensing      = 'off'; % def: 'off'
         %
@@ -222,7 +239,7 @@ switch testCase
         figure(3);
         plot(result.sourceValues, result.senseValues, '-g*');
         %
-        return
+        %return
     case 14
         % display test
         %mySMU.configureDisplay(screen= 'X');
