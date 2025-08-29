@@ -22,7 +22,7 @@
 % some config
 
 ModuleName = 'FGen';  % name of class file
-VersionID  = '3.0.0_2024-08-24'; % should match name of tag in git (version control)
+VersionID  = '3.0.0_2025-08-29_refresh'; % should match name of tag in git (version control)
 %VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 

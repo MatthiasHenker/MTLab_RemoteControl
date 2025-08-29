@@ -22,8 +22,8 @@
 % some config
 
 ModuleName = 'SMU24xx';  % name of class file
-%VersionID  = '1.0.0_2025-0x-xx'; % should match name of tag in git (version control)
-VersionID  = 'x.y.z';
+VersionID  = '1.0.0_2025-08-29'; % should match name of tag in git (version control)
+%VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
 copyFilesToSupportDir = 1;   % true (1) or false (0)
@@ -61,6 +61,8 @@ fclose(fid);
 % create p-files out of original m-files
 pcode(fullfile(workSourceDir, 'SMU24xx.m'));
 pcode(fullfile(workSourceDir, 'checkParams.m'));
+pcode(fullfile(workSourceDir, 'runMeasurement.m'));
+pcode(fullfile(workSourceDir, 'configureDisplay.m'));
 
 % -------------------------------------------------------------------------
 % return to original path
