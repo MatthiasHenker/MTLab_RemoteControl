@@ -449,6 +449,16 @@ end
 % -------------------------------------------------------------
 activeBuffer = obj.ActiveBuffer;
 
+% preparation: stop possibly running trigger and clear data buffer
+if obj.write(':Abort')
+    result.status = -1;
+    return
+end
+if obj.write([':Trace:Clear "' activeBuffer '"'])
+    result.status = -2;
+    return
+end
+
 % 1st step: setup trigger model (lin, log, list, simple)
 switch mode
     case 'simple'
@@ -514,7 +524,7 @@ switch mode
             end
             if obj.write([':Source:List:' sourceMode cmdMode ...
                     regexprep(num2str(listChunk, 10), '\s+', ', ')])
-                result.status = -2;
+                result.status = -3;
             end
             % slow down
             pause(0.1);
@@ -525,7 +535,7 @@ switch mode
             ':Points?']);
         lengthActual = str2double(char(response));
         if lengthTarget ~= lengthActual
-            result.status = -3;
+            result.status = -4;
             return
         end
 
@@ -551,13 +561,23 @@ if ~strcmpi(obj.TriggerState, 'building')
     return
 end
 
-% save output state, enable output and start trigger model
-if obj.OutputState ~= 1
+% save output state and enable output
+currentOutputState = obj.OutputState;
+if currentOutputState == 0
     obj.OutputState         = 'on';
     disableOutputAtEndAgain = true;
-else
+    % wait some ms for settlement
+    pause(0.05); % 50 ms
+elseif currentOutputState == 1
+    % source output is already 'on'
     disableOutputAtEndAgain = false;
+else
+    % unknown output state
+    result.status = -20;
+    return
 end
+
+% start trigger model
 if obj.write(':Initiate')
     result.status = -8;
 end
@@ -570,11 +590,12 @@ for cnt = 1 : ceil(timeout)
             pad(num2str(cnt), 3, 'left') ...
             ' / ' num2str(ceil(timeout))]);
     end
+    pause(0.5);
     switch obj.TriggerState
         case 'idle'
             break;
         case 'running'
-            pause(0.99);
+            pause(0.49); % in total 0.5 + 0.49 = 0.99 s
         otherwise
             result.status = -10;
             return
@@ -586,7 +607,7 @@ if ~strcmpi(obj.TriggerState, 'idle')
     obj.abortTrigger;
 end
 
-% optionally disable output again
+% optionally disable output again (only for mode = 'simple')
 if disableOutputAtEndAgain
     obj.OutputState         = 'off';
 end
@@ -650,7 +671,8 @@ if isnan(result.status)
         end
         % conversion of response to type datetime can fail
         try
-            result.timestamps = datetime(tmpResult(5, :));
+            result.timestamps = datetime(tmpResult(5, :), ...
+                InputFormat = 'MM/dd/uuuu HH:mm:ss.SSS');
         catch
             warning(['SMU24xx (runMeasurement): Could not ' ...
                 'recognize the format of the timestamps.']);

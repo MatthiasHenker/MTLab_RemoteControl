@@ -305,8 +305,8 @@
 
 classdef SMU24xx < VisaIF
     properties(Constant = true)
-        SMUVersion    = '1.0.0';      % updated release version
-        SMUDate       = '2025-08-29'; % updated release date
+        SMUVersion    = '1.0.1';      % updated release version
+        SMUDate       = '2025-09-01'; % updated release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -318,7 +318,21 @@ classdef SMU24xx < VisaIF
         Terminals               char
         OutputState    % 0, false, 'off', 'no' or 1, true, 'on', 'yes'
         OperationMode  % get: categorical; set: char, string or categorical
+    end
+
+    properties(Dependent, SetAccess = private, GetAccess = public)
+        SourceMode              char
+    end
+
+    properties(Dependent)
         SourceParameters        struct
+    end
+
+    properties(Dependent, SetAccess = private, GetAccess = public)
+        SenseMode               char
+    end
+
+    properties(Dependent)
         SenseParameters         struct
     end
 
@@ -336,8 +350,6 @@ classdef SMU24xx < VisaIF
         ErrorMessageBuffer      table = table(Size= [0, 4], ...
             VariableNames= {'Time'    , 'Code'  , 'Type'  , 'Description'}, ...
             VariableTypes= {'datetime', 'double', 'string', 'string'});
-        SourceMode              char
-        SenseMode               char
     end
 
     properties(Constant = true, GetAccess = private)
