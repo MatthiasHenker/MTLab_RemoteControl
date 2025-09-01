@@ -22,7 +22,7 @@
 % some config
 
 ModuleName = 'SMU24xx';  % name of class file
-VersionID  = '1.0.0_2025-08-29'; % should match name of tag in git (version control)
+VersionID  = '1.0.1_2025-09-01'; % should match name of tag in git (version control)
 %VersionID  = 'x.y.z';
 
 % copy released files also to Support directory? 
