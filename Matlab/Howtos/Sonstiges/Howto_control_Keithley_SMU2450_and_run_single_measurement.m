@@ -93,11 +93,11 @@ ylabel(mySMU.SenseMode);
 grid on;
 zoom on;
 
-% finally close interface and delete object again
-mySMU.delete;
-
 % use return if you want to exit this script early (before deleting object)
 %return
+
+% finally close interface and delete object again
+mySMU.delete;
 
 disp('SMU24xx Test Done.');
 % -------------------------------------------------------------------------
