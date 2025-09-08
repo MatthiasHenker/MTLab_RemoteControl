@@ -1,5 +1,5 @@
 %% Howto create a Scope object and control a scope remotely
-% 2024-08-28
+% 2025-09-08
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -70,7 +70,7 @@ ScopeType = 'TDS';   % Tektronix TDS 1000X
 myScope = Scope(ScopeType, interface);
 
 % optionally perform a reset to set the generator to default state
-myScope.reset;   % reset can be helpful get scope to a known state
+myScope.reset;   % reset can be helpful to set scope to a known state
 
 % -------------------------------------------------------------------------
 % some initial configuration first
@@ -100,7 +100,7 @@ myScope.configureTrigger(    ...
     type     = 'risingedge', ...  % or 'fallingedge'
     source   = 'ch1'       , ...  % or 'ch2' (alternatively just 1 or 2)
     coupling = 'DC'        , ...  % or 'AC'
-    level    = 0.5         );     % depends on offset of input signal
+    level    = 0.5         );     % in V, depends on offset of input signal
 
 % now adjust vertical (voltage) and horizontal (time) scaling as fine
 % tuning ==> very helpful when signal at scope input has changed
@@ -110,10 +110,10 @@ myScope.autoscale;                    % configurable macro
 
 % without autoscaling you would need to set the parameters manually
 %myScope.configureInput(  ...
-%    'channel', channels, ...
-%    'vDiv'   , 2,        ...
-%    'vOffset', 0         ); % e.g. vDiv = 2 (in V/div), vOffset = 0 (in V)
-%myScope.configureAcquisition('tDiv', 50e-3); % tDiv = 0.05 (in s/div)
+%    channel = channels, ...
+%    vDiv    = 2,        ...  % in V
+%    vOffset = 0         );   % e.g. vDiv = 2 (in V/div), vOffset = 0 (in V)
+%myScope.configureAcquisition(tDiv = 50e-3); % tDiv = 0.05 (in s/div)
 
 % -------------------------------------------------------------------------
 % some helpful methods: screenshot

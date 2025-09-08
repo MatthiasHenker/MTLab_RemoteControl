@@ -1,5 +1,5 @@
 %% Howto use the Symbolic Math Toolbox to calculate an integral
-% 2024-09-03
+% 2025-09-08
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -32,7 +32,7 @@ end
 %% here we go
 
 % the following variables should be symbolic with certain assumptions
-syms b x real; % all variables are real values
+syms b x real;    % variables (here 'b' and 'x') are real valued
 
 % and we also have known numeric values for variables
 a = 2;
@@ -43,7 +43,7 @@ a = 2;
 f = a*sin(b*x);
 
 % show the defined expression
-disp('The expression ''f'' is defined as:');
+disp('The expression "f" is defined as:');
 pretty(f);
 
 % calculate an indefinite integral
@@ -52,14 +52,14 @@ f_int = int(f, x);
 %f_integrated = int(f, x, 1, 3);
 
 % show result
-disp('The solution for the symbolic integral ''f_integrated'' is:');
+disp('The solution for the symbolic integral "f_integrated" is:');
 pretty(f_int);
 
 % the integral still contain symbolic values which can be replaced by
 % different numeric values as examples
-%            variable 'a' is already a numerical value   (amplitude)
-% substitute (replace) symbol 'b' by a numerical value   (frequency)
-% substitute (replace) symbol 'x' by a numerical vector  (x-values)
+%            variable 'a' is already a numerical value   (e.g. amplitude)
+% substitute (replace) symbol 'b' by a numerical value   (e.g. frequency)
+% substitute (replace) symbol 'x' by a numerical vector  (e.g. time-values)
 b_num     =  0.75;
 x_num     = (-2 : 0.01 : 10);
 f_num     = double(subs(f,     {b, x}, {b_num, x_num}));

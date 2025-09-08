@@ -1,5 +1,5 @@
 %% Howto fit several curves with same parameters to measurement data series
-% 2025-07-03
+% 2025-09-08
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -41,7 +41,7 @@ end
 %
 %    normally, the curve fitting toolbox support fitting of single curves
 %    only ==> when you fit your several noisy data to curves separately,
-%    you will several estimations for your parameters
+%    you will get several (similar) estimations for your parameters
 %
 %    here a trick to merge all curves to a single fitting problem
 
@@ -53,10 +53,10 @@ U_L_meas = [0.3 0.5 3.6  7.3 11.8 16.6 17.9 18.6 17.8 14.4 10.7 7.7 6.7 6.1]; % 
 
 % plot measurement values: only show data points, but do not connect points
 figure(1);
-plot(f_meas, U_R_meas, 'ro', DisplayName = 'U_R(f) - measurement values');
+plot(f_meas, U_R_meas, 'rx', DisplayName = 'U_R(f) - measurement values');
 hold on;
 plot(f_meas, U_C_meas, 'go', DisplayName = 'U_C(f) - measurement values');
-plot(f_meas, U_L_meas, 'bo', DisplayName = 'U_L(f) - measurement values');
+plot(f_meas, U_L_meas, 'b*', DisplayName = 'U_L(f) - measurement values');
 hold off;
 grid on;
 title('Series resonant circuit');

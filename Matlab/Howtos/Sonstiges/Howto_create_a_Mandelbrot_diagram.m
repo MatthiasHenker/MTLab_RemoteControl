@@ -16,7 +16,7 @@ switch selectPlotArea
     case 1    % smaller window (right hand side)
         xRange  = linspace(-0.9 ,  0.55, 2000); % X - plot range (real)
         yRange  = linspace(-1.15,  0.0 , 2000); % Y - plot range (imaginay)
-    case 2    % smaller window (left hand side
+    case 2    % smaller window (left hand side)
         xRange  = linspace(-1.5 , -1.2 , 2000); % X - plot range (real)
         yRange  = linspace(-0.3 ,   0  , 2000); % Y - plot range (imaginay)
     case 3
@@ -60,7 +60,11 @@ figure(1);
 imagesc(xRange, yRange, log(k));   % log scaling looks more beautiful
 colormap(jet);
 axis equal;
-title('Mandelbrot-Diagram');
+if Mandelbrot_notJulia
+    title('Mandelbrot-Diagram');
+else
+    title('Julia-Diagram');
+end
 xlabel('Re(c)');
 ylabel('Im(c)');
 colorbar;
