@@ -152,9 +152,8 @@ classdef HandheldDMM < handle
     %   for version and release date see properties 'Version' and 'Date'
     %
     % tested with
-    %   - Matlab (version 24.1 = 2024a update 6) and additional
-    %
-    % currently supported DMM types:
+    %   - Matlab (version 24.2 = 2024b update 6) and additional
+    %     currently supported DMM types:
     %   - UT61E by Uni-T: TrueRMS DMM, available at e.g.
     %     Reichelt.de (summer 2019, about 85 EUR incl. cable)
     %     ATTENTION: cable has to be modified (USB-HID to USB-virtualCOM)
@@ -224,8 +223,8 @@ classdef HandheldDMM < handle
     % ---------------------------------------------------------------------
 
     properties (Constant = true)
-        Version = '2.1.0';
-        Date    = '2022-08-10';
+        Version = '2.1.1';
+        Date    = '2025-09-09';
     end
 
     properties (SetAccess = private, GetAccess = public)

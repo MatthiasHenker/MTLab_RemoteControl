@@ -42,7 +42,7 @@ end
 % root package directory name is same as class name
 RootDirName = ['+' className];
 % check if root package name is available in Matlab search path
-mpathlist = split(path,';');
+mpathlist = split(path, pathsep);
 
 for cnt = 1 : length(mpathlist)
     RootDir = fullfile(mpathlist{cnt}, RootDirName);

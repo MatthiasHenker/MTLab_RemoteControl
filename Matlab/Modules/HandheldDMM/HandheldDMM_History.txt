@@ -10,6 +10,13 @@ in preparation
 Release vX.X.X
 
 
+---------------------------------------------------------------------------
+Release v2.1.1 (same as HandheldDMM class)
+  - HandheldDMM                                       v2.1.1   (2025-09-09)
+      BUG FIX: required method 'listSupportedPackages' works also on
+      Unix now
++++ all other files like in release v2.1.0
+
 
 
 ---------------------------------------------------------------------------
