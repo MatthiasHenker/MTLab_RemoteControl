@@ -1,5 +1,5 @@
 %% Howto create figures
-% 2024-09-07
+% 2025-09-08
 %
 % HTW Dresden, faculty of electrical engineering
 % measurement engineering
@@ -45,7 +45,7 @@ y_2 = 3* sin(5.5*pi*x) +  7.4;
 myFig = figure(1);      % figure counter: 1, 2, 3 ...
 
 % plot 1st curve (r = red, g = green, b = blue, k = black, m = magenta ...)
-plot(x, y_1, '-r', LineWidth= 1.8);
+plot(x, y_1, '-r', LineWidth= 1.8, DisplayName= 'curve 1');
 
 % prevent overwritting the 1st plot ==> IMPORTANT!
 hold on;
@@ -53,13 +53,16 @@ hold on;
 % plot 2nd curve
 % ==> plot will be added to previous plot   when 'hold on'
 % ==> plot will overwrite previous plot     when 'hold off'
-plot(x, y_2, '-b', LineWidth= 0.9);
+plot(x, y_2, '-b', LineWidth= 0.9, DisplayName= 'curve 2');
 
 % now shade a specific area below the second curve
-range_1 = (x >= 0.6 & x < 1.6);
+range_1 = (0.6 <= x & x < 1.6);
 % area is an alternative plot-command
 area(x(range_1), y_2(range_1), ...   % use '...' for line breaks in commands
-    FaceColor= [0.95 0.45 0.85], EdgeColor= 'b', LineWidth= 1.8);
+    FaceColor= [0.95 0.45 0.85], ...
+    EdgeColor= 'b', ...
+    LineWidth= 1.8, ...
+    DisplayName= 'shaded area');
 
 % allow overwritting again ==> next plot command will start new plot again
 hold off;
@@ -69,7 +72,7 @@ grid minor;
 title('Current Consumtion of Test Circuit');
 xlabel('Time (in s)' );
 ylabel('Currents (in A)');
-legend({'curve 1', 'curve 2'}, Location = 'southeast');
+legend(Location = 'best');
 
 disp('Demontration howto create a figure with two curves is done.');
 % end of file

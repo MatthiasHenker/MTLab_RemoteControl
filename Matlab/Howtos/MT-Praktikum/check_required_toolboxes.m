@@ -1,4 +1,4 @@
-% 2025-01-23
+% 2025-09-08
 %
 % This script checks and lists the required licenses and toolboxes by the
 % Howto-files of this directory. (tested with Matlab 2024a, 2024b)
@@ -56,7 +56,7 @@ end
 fileList    = unique(fileList, 'sorted');
 productList = unique(struct2table(productList));
 % but  want it sorted in respect to ProductNumer
-productList = sortrows(productList, 'ProductNumber', 'ascend');
+productList = sortrows(productList, ProductNumber = 'ascend');
 
 % display results
 disp(' ');
