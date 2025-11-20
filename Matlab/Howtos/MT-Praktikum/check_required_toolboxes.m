@@ -1,7 +1,12 @@
-% 2025-09-08
+% 2025-11-20
 %
 % This script checks and lists the required licenses and toolboxes by the
 % Howto-files of this directory. (tested with Matlab 2024a, 2024b)
+%
+% ATTENTION: the output is only correct, when on your computer all files
+% (to be checked) are running with all required toolboxes installed!!!
+% ==> then you can add the listed requirements in the heading comments of
+% your files
 %
 % Matthias Henker, HTW Dresden
 
