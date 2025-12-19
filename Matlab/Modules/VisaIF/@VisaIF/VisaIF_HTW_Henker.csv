@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------------------------------------
-// 2024-08-20
+// 2025-12-19
 // config file listing all available Visa measurement devices in room/lab Z441
 // required columns
 //   Device     : char array as unique identifier
@@ -41,26 +41,6 @@ RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-tcpip;; TCPIP0::1
 RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; visa-usb  ;; USB0::0x0AAD::0x01D6::\w+ ;;       1e6 ;; 80000100 ;; 0
 RS-RTB2004       ;; RS       ;; RTB2000  ;; Scope      ;; demo      ;; USB0::0x0AAD::0x01D6::demo;;       1e6 ;; 80000100 ;; 0
 #
-# Siglent Scope                     (SID = SDS2XKCC2R0177)
-# OutBufSize: longest command is roughly about 60 characters, 512 bytes (default) is fine
-# InBufSize : longest command is waveform download (command WF?) with max. 140MSamples = 140e6 Bytes + 
-#             some overhead, (screenshot data is about 1.1MBytes)
-#             download of WF data in one chunk is not possible (Matlab will crash) ==> download of larger 
-#             data blocks has to be done in chunks with max. 1.4MSamples ==> resulting waveform_setups
-#             (set measure = off at scope, otherwise download time + 50%):
-#             140  MSa = 100 * 1.4MSa (tested : 100x 4.2s via TCPIP or USB)
-#              56  MSa =  40 * 1.4MSa (tested :  40x 4.2s via TCPIP or USB)
-#              28  MSa =  20 * 1.4MSa (tested :  20x 4.2s via TCPIP or USB)
-#              14  MSa =  10 * 1.4MSa (tested :  10x 4.2s via TCPIP or USB)
-#               5.6MSa =   4 * 1.4MSa (tested :   4x 4.2s via TCPIP or USB)
-#               2.8MSa =   2 * 1.4MSa (tested :   2x 4.2s via TCPIP or USB)
-#               1.4MSa =   1 * 1.4MSa (tested :   1x 4.2s via TCPIP or USB)
-#               560kSa =   1 * 560kSa (tested :   1x 1.6s via TCPIP or USB)
-#               280kSa =   1 * 280kSa (tested :   1x 0.9s via TCPIP or USB)
-#               140kSa =   1 * 140kSa (tested :   1x 0.5s via TCPIP or USB)
-#               ...
-Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-tcpip;; TCPIP0::192.168.178.9     ;;       512 ;;    1.5e6 ;; 0
-Siglent-SDS2304X ;; Siglent  ;; SDS2000X ;; Scope      ;; visa-usb  ;; USB0::0xF4EC::0xEE3A::\w+ ;;       512 ;;    1.5e6 ;; 0
 #
 # Siglent DC Power Supply           (SID = SPD3XHBX2R0912)
 # OutBufSize: longest command is roughly about 30 characters, 512 bytes (default) is fine
@@ -83,10 +63,4 @@ Siglent-SDG6022X ;; Siglent  ;; SDG6000X ;; FGen       ;; demo      ;; USB0::0xF
 # InBufSize : longest command is about xx characters actual value has to be clarified !!!!!!
 Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.7     ;;       512 ;;     20e3 ;; 0
 Keithley-DMM6500 ;; Keithley ;; DMM6500  ;; DMM        ;; visa-usb  ;; USB0::0x05E6::0x6500::\w+ ;;       512 ;;     20e3 ;; 0
-#
-# Siglent DMM                       (SID = SDM34FBC7R0240)
-# OutBufSize: longest command is roughly less than 100 characters, 512 bytes (default) is fine
-# InBufSize : longest command is about xx characters, actual value has to be clarified !!!!!!
-Siglent-SDM3045X ;; Siglent  ;; SDM3045X ;; DMM        ;; visa-tcpip;; TCPIP0::192.168.178.16    ;;       512 ;;     20e3 ;; 0
-Siglent-SDM3045X ;; Siglent  ;; SDM3045X ;; DMM        ;; visa-usb  ;; USB0::0xF4EC::0x1203::\w+ ;;       512 ;;     20e3 ;; 0
 #
