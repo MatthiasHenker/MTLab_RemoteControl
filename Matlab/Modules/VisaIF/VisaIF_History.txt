@@ -14,6 +14,20 @@ Release vx.x.x
 
 
 ---------------------------------------------------------------------------
+Release v3.1.0  (same as VisaIF class)
+  - VisaIF                                             v3.1.0  (2025-12-22)
+      add support for devices using 'visa-serial'
+  - VisaDemo                                           v3.0.2  (2025-07-25)
+      bug fix: add missing method 'flush'
+               add missing property 'ResourceName'
+               add SMU24xxMode support (resond to some SCPI-queries)
+               do not add 'LF' at responses anymore
+  - VisaIFLogEventData                                 v2.0.1  (2021-01-09)
+      no changes
+  - VisaIFLogger                                       v3.0.0  (2024-08-20)
+      no changes
+
+---------------------------------------------------------------------------
 Release v3.0.2  (same as VisaIF class)
   - VisaIF                                             v3.0.2  (2025-08-26)
       extension: add "SMU24xx" and "Other" to list of SupportedInstrumentClasses
