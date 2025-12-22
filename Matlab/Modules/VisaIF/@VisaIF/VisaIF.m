@@ -39,12 +39,21 @@ classdef VisaIF < handle
     %         device  : device name (char, mandatory input), use the
     %                   command 'VisaIF.listContentOfConfigFiles' or
     %                   'VisaIF' to get a list of all known devices
-    %         serialID: serial identifier of device with 'visa-usb'
-    %                   interface (char, optional input), default value
-    %                   is 1st found USB device, it's an ignored input for
-    %                   'visa-tcpip', this parameter is only of interest
-    %                   when more than one device of same type is connected
-    %                   via USB, see 'VisaIF.listAvailableVisaUsbDevices'
+    %         serialID: when 'visa-usb'    then serial identifier of TMC
+    %                                      see device (VisaIF.SerialNumber)
+    %                   when 'visa-serial' then port id of serialport
+    %                   else ignored input ('visa-tcpip' or 'demo')
+    %                   (char, optional input),
+    %                   default value:
+    %                   when 'visa-usb'    then 1st found USB device
+    %                   when 'visa-serial' then value specified by CfgFile
+    %                   this parameter is only of interest:
+    %                   when 'visa-usb'    then selection of one out of
+    %                         several connected devices of same type
+    %                         see 'VisaIF.listAvailableVisaUsbDevices'
+    %                   when 'visa-serial' then port id can be changed to
+    %                         actual port id
+    %                         see 'serialportlist' and device manager
     %         interface:specifies interface type (char), (optional input),
     %                   only of interest when more than one interface type
     %                   is supported for this device,
@@ -204,9 +213,10 @@ classdef VisaIF < handle
     %   'VisaIFDate'
     %
     % tested with
-    %   - Matlab (version 24.1 = 2024a update 6) and
-    %   - Instrument Control Toolbox (version 24.1)
-    %   - NI-Visa 2022 Q3 (download from NI, separate installation)
+    %   - Matlab                            (2024b update 7 = version 24.2)
+    %   - Instrument Control Toolbox                         (version 24.2)
+    %   - Instrument Control Toolbox Support Package for National
+    %     Instruments VISA and ICP Interfaces                (version 24.2)
     %
     % required setup:
     %  - connect computer with measurement device via either USB or LAN
@@ -219,6 +229,7 @@ classdef VisaIF < handle
     %                             (version 2.4.3) ==> summer term 2021
     %                             (version 2.4.4) ==> winter term 2022/23
     %                             (version 3.0.0) ==> winter term 2024/25
+    %                             (version 3.1.0) ==> summer term 2026
     %
     % development, support and contact:
     %   - Constantin Wimmer (student, automation)
@@ -246,8 +257,8 @@ classdef VisaIF < handle
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
-        VisaIFVersion = '3.0.2';      % current version of VisaIF
-        VisaIFDate    = '2025-08-26'; % release date
+        VisaIFVersion = '3.1.0';      % current version of VisaIF
+        VisaIFDate    = '2025-12-22'; % release date
     end
 
     properties(SetAccess = private, GetAccess = public)
@@ -259,7 +270,7 @@ classdef VisaIF < handle
     end
 
     properties(Dependent = true)
-        Name             % <unused>, will be removed in future
+        % Name           % <unused>, removed in VisaIF.version == '3.1.0'
         %                  (more descriptive name than RsrcName)
         RsrcName         % resource name of actual VisaObject
         Alias            % can be set externally ==> use NI-MAX instead
@@ -271,6 +282,7 @@ classdef VisaIF < handle
         ManufacturerID   % for type visa-usb only   ( VendorID)
         ModelCode        % for type visa-usb only   (ProductID)
         SerialNumber     %                          ( SerialID)
+        SerialPort       % for type visa-serial only
         VendorIdentified % reported vendor
         ProductIdentified% reported model
         Timeout          % will be initialized by constructor
@@ -303,10 +315,12 @@ classdef VisaIF < handle
         SupportedInterfaceTypes    = { ...
             'visa-tcpip'        ...
             'visa-usb'          ...
+            'visa-serial'       ...
             'demo'              };
         SupportedRsrcNames         = { ...
-            '^TCPIP\S*$' ...
-            '^USB\S*$'   ...
+            '^TCPIP\S*$'        ...
+            '^USB\S*$'          ...
+            '^ASRL\S*$'         ...
             '^DEMO$'            };
         % SupportedRsrcNames = { ...
         %     '^TCPIP\d?::\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}' ...
@@ -327,6 +341,7 @@ classdef VisaIF < handle
         VisaObject            % interface object of class visa
         ExtraWait      double % optional extra pause between write & read
         CommandCounter double % SCPI command counter (write & read)
+        TerminatorTx   uint8  % suffix in (binary) write method
     end
 
     properties(Constant = true, GetAccess = private)
@@ -436,7 +451,7 @@ classdef VisaIF < handle
             end
 
             if iscell(device)
-                % check if a specific SerialID (visa-usb only) is specified
+                % check if a specific SerialID is specified
                 if numel(device) == 2
                     serialId = device{2};
                     device   = device{1};
@@ -472,7 +487,24 @@ classdef VisaIF < handle
             % selectedDevice (table) contains a single row with same
             % column names as obj.SupportedDevices, but all field entries
             % are chars or doubles; RsrcName points to a specific device
-            % (no regexp anymore)
+            % (no regexp anymore except for 'visa-serial')
+
+            % split RsrcName into actual resource name and serial config
+            if strcmpi(selectedDevice.Type, 'visa-serial')
+                % format of resource name was already checked in
+                % function 'VisaIF.filterConfigFiles' (see above)
+                RsrcCell = split(selectedDevice.RsrcName, '::');
+                selectedDevice.RsrcName = [RsrcCell{1} '::INSTR'];
+                %
+                tmpCell                   = split(RsrcCell{2}, '.');
+                serialCfg.BaudRate        = str2double(tmpCell{1});
+                serialCfg.DataBits        = str2double(tmpCell{2});
+                serialCfg.StopBits        = str2double(tmpCell{3});
+                serialCfg.Parity          = tmpCell{4};
+                serialCfg.FlowControl     = tmpCell{5};
+                serialCfg.TerminatorRead  = tmpCell{6};
+                serialCfg.TerminatorWrite = tmpCell{7};
+            end
 
             % -------------------------------------------------------------
             % with 'visadev' no multiple objects for the same device can be
@@ -482,7 +514,10 @@ classdef VisaIF < handle
             % -------------------------------------------------------------
             % hurray, all preparations done:
             % a new Visa object can be created
-            if ~strcmpi(selectedDevice.Type, 'demo')
+            if strcmpi(selectedDevice.Type, 'demo')
+                % object for demo device only (no real external device)
+                obj.VisaObject = VisaDemo(selectedDevice.RsrcName);
+            else
                 try
                     % try to access wanted device and create object
                     obj.VisaObject = visadev(selectedDevice.RsrcName);
@@ -505,9 +540,6 @@ classdef VisaIF < handle
                         ''' for resource ''' selectedDevice.RsrcName ...
                         ''' failed.']);
                 end
-            else
-                % object for demo devic only (no real external device)
-                obj.VisaObject = VisaDemo(selectedDevice.RsrcName);
             end
 
             obj.Device     = selectedDevice.Device;
@@ -520,6 +552,9 @@ classdef VisaIF < handle
                 case 'visa-usb'
                     obj.DeviceName = [char(obj.Instrument) ' ''' ...
                         char(obj.Device) ''' (' char(obj.SerialNumber) ')'];
+                case 'visa-serial'
+                    obj.DeviceName = [char(obj.Instrument) ' ''' ...
+                        char(obj.Device) ''' (' char(obj.SerialPort) ')'];
                 otherwise
                     obj.DeviceName = [char(obj.Instrument) ' ''' ...
                         char(obj.Device) ''' (demo)'];
@@ -540,12 +575,39 @@ classdef VisaIF < handle
             %                                     max value is 1000
             obj.VisaObject.ByteOrder    = 'little-endian';   % default
             %
-            % defines if EOI (end or identify) line is asserted at end of
-            % write operation ==> has to be 'on'
-            obj.VisaObject.EOIMode      = 'on';              % default
-            %
-            % terminator for read and write communications (ASCII only)
-            obj.VisaObject.configureTerminator('LF', 'LF');
+            switch selectedDevice.Type
+                case {'visa-tcpip', 'visa-usb', 'demo'}
+                    % defines if EOI (end or identify) line is asserted at
+                    % end of write operation ==> has to be 'on'
+                    obj.VisaObject.EOIMode = 'on';              % default
+                    %
+                    % terminator for read and write communications (ASCII only)
+                    obj.VisaObject.configureTerminator('LF', 'LF');
+                    obj.TerminatorTx = uint8(10); % 'LF'
+
+                case 'visa-serial'
+                    obj.VisaObject.BaudRate    = serialCfg.BaudRate;
+                    obj.VisaObject.DataBits    = serialCfg.DataBits;
+                    obj.VisaObject.StopBits    = serialCfg.StopBits;
+                    obj.VisaObject.Parity      = serialCfg.Parity;
+                    obj.VisaObject.FlowControl = serialCfg.FlowControl;
+                    %
+                    obj.VisaObject.configureTerminator( ...
+                        serialCfg.TerminatorRead, ...
+                        serialCfg.TerminatorWrite);
+                    switch serialCfg.TerminatorWrite
+                        case 'LF'
+                            obj.TerminatorTx = uint8(10);
+                        case 'CR'
+                            obj.TerminatorTx = uint8(13);
+                        case 'CR/LF'
+                            obj.TerminatorTx = uint8([13 10]);
+                        otherwise
+                            obj.TerminatorTx = uint8(10); % 'LF' as default
+                    end
+                otherwise
+                    error('Impossible state. New interface type implemented?');
+            end
             %
             % Rules for Completing a Read Operation (binary data)
             % 'read' suspends MATLAB execution until the specified number of
@@ -733,6 +795,9 @@ classdef VisaIF < handle
                 disp(['Visa write: Error - Visa command is empty. ' ...
                     'Skip write command.']);
             else
+                % add termination character (e.g. 'LF')
+                VisaCommand = [VisaCommand obj.TerminatorTx];
+
                 % write VisaCommand to device (as binary data)
                 write(obj.VisaObject, VisaCommand, 'uint8');
                 % optionally display message and log command in history
@@ -1123,6 +1188,11 @@ classdef VisaIF < handle
         function SerialNumber = get.SerialNumber(obj)
             % of connected instrument device
             SerialNumber = obj.VisaObject.SerialNumber;
+        end
+
+        function SerialPort = get.SerialPort(obj)
+            % of connected instrument device
+            SerialPort = obj.VisaObject.Port;
         end
 
         function VendorIdentified = get.VendorIdentified(obj)

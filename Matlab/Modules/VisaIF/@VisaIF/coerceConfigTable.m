@@ -6,11 +6,7 @@ function cfgTableOut = coerceConfigTable(cfgTableIn)
 % cfgTable.Product    : remove invalid characters (as above)
 % cfgTable.Instrument : set invalid categories to <undefined>
 % cfgTable.Type       : set invalid categories to <undefined>
-% cfgTable.RsrcName   : set to <undefined> when invalid;
-%                       valid is either (case insensitive)
-%                       TCPIP.. (starts with TCPIP)
-%                       USB..   (starts with USB)
-%                       DEMO
+% cfgTable.RsrcName   : set invalid categories to <undefined>
 % cfgTable.OutBufSize : set invalid values to NaN, replace 0 by 512
 % cfgTable.InBufSize  : set invalid values to NaN, replace 0 by 512
 % cfgTable.ExtraWait  : set invalid values to NaN

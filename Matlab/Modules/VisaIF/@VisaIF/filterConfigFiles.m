@@ -16,10 +16,10 @@ function [selectedDevice, configTable] = filterConfigFiles(device, instrument, t
 %                    interface type out of VisaIF.SupportedInterfaceTypes;
 %                    filter config list according to this setting
 %
-%   serialId       : optional (char); for type = 'visa-usb' only;
-%                    default is '';
+%   serialId       : optional (char); for type = 'visa-usb' or
+%                    'visa-serial' only; default is '';
 %                    to connect to a USB-TMC device with a defined serial
-%                    ID
+%                    ID or to connect to a specified serialport
 %
 % outputs:
 %   selectedDevice : table with same columns as config table, contain no
@@ -171,13 +171,13 @@ end
 % -------------------------------------------------------------------------
 % all filter operations are done: now select one row
 
-if cfgTable.Type(1) ~= 'visa-usb' %#ok<BDSCA>
+if cfgTable.Type(1) ~= 'visa-usb' && cfgTable.Type(1) ~= 'visa-serial' %#ok<BDSCA>
     % select first row
     cfgTable = cfgTable(1, :);
     if ~isempty(serialId)
-        disp('Serial ID will be ignored (for visa-usb only).');
+        disp('Serial ID will be ignored (for visa-usb or visa-serial only).');
     end
-else
+elseif cfgTable.Type(1) == 'visa-usb' %#ok<BDSCA>
     % when usb interface is selected then check if a matching device is
     % connected ==> remove all non usb type from table
     cfgTable = cfgTable(cfgTable.Type == 'visa-usb', :);
@@ -227,6 +227,13 @@ else
             return
         end
     end
+elseif cfgTable.Type(1) == 'visa-serial' %#ok<BDSCA>
+    % when serial interface is selected then check if a matching port is
+    % connected ==> remove all non serial type from table
+    cfgTable = cfgTable(cfgTable.Type == 'visa-serial', :);
+
+    % select first matching device
+    cfgTable = cfgTable(1, :);
 end
 
 % convert from categoricals to char arrays
@@ -236,6 +243,25 @@ cfgTable.Product    = char(cfgTable.Product);
 cfgTable.Instrument = char(cfgTable.Instrument);
 cfgTable.Type       = char(cfgTable.Type);
 cfgTable.RsrcName   = char(cfgTable.RsrcName);
+
+% if 'visa-serial' then check format of resource name
+if strcmpi(cfgTable.Type, 'visa-serial')
+    if ~isempty(regexpi(cfgTable.RsrcName, ...
+            '^ASRL\d+::\d+.\d.\d.\w+.\w+.[\w/]+.[\w/]+$', 'once'))
+        % optionally replace serial port id
+        if ~isnan(str2double(serialId))
+            RsrcCell          = split(cfgTable.RsrcName, '::');
+            RsrcName          = RsrcCell{1};
+            RsrcName          = [RsrcName(1:4) serialId];
+            cfgTable.RsrcName = [RsrcName '::' RsrcCell{2}];
+        end
+    else
+        disp('Format of "RsrcName" in config file is incorrect.');
+        disp(['RsrcName = ' cfgTable.RsrcName]);
+        disp('Expected = ASRL\d+::\d+.\d.\d.\w+.\w+.[\w/]+.[\w/]+');
+        error('Initialization failed.');
+    end
+end
 
 % copy to output
 selectedDevice = cfgTable;
