@@ -17,6 +17,9 @@ Release vx.x.x
 Release v3.1.0  (same as VisaIF class)
   - VisaIF                                             v3.1.0  (2025-12-22)
       add support for devices using 'visa-serial'
+      remove unused property 'Name' => use more descriptive 'RsrcName' instead
+      add TerminatorTx character at end of each command string in write-method
+      (normally 'LF', only configurable when visa-serial, see config.csv)
   - VisaDemo                                           v3.0.2  (2025-07-25)
       bug fix: add missing method 'flush'
                add missing property 'ResourceName'
