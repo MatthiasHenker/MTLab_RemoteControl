@@ -34,7 +34,10 @@ Tek-TDS2001C     ;; Tektronix   ;; TDS1000_2000  ;; Scope     ;; visa-usb   ;; U
 # OutBufSize: longest command is unknown ==> define a large default value like 20 kB
 # InBufSize : longest command are screenshot image and waveform download ==> 2 MB are fine (no MEM option)
 Keysight-DSOX1102A;; Keysight   ;; DSOX1000      ;; Scope     ;; visa-usb   ;; USB0::0x2A8D::0x1787::\w+  ;;     20e3 ;;    2e6
+Keysight-DSOX1102A;; Keysight   ;; DSOX1000      ;; Scope     ;; demo       ;; USB0::0x2A8D::0x1787::demo ;;     20e3 ;;    2e6
+#
 Keysight-DSOX1202A;; Keysight   ;; DSOX1000      ;; Scope     ;; visa-usb   ;; USB0::0x2A8D::0x0387::\w+  ;;     20e3 ;;    2e6
+Keysight-DSOX1202A;; Keysight   ;; DSOX1000      ;; Scope     ;; demo       ;; USB0::0x2A8D::0x0387::demo ;;     20e3 ;;    2e6
 #
 #
 # Siglent Scope
