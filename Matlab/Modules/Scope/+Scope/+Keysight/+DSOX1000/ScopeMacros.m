@@ -7,8 +7,8 @@ classdef ScopeMacros < handle
     % authors: Matthias Henker (prof.), Constantin Wimmer (student)
 
     properties(Constant = true)
-        MacrosVersion = '3.0.1';      % release version
-        MacrosDate    = '2024-08-28'; % release date
+        MacrosVersion = '3.0.2';      % release version
+        MacrosDate    = '2025-12-24'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1708,12 +1708,10 @@ classdef ScopeMacros < handle
                         if obj.ShowMessages
                             disp('  - channel      : 1, 2 (coerced)');
                         end
-                        % correct settings (always ascending order (framework))
+                        % set to default settings
                         channels     = {'CHANNEL1', 'CHANNEL2'};
                         meas.channel = {'1', '2'};
                     end
-                    % only channel 1 has to be used for configuration
-                    channels = channels(1); % same as {'ch1'}
                 otherwise
                     if length(channels) ~= 1
                         % all other measurements for single channel only
@@ -1729,8 +1727,9 @@ classdef ScopeMacros < handle
             % copy to output
             meas.parameter = parameter;
             meas.channel   = strjoin(meas.channel, ', ');
+
             % build up config parameter
-            channel        = strjoin(channels, ',');
+            channelSrc     = strjoin(channels, ',');
 
             % -------------------------------------------------------------
             % actual code
@@ -1745,7 +1744,7 @@ classdef ScopeMacros < handle
                 param2 = [param2 ','];
             end
 
-            % run actual measurement (but avoid timeout)
+            % run actual measurement (avoid timeout by checking status)
             %
             % request acquisition status information
             acqRunning  = strcmpi(obj.AcquisitionState, 'running');
@@ -1754,7 +1753,7 @@ classdef ScopeMacros < handle
             if acqRunning && acqModeAuto
                 try
                     [value, statQuery] = obj.VisaIFobj.query([...
-                        ':MEASURE:' parameter '? ' param2 channel]);
+                        ':MEASURE:' parameter '? ' param2 channelSrc]);
                 catch %#ok<CTCH>
                     disp(['Scope: Warning - Unterminated query ' ...
                         'in ''runMeasurement'' method.']);
@@ -1770,7 +1769,7 @@ classdef ScopeMacros < handle
             else
                 value     = [];
                 statQuery = -1;
-                disp(['Scope: Warning - Either acquisition was not ' ...
+                disp(['Scope: Warning - Either acquisition was ' ...
                     'stopped or acquisition mode is not set to ''AUTO''.']);
                 disp(['Scope: Warning - ''runMeasurement'' ' ...
                     'method was canceled.']);
@@ -1791,7 +1790,8 @@ classdef ScopeMacros < handle
                 case {'VMIN', 'VMAX', 'VAVERAGE', 'VRMS', 'VPP', ...
                         'VAMPLITUDE', 'VBASE', 'VTOP'}
                     % amps or volts
-                    response = char(obj.VisaIFobj.query([':' channel ':UNITs?']));
+                    response = char(obj.VisaIFobj.query([':' channels{1} ...
+                        ':UNITs?']));
                     if strcmpi(response, 'VOLT')
                         meas.unit = 'V';
                     elseif strcmpi(response, 'AMP')

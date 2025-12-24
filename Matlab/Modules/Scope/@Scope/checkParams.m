@@ -16,8 +16,7 @@ function outVars = checkParams(inVars, command, showmsg)
 % additionally for 'channels'
 % 1, [1 2 3], '1,2,3' '1;2;3' ["1", "2", "3"]  ==> '1, 2, 3'
 % 'ch1, ch2',  {'ch1', 'ch2'}, ["ch1", "ch2"]  ==> '1, 2'
-% any channel number in range 0 .. 99 is allowed
-% channel ids will be sorted in ascending order, duplicates will be removed
+% any channel number in range 0 .. 99 is allowed, duplicates will be removed
 %
 
 narginchk(1,3);
@@ -103,7 +102,6 @@ for nArgsIn = 2:2:length(inVars)
                 % 'CH1', {'CH1'}, "CH1", '1', "1", 1, true  ==> '1'
                 % 'CH1, CH2', '1, 2', [1 2]                 ==> '1, 2'
                 % any channel number in range 0 .. 99 is allowed
-                % channel ids will be sorted in ascending order
                 % duplicates will be removed
                 %
                 % check format and accept valid input only
@@ -112,9 +110,12 @@ for nArgsIn = 2:2:length(inVars)
                         'once'))
                     % remove optional 'CH':  'CH1, CH3' ==> '1, 3'
                     channel = replace(paramValue, {'CH', ';'}, {'', ','});
-                    % sort in ascending order and remove duplicates
-                    channel = regexprep(num2str(unique( ...
-                        str2num(channel)), '%d '), '\s+', ', ');
+                    % split char array into a (column) vector of integer numbers
+                    channel = str2double(split(channel, ','));
+                    % remove duplicates without changing order
+                    channel = unique(channel, 'stable');
+                    % convert to char array back again
+                    channel = char(join(string(channel), ', '));
                 end
             case {'trace'}
                 % trace: accept all scalar values [+-a-zA-Z0-9.] no spaces

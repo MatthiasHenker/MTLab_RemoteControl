@@ -17,6 +17,27 @@ Release vX.X.X
 
 
 
+---------------------------------------------------------------------------
+Release v3.0.1 (same as Scope class) requires VisaIF v3.1.0 or later
+  - Scope                                             v3.0.1   (2025-12-23)
+      order of parameter 'channels' is not sorted anymore
+      ==> affects delay and phase measurements (method runMeasurement)
+with support packages
+  - Scope.Tektronix.TDS1000_2000.ScopeMacros          v3.0.1   (2024-08-26)
+      no changes
+  - Scope.Keysight.DSOX1000.ScopeMacros               v3.0.2   (2025-12-24)
+      bug fix: delay and phase measurements (method runMeasurement)
+      ==> only first source channel was set, now also second channel is set
+  - Scope.RS.RTB2000.ScopeMacros                      v3.0.0   (2024-08-22)
+      no changes
+  - Scope.Rigol.DS2072A.ScopeMacros                   v3.0.0   (2024-08-23)
+      no changes
+  - Scope.Siglent.SDS2000X.ScopeMacros                v3.0.0   (2024-08-22)
+      no changes
+  - Scope.Siglent.SDS1000X_E.ScopeMacros              v3.0.2   (2025-12-24)
+      method runMeasurement with parameter phase or delay will continue
+      with default channel settings [1 2] when channel parameter is
+      not specified correctly (length == 2) ==> error and exit before
 
 ---------------------------------------------------------------------------
 Release v3.0.0 (same as Scope class) requires VisaIF v3.0.0 or later

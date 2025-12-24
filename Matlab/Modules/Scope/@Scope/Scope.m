@@ -241,13 +241,13 @@ classdef Scope < VisaIF
     %          result.parameter : specified parameter        (char)
     %          some scopes will report additional output fields
     %       with varargin: pairs of parameters NAME = VALUE
-    %          'channel'  : specifies source for measurement
-    %                       [1 2], 'ch1, ch2', '{'1', 'ch3'} ...
-    %                       ATTENTION: will always be internally sorted in
-    %                       ascending order ==> affects sign in phase and
-    %                       delay measurements
-    %                       nearly all parameters support a single channel,
-    %                       except for e.g. phase and delay measurements
+    %          'channel'  : specifies source(s) for measurement
+    %                       either 2, '2', 'ch2' for single source measurement
+    %                       (all parameters excepts for 'delay' or 'phase')
+    %                       or [3 1], '3, 1', {'3', '1'}, {'ch3', 'ch1'} for
+    %                       'delay' and 'phase' measurements
+    %                       ATTENTION: order of channels affects sign in phase
+    %                       and delay measurements ==> [1 2] versus [2 1]
     %          'parameter': specifies parameter for measurement,
     %                       list of supported measurements depend on scope
     %                         'frequency' - frequency
@@ -455,8 +455,8 @@ classdef Scope < VisaIF
 
 
     properties(Constant = true)
-        ScopeVersion    = '3.0.0';      % release version (= class version)
-        ScopeDate       = '2024-08-18'; % release date
+        ScopeVersion    = '3.0.1';      % release version (= class version)
+        ScopeDate       = '2025-12-23'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)

@@ -22,8 +22,8 @@ classdef ScopeMacros < handle
     % (for Siglent firmware: 1.3.27 (2023-04-25) ==> see myScope.identify)
 
     properties(Constant = true)
-        MacrosVersion = '3.0.1';      % release version
-        MacrosDate    = '2024-08-26'; % release date
+        MacrosVersion = '3.0.2';      % release version
+        MacrosDate    = '2025-12-24'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -1971,15 +1971,20 @@ classdef ScopeMacros < handle
                     return
                 case {'pha', 'skew'}
                     if length(channels) ~= 2
-                        disp(['Scope: ERROR ''runMeasurement'' ' ...
+                        disp(['Scope: Warning - ''runMeasurement'' ' ...
                             'two source channels have to be specified ' ...
-                            'for phase or delay measurements ' ...
-                            '--> skip and exit']);
-                        meas.status = -1;
-                        return
+                            'for phase and delay measurements ' ...
+                            '--> coerce and continue']);
+                        if obj.ShowMessages
+                            disp('  - channel      : 1, 2 (coerced)');
+                        end
+                        % set to default settings
+
+                        channels  = {'1', '2'};
                     else
-                        source    = ['C' channels{1} '-C' channels{2}];
+                        % all fine
                     end
+                    source    = ['C' channels{1} '-C' channels{2}];
                 otherwise
                     if length(channels) ~= 1
                         % all other measurements for single channel only
