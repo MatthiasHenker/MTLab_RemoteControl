@@ -23,8 +23,8 @@ VisaIF       : VisaIF             class    v3.1.0   (2025-12-22)
   - addons   : VisaDemo           class    v3.0.2   (2025-07-25)
                VisaIFLogger       class    v3.0.0   (2024-08-20)
                VisaIFLogEventData class    v2.0.1   (2021-01-09)
-  - configs  : VisaIF_HTW_Labs.csv                  (2025-07-12)
-               VisaIF_HTW_Henker.csv                (2024-08-20)
+  - configs  : VisaIF_HTW_Labs.csv                  (2025-12-22)
+               VisaIF_HTW_Henker.csv                (2025-12-19)
 
 # ----------------------------------------------------------------------------
 Scope        : Scope              class    v3.0.1   (2025-12-23)
