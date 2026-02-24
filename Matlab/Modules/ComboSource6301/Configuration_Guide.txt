@@ -20,14 +20,17 @@ instrument, vendor, product, resourceID, interfaceType, serialNumber, devicename
 EXAMPLE ENTRIES:
 ----------------
 
-For USB Connection:
-ComboSource6301,Generic,ComboSource6301,USB0::0x1234::0x5678::SN12345::INSTR,visa-usb,,combosource
+For RS-232/Serial Connection (VERIFIED):
+ComboSource6301,ArroyoInstruments,ComboSource6301,COM1,visa-serial,,Arroyo-6301
 
-For RS-232/Serial Connection:
-ComboSource6301,Generic,ComboSource6301,COM3,visa-serial,,combosource
+VERIFIED CONFIGURATION:
+Port: COM1 (ASRL1)
+Baud Rate: 9600 (NOT 38400 as in some manuals)
+Terminator: CR (0x0D) only
+Data: 8 bits, No parity, 1 stop bit, No flow control
 
-For TCPIP Connection:
-ComboSource6301,Generic,ComboSource6301,192.168.1.100,visa-tcpip,,combosource
+For USB Connection (if applicable):
+ComboSource6301,ArroyoInstruments,ComboSource6301,USB0::0x1234::0x5678::SN12345::INSTR,visa-usb,,combosource
 
 
 FIELD DESCRIPTIONS:
@@ -67,25 +70,34 @@ COMPLETE EXAMPLE CONFIG FILE:
 ------------------------------
 Create a file: Matlab/Modules/VisaIF/ConfigFiles/ComboSource6301_Devices.csv
 
-Contents:
----------
+Contents (VERIFIED WORKING):
+-----------------------------
 instrument,vendor,product,resourceID,interfaceType,serialNumber,devicename
-ComboSource6301,Generic,ComboSource6301,COM3,visa-serial,,combosource
-ComboSource6301,Generic,ComboSource6301,USB0::0x1234::0x5678::SN12345::INSTR,visa-usb,,combosource_usb
+ComboSource6301,ArroyoInstruments,ComboSource6301,COM1,visa-serial,,Arroyo-6301
+
+NOTE: Actual configuration is in VisaIF_HTW_Labs.csv with these settings:
+- Port: COM1 (ASRL1)  
+- Baud: 9600
+- Terminator: CR (not CR/LF)
 
 
 USAGE IN MATLAB:
 ----------------
 After configuring, use the device name in your code:
 
-% Using default interface (first found)
-myLaser = ComboSource6301('combosource');
+% Using verified configuration (COM1, 9600 baud)
+myLaser = ComboSource6301('Arroyo-6301');
 
-% Specifying interface type
-myLaser = ComboSource6301('combosource', 'visa-serial');
+% Specifying interface type explicitly
+myLaser = ComboSource6301('Arroyo-6301', 'visa-serial');
 
 % With message display setting
-myLaser = ComboSource6301('combosource', 'visa-serial', 'few');
+myLaser = ComboSource6301('Arroyo-6301', 'visa-serial', 'few');
+
+IMPORTANT:
+- Device uses CUSTOM Arroyo command set, NOT standard SCPI
+- Commands from generic SCPI specs will return E-123 "Path not found"
+- Refer to Arroyo 6300-series Interfacing Manual for correct commands
 
 
 VERIFICATION:
@@ -134,55 +146,44 @@ If connection fails:
 
 SCPI COMMANDS USED:
 -------------------
-The ComboSource6301 class uses standard SCPI commands:
+IMPORTANT: Arroyo devices use CUSTOM command tree, NOT standard SCPI!
 
-Device Info:
+VERIFIED Working Commands:
+  *IDN?              - Identification query (IEEE 488.2 standard)
+  VER?               - Firmware version
+  TIME?              - System time
+  TERMINAL?          - Terminal echo mode query
+  TERMINAL 0/1       - Disable/enable terminal echo
+  ERR?               - Last error code
+  ERRSTR?            - Last error string
+
+NOTE: Many assumed "standard" SCPI commands DO NOT WORK:
+  ✗ OUTP ON/OFF      - NOT VALID
+  ✗ SOUR:CURR        - NOT VALID  
+  ✗ MEAS:POW?        - NOT VALID
+  ✗ SYST:ERR?        - NOT VALID
+  ✗ TEC:OUT?         - NOT VALID
+
+These return E-123 "Path not found" error.
+
+Device Info (Working):
   *IDN?              - Identification query
-  *RST               - Reset device
-  *CLS               - Clear status
-  *STB?              - Status byte query
-  SYST:ERR?          - Error query
+  VER?               - Version query
+  TIME?              - Time query
+  ERR?               - Error query
+  ERRSTR?            - Error string query
 
 Output Control:
-  OUTP ON            - Enable output
-  OUTP OFF           - Disable output
-  OUTP?              - Query output state
+  (NEED TO FIND IN MANUAL - standard OUTP commands don't work)
 
-Current Control:
-  SOUR:CURR <value>  - Set current (A)
-  SOUR:CURR?         - Query current setpoint
-  MEAS:CURR?         - Measure current
-  SOUR:CURR:LIM <value> - Set current limit
-  SOUR:CURR:LIM?     - Query current limit
+Current/Power Control:
+  (NEED TO FIND IN MANUAL - standard SOUR commands don't work)
 
-Power Control:
-  SOUR:POW <value>   - Set power (W)
-  SOUR:POW?          - Query power setpoint
-  MEAS:POW?          - Measure power
-  SOUR:POW:LIM <value> - Set power limit
-  SOUR:POW:LIM?      - Query power limit
+Temperature/TEC:
+  (NEED TO FIND IN MANUAL - standard MEAS/TEC commands don't work)
 
-Temperature:
-  MEAS:TEMP?         - Measure temperature
-  MEAS:TEC:CURR?     - Measure TEC current
-  SOUR:TEMP:LIM:LOW <value> - Set min temp limit
-  SOUR:TEMP:LIM:LOW? - Query min temp limit
-  SOUR:TEMP:LIM:HIGH <value> - Set max temp limit
-  SOUR:TEMP:LIM:HIGH? - Query max temp limit
-
-Operating Mode:
-  SOUR:FUNC:MODE CURR - Set constant current mode
-  SOUR:FUNC:MODE POW  - Set constant power mode
-  SOUR:FUNC:MODE?     - Query mode
-
-System:
-  SYST:LOCK ON       - Lock front panel
-  SYST:LOCK OFF      - Unlock front panel
-  SYST:INTL?         - Query interlock status
-  SYST:TEMP:PROT?    - Query over-temperature
-
-Note: If your device uses different SCPI commands, you may need to modify
-the ComboSource6301.m file accordingly.
+Note: Refer to Arroyo 6300-series Interfacing Manual for actual command syntax.
+The device does NOT follow standard SCPI command structure.
 
 
 SUPPORT:

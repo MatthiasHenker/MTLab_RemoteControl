@@ -23,58 +23,58 @@ classdef ComboSource6301 < VisaIF
     %                      != 0 when something went wrong
     %     * All parameter names and values are NOT case sensitive
     %     * Check for warnings and errors
+    %     * VERIFIED CONFIGURATION: COM1, 9600 baud, CR terminator
+    %     * This device uses Arroyo custom commands, NOT standard SCPI
     %
     % MAIN METHODS:
     %   Device Information:
-    %     - getID()             : Get device identification string
-    %     - getError()          : Get last error from device
-    %     - clear()             : Clear device status
-    %     - reset()             : Reset device to factory defaults
+    %     - getID()             : Get device identification string (*IDN?)
+    %     - getVersion()        : Get firmware version (VER?)
+    %     - getSerialNumber()   : Get serial number (SN?)
+    %     - getError()          : Get last error code (ERR?)
+    %     - getErrorString()    : Get last error description (ERRSTR?)
+    %     - clear()             : Clear device status (*CLS)
     %
-    %   Laser Enable/Disable:
-    %     - enableLaser()       : Enable laser output
-    %     - disableLaser()      : Disable laser output
-    %     - isLaserEnabled()    : Query laser output state
+    %   Laser Current Control:
+    %     - setLaserCurrent(mA)      : Set laser drive current (LAS:LDI)
+    %     - getLaserCurrent()        : Get laser current setpoint (LAS:LDI?)
+    %     - setLaserCurrentLimit(mA) : Set current limit (LAS:LIM:LDI)
+    %     - getLaserCurrentLimit()   : Get current limit (LAS:LIM:LDI?)
     %
-    %   Current Control:
-    %     - setCurrent(mA)      : Set laser drive current in mA
-    %     - getCurrent()        : Get current setpoint in mA
-    %     - getMeasuredCurrent(): Get measured current in mA
+    %   Laser Output Control:
+    %     - enableLaser()       : Enable laser output (LAS:OUT 1)
+    %     - disableLaser()      : Disable laser output (LAS:OUT 0)
+    %     - isLaserEnabled()    : Query laser state (LAS:OUT?)
+    %     - getLaserCondition() : Get laser status (LAS:COND?)
     %
-    %   Current Limits:
-    %     - setCurrentLimit(mA) : Set maximum current limit in mA
-    %     - getCurrentLimit()   : Get current limit in mA
+    %   TEC Temperature Control:
+    %     - setTemperature(C)    : Set TEC temperature setpoint (TEC:T)
+    %     - getTemperature()     : Get measured temperature (TEC:T?)
+    %     - getTempSetpoint()    : Get temperature setpoint (TEC:SET:T?)
     %
-    %   Power Control:
-    %     - setPower(mW)        : Set laser output power in mW
-    %     - getPower()          : Get power setpoint in mW
-    %     - getMeasuredPower()  : Get measured power in mW
+    %   TEC Current Control:
+    %     - getTECCurrent()          : Get TEC current (TEC:ITE?)
+    %     - setTECCurrentLimit(A)    : Set TEC current limit (TEC:LIM:ITE)
+    %     - getTECCurrentLimit()     : Get TEC current limit (TEC:LIM:ITE?)
     %
-    %   Power Limits:
-    %     - setPowerLimit(mW)   : Set maximum power limit in mW
-    %     - getPowerLimit()     : Get power limit in mW
+    %   TEC Output Control:
+    %     - enableTEC()         : Enable TEC output (TEC:OUT 1)
+    %     - disableTEC()        : Disable TEC output (TEC:OUT 0)
+    %     - isTECEnabled()      : Query TEC state (TEC:OUT?)
     %
-    %   Temperature Monitoring:
-    %     - getTemperature()    : Get laser diode temperature in °C
-    %     - getTECCurrent()     : Get TEC (thermoelectric cooler) current in A
+    %   TEC Mode Control:
+    %     - setTECModeTemperature() : Set TEC to temperature mode (TEC:MODE:T)
+    %     - setTECModeCurrent()     : Set TEC to current mode (TEC:MODE:ITE)
+    %     - getTECMode()            : Get TEC mode (TEC:MODE?)
+    %
+    %   TEC PID Control:
+    %     - setTECPID(p,i,d)    : Set PID parameters (TEC:PID)
+    %     - getTECPID()         : Get PID parameters (TEC:PID?)
     %
     %   Temperature Limits:
-    %     - setTempLimitLow(C)  : Set minimum temperature limit in °C
-    %     - getTempLimitLow()   : Get minimum temperature limit in °C
-    %     - setTempLimitHigh(C) : Set maximum temperature limit in °C
-    %     - getTempLimitHigh()  : Get maximum temperature limit in °C
-    %
-    %   Operating Mode:
-    %     - setModeConstantCurrent() : Set to constant current mode
-    %     - setModeConstantPower()   : Set to constant power mode
-    %     - getMode()                : Get current operating mode
-    %
-    %   Status and Safety:
-    %     - getStatus()         : Get comprehensive device status
-    %     - isInterlockClosed() : Check interlock status
-    %     - isOverTemp()        : Check over-temperature condition
-    %     - lock()              : Lock front panel buttons
-    %     - unlock()            : Unlock front panel buttons
+    %     - setTECTempLimitHigh(C)   : Set max TEC temp limit (TEC:LIM:THI)
+    %     - setTECTempLimitLow(C)    : Set min TEC temp limit (TEC:LIM:TLO)
+    %     - setLaserTempLimitHigh(C) : Set max laser temp limit (LAS:LIM:THI)
     %
     % PROPERTIES:
     %   Read-only:
@@ -85,17 +85,36 @@ classdef ComboSource6301 < VisaIF
     % ---------------------------------------------------------------------
     % EXAMPLE USAGE:
     %
-    %   % Create object and connect
-    %   myLaser = ComboSource6301('combosource');
+    %   % Create object and connect (VERIFIED: COM1, 9600 baud)
+    %   myLaser = ComboSource6301('Arroyo-6301');
     %
     %   % Get device info
     %   disp(myLaser.getID());
+    %   disp(myLaser.getVersion());
     %
-    %   % Configure current limit and setpoint
-    %   myLaser.setCurrentLimit(150);  % Set limit to 150 mA
-    %   myLaser.setCurrent(100);       % Set current to 100 mA
+    %   % Enable TEC and set temperature
+    %   myLaser.setTECModeTemperature();
+    %   myLaser.setTemperature(25);  % 25°C
+    %   myLaser.enableTEC();
+    %
+    %   % Configure laser current limit and setpoint
+    %   myLaser.setLaserCurrentLimit(150);  % Set limit to 150 mA
+    %   myLaser.setLaserCurrent(100);       % Set current to 100 mA
     %
     %   % Enable laser
+    %   myLaser.enableLaser();
+    %
+    %   % Monitor status
+    %   fprintf('Temperature: %.2f °C\n', myLaser.getTemperature());
+    %   fprintf('TEC Current: %.3f A\n', myLaser.getTECCurrent());
+    %   fprintf('Laser Current: %.2f mA\n', myLaser.getLaserCurrent());
+    %
+    %   % Disable laser and TEC
+    %   myLaser.disableLaser();
+    %   myLaser.disableTEC();
+    %
+    %   % Close connection
+    %   myLaser.delete;
     %   myLaser.enableLaser();
     %
     %   % Monitor status
@@ -127,8 +146,8 @@ classdef ComboSource6301 < VisaIF
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
-        ComboSourceVersion = '1.0.0';      % release version (= class version)
-        ComboSourceDate    = '2026-01-19'; % release date
+        ComboSourceVersion = '2.0.0';      % release version (updated for Arroyo commands)
+        ComboSourceDate    = '2026-02-24'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -209,8 +228,9 @@ classdef ComboSource6301 < VisaIF
             % Get class name
             className = mfilename('class');
 
-            % Call superclass constructor
-            instrument = className;
+            % Call superclass constructor with 'Other' as instrument type
+            % Note: VisaIF requires 'Other' for Arroyo devices, not 'ComboSource6301'
+            instrument = 'Other';
             obj = obj@VisaIF(device, interface, showmsg, instrument);
 
             if isempty(obj.Device)
@@ -236,39 +256,112 @@ classdef ComboSource6301 < VisaIF
 
         % -----------------------------------------------------------------
         % Extend methods from super class (VisaIF)
+        % Note: reset(), lock(), unlock() are not supported by Arroyo devices
         % -----------------------------------------------------------------
 
-        function status = reset(obj)
-            % Reset device to factory defaults
+        % -----------------------------------------------------------------
+        % Device Information Methods (Arroyo Commands)
+        % -----------------------------------------------------------------
+
+        function [status, idString] = getID(obj)
+            % Get device identification string
+            % Arroyo Command: *IDN?
             %
             % Usage:
-            %   status = myLaser.reset()
+            %   idString = myLaser.getID()
+            %   [status, idString] = myLaser.getID()
+            %
+            % Returns:
+            %   idString - Format: "Arroyo 6301 SN Ver Build"
             
-            status = NaN;
+            [status, idString] = obj.query('*IDN?');
             
-            % Clear buffers
-            obj.clrdevice;
-
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                disp('  Resetting device to factory defaults');
+            if nargout < 2
+                status = idString;
             end
+        end
 
-            % Send reset command
-            status = obj.write('*RST');
-            pause(0.5); % Allow time for reset
+        function [status, version] = getVersion(obj)
+            % Get firmware version
+            % Arroyo Command: VER?
+            %
+            % Usage:
+            %   version = myLaser.getVersion()
+            %   [status, version] = myLaser.getVersion()
+            %
+            % Returns:
+            %   version - Firmware version string (e.g., "v2.23")
             
-            if isnan(status)
-                status = 0;
+            [status, version] = obj.query('VER?');
+            
+            if nargout < 2
+                status = version;
             end
+        end
 
-            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Reset failed');
+        function [status, serialNum] = getSerialNumber(obj)
+            % Get device serial number
+            % Arroyo Command: SN?
+            %
+            % Usage:
+            %   serialNum = myLaser.getSerialNumber()
+            %   [status, serialNum] = myLaser.getSerialNumber()
+            %
+            % Returns:
+            %   serialNum - Serial number string
+            
+            [status, serialNum] = obj.query('SN?');
+            
+            if nargout < 2
+                status = serialNum;
+            end
+        end
+
+        function [status, errorCode] = getError(obj)
+            % Get last error code from device
+            % Arroyo Command: ERR?
+            %
+            % Usage:
+            %   errorCode = myLaser.getError()
+            %   [status, errorCode] = myLaser.getError()
+            %
+            % Returns:
+            %   errorCode - Error number (0 = no error, 1-599 = error code)
+            
+            [status, response] = obj.query('ERR?');
+            
+            if status == 0
+                errorCode = str2double(response);
+            else
+                errorCode = NaN;
+            end
+            
+            if nargout < 2
+                status = errorCode;
+            end
+        end
+
+        function [status, errorMsg] = getErrorString(obj)
+            % Get last error description string
+            % Arroyo Command: ERRSTR?
+            %
+            % Usage:
+            %   errorMsg = myLaser.getErrorString()
+            %   [status, errorMsg] = myLaser.getErrorString()
+            %
+            % Returns:
+            %   errorMsg - Error description text
+            
+            [status, errorMsg] = obj.query('ERRSTR?');
+            
+            if nargout < 2
+                status = errorMsg;
             end
         end
 
         function status = clear(obj)
             % Clear device status and error queue
+            % Arroyo Command: *CLS
             %
             % Usage:
             %   status = myLaser.clear()
@@ -285,86 +378,128 @@ classdef ComboSource6301 < VisaIF
             end
         end
 
-        function status = lock(obj)
-            % Lock front panel buttons
+        function status = setLocalMode(obj)
+            % Set device to local mode (front panel control)
+            % Arroyo Command: LOCAL
             %
             % Usage:
-            %   status = myLaser.lock()
+            %   status = myLaser.setLocalMode()
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  Locking front panel');
+                disp('  Setting to local mode');
             end
 
-            status = obj.write('SYST:LOCK ON');
+            status = obj.write('LOCAL');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Lock failed');
+                disp('  Set local mode failed');
             end
         end
 
-        function status = unlock(obj)
-            % Unlock front panel buttons
+        % -----------------------------------------------------------------
+        % Laser Current Control Methods (Arroyo Commands)
+        % -----------------------------------------------------------------
+
+        function status = setLaserCurrent(obj, currentMA)
+            % Set laser drive current in mA
+            % Arroyo Command: LAS:LDI <value>
             %
             % Usage:
-            %   status = myLaser.unlock()
+            %   status = myLaser.setLaserCurrent(currentMA)
+            %
+            % Parameters:
+            %   currentMA - Current setpoint in milliamperes (0 to hardware max)
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  Unlocking front panel');
+                fprintf('  Setting laser current to %.3f mA\n', currentMA);
             end
 
-            status = obj.write('SYST:LOCK OFF');
+            status = obj.write(sprintf('LAS:LDI %.6f', currentMA));
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Unlock failed');
+                disp('  Set laser current failed');
             end
         end
 
-        % -----------------------------------------------------------------
-        % Device Information Methods
-        % -----------------------------------------------------------------
-
-        function [status, idString] = getID(obj)
-            % Get device identification string
+        function [status, currentMA] = getLaserCurrent(obj)
+            % Get laser current setpoint in mA
+            % Arroyo Command: LAS:LDI?
             %
             % Usage:
-            %   idString = myLaser.getID()
-            %   [status, idString] = myLaser.getID()
+            %   currentMA = myLaser.getLaserCurrent()
+            %   [status, currentMA] = myLaser.getLaserCurrent()
             %
             % Returns:
-            %   idString - Identification string (manufacturer, model, serial, firmware)
+            %   currentMA - Current setpoint in milliamperes
             
-            [status, idString] = obj.query('*IDN?');
+            [status, response] = obj.query('LAS:LDI?');
+            
+            if status == 0
+                currentMA = str2double(response);
+            else
+                currentMA = NaN;
+            end
             
             if nargout < 2
-                status = idString;
+                status = currentMA;
             end
         end
 
-        function [status, errorMsg] = getError(obj)
-            % Get last error from device error queue
+        function status = setLaserCurrentLimit(obj, limitMA)
+            % Set maximum laser current limit in mA
+            % Arroyo Command: LAS:LIM:LDI <value>
             %
             % Usage:
-            %   errorMsg = myLaser.getError()
-            %   [status, errorMsg] = myLaser.getError()
+            %   status = myLaser.setLaserCurrentLimit(limitMA)
+            %
+            % Parameters:
+            %   limitMA - Maximum current limit in milliamperes
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                fprintf('  Setting laser current limit to %.3f mA\n', limitMA);
+            end
+
+            status = obj.write(sprintf('LAS:LIM:LDI %.6f', limitMA));
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Set laser current limit failed');
+            end
+        end
+
+        function [status, limitMA] = getLaserCurrentLimit(obj)
+            % Get maximum laser current limit in mA
+            % Arroyo Command: LAS:LIM:LDI?
+            %
+            % Usage:
+            %   limitMA = myLaser.getLaserCurrentLimit()
+            %   [status, limitMA] = myLaser.getLaserCurrentLimit()
             %
             % Returns:
-            %   errorMsg - Error message string
+            %   limitMA - Maximum current limit in milliamperes
             
-            [status, errorMsg] = obj.query('SYST:ERR?');
+            [status, response] = obj.query('LAS:LIM:LDI?');
+            
+            if status == 0
+                limitMA = str2double(response);
+            else
+                limitMA = NaN;
+            end
             
             if nargout < 2
-                status = errorMsg;
+                status = limitMA;
             end
         end
 
         % -----------------------------------------------------------------
-        % Laser Enable/Disable Methods
+        % Laser Output Control Methods (Arroyo Commands)
         % -----------------------------------------------------------------
 
         function status = enableLaser(obj)
             % Enable laser output
+            % Arroyo Command: LAS:OUT 1
             %
             % Usage:
             %   status = myLaser.enableLaser()
@@ -374,7 +509,7 @@ classdef ComboSource6301 < VisaIF
                 disp('  Enabling laser output');
             end
 
-            status = obj.write('OUTP ON');
+            status = obj.write('LAS:OUT 1');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  Enable laser failed');
@@ -383,6 +518,7 @@ classdef ComboSource6301 < VisaIF
 
         function status = disableLaser(obj)
             % Disable laser output
+            % Arroyo Command: LAS:OUT 0
             %
             % Usage:
             %   status = myLaser.disableLaser()
@@ -392,7 +528,7 @@ classdef ComboSource6301 < VisaIF
                 disp('  Disabling laser output');
             end
 
-            status = obj.write('OUTP OFF');
+            status = obj.write('LAS:OUT 0');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
                 disp('  Disable laser failed');
@@ -401,19 +537,19 @@ classdef ComboSource6301 < VisaIF
 
         function [status, isEnabled] = isLaserEnabled(obj)
             % Query laser output state
+            % Arroyo Command: LAS:OUT?
             %
             % Usage:
             %   isEnabled = myLaser.isLaserEnabled()
             %   [status, isEnabled] = myLaser.isLaserEnabled()
             %
             % Returns:
-            %   isEnabled - true if laser is on, false if off
+            %   isEnabled - true if laser is on (1), false if off (0)
             
-            [status, response] = obj.query('OUTP?');
+            [status, response] = obj.query('LAS:OUT?');
             
             if status == 0
-                isEnabled = strcmpi(strtrim(response), '1') || ...
-                           strcmpi(strtrim(response), 'ON');
+                isEnabled = strcmpi(strtrim(response), '1');
             else
                 isEnabled = false;
             end

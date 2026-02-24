@@ -116,7 +116,8 @@ Keithley-2450    ;; Keithley    ;; Model2450     ;; SMU24xx   ;; visa-tcpip ;; T
 #
 #  -------- Other ------------------------------------------------------------------------------------------
 # Laser-Controller
-Arroyo-6301 ;; ArroyoInstruments;; ComboSource6301;; Other    ;; visa-serial;; ASRL1::9600.8.1.none.none.CR/LF.CR/LF;; 1e4 ;; 1e4
+# VERIFIED: COM1, 9600 baud, CR terminator (not 38400 as originally documented)
+Arroyo-6301 ;; ArroyoInstruments;; ComboSource6301;; Other    ;; visa-serial;; ASRL1::9600.8.1.none.none.CR.CR;; 1e4 ;; 1e4
 #
 #
 # Drehplattform-Treiber
