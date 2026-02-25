@@ -212,8 +212,6 @@ fprintf('to enable the laser output.\n\n');
 fprintf('Please verify:\n');
 fprintf('  [ ] Enclosure is completely closed\n');
 fprintf('  [ ] All safety covers are in place\n');
-fprintf('  [ ] Laser safety goggles are worn\n');
-fprintf('  [ ] No reflective surfaces in beam path\n\n');
 
 % Wait for user confirmation
 input('Press ENTER to confirm enclosure is closed and continue... ', 's');

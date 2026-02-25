@@ -3,7 +3,7 @@ RotaryPlatformDriver - Version History
 
 Version 2.1.0 (2026-02-25)
 --------------------------
-✓ 100% SCPI COMPLIANT with HTWD-DT-2025 Firmware v1.1.0
+SCPI Implementation for HTWD-DT-2025 Firmware v1.1.0
 
 Major Changes:
 - **Migrated to VisaIF class** for serial communication (replacing direct serialport)
@@ -99,5 +99,6 @@ Tested with:
 - MATLAB R2025b
 
 Development:
-- Florian Römer (student)
+- Florian Römer
 - HTW Dresden, Faculty of Electrical Engineering
+

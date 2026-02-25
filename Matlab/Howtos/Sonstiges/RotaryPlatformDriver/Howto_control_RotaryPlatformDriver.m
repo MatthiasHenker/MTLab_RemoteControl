@@ -1,6 +1,6 @@
 %% Howto control the rotary platform using RotaryPlatformDriver class
 % 2026-02-25 - Updated to use VisaIF
-% HTW Dresden - Prof. Florian Römer
+% HTW Dresden - Florian Römer
 %
 % Requirements: 
 %   - RotaryPlatformDriver class

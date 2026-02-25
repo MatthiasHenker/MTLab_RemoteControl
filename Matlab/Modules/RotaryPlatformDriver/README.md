@@ -6,7 +6,7 @@ Control interface for HTWD-DT-2025 rotary platform via **VisaIF** serial communi
 
 The **RotaryPlatformDriver** class provides a comprehensive MATLAB interface for controlling a custom rotary platform. It uses the **VisaIF** class for serial communication and implements all 19 SCPI commands from Firmware v1.1.0 specification for position control, safety limits, and motor diagnostics.
 
-**✓ 100% SCPI Compliant** with HTWD-DT-2025 Firmware v1.1.0
+**SCPI Implementation** for HTWD-DT-2025 Firmware v1.1.0
 
 ## Quick Start
 

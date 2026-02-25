@@ -34,6 +34,7 @@ classdef ComboSource6301 < VisaIF
     %     - getError()          : Get last error code (ERR?)
     %     - getErrorString()    : Get last error description (ERRSTR?)
     %     - clear()             : Clear device status (*CLS)
+    %     - setLocalMode()      : Return to local front panel control (LOCAL)
     %
     %   Laser Current Control:
     %     - setLaserCurrent(mA)      : Set laser drive current (LAS:LDI)
@@ -45,7 +46,7 @@ classdef ComboSource6301 < VisaIF
     %     - enableLaser()       : Enable laser output (LAS:OUT 1)
     %     - disableLaser()      : Disable laser output (LAS:OUT 0)
     %     - isLaserEnabled()    : Query laser state (LAS:OUT?)
-    %     - getLaserCondition() : Get laser status (LAS:COND?)
+    %     - getLaserCondition() : Get laser status register (LAS:COND?)
     %
     %   TEC Temperature Control:
     %     - setTemperature(C)    : Set TEC temperature setpoint (TEC:T)
@@ -76,6 +77,14 @@ classdef ComboSource6301 < VisaIF
     %     - setTECTempLimitLow(C)    : Set min TEC temp limit (TEC:LIM:TLO)
     %     - setLaserTempLimitHigh(C) : Set max laser temp limit (LAS:LIM:THI)
     %
+    %   Status and Safety:
+    %     - getStatus()          : Get device status byte (*STB?)
+    %     - getLaserCondition()  : Get laser condition register (LAS:COND?)
+    %     - getTECCondition()    : Get TEC condition register (TEC:COND?)
+    %     - getInterlockState()  : Get interlock digital input (DIO:IN? 0)
+    %     - isInterlockClosed()  : Check if interlock is safe (DIO:IN? 0)
+    %     - isOverTemp()         : Check over-temp from TEC:COND?
+    %
     % PROPERTIES:
     %   Read-only:
     %     - ComboSourceVersion : Version of this class file
@@ -85,7 +94,7 @@ classdef ComboSource6301 < VisaIF
     % ---------------------------------------------------------------------
     % EXAMPLE USAGE:
     %
-    %   % Create object and connect (VERIFIED: COM1, 9600 baud)
+    %   % Create object and connect (VERIFIED: COM1, 9600 baud, CR terminator)
     %   myLaser = ComboSource6301('Arroyo-6301');
     %
     %   % Get device info
@@ -96,6 +105,9 @@ classdef ComboSource6301 < VisaIF
     %   myLaser.setTECModeTemperature();
     %   myLaser.setTemperature(25);  % 25°C
     %   myLaser.enableTEC();
+    %
+    %   % Wait for temperature stabilization
+    %   pause(30);
     %
     %   % Configure laser current limit and setpoint
     %   myLaser.setLaserCurrentLimit(150);  % Set limit to 150 mA
@@ -109,21 +121,16 @@ classdef ComboSource6301 < VisaIF
     %   fprintf('TEC Current: %.3f A\n', myLaser.getTECCurrent());
     %   fprintf('Laser Current: %.2f mA\n', myLaser.getLaserCurrent());
     %
+    %   % Check safety status
+    %   if myLaser.isInterlockClosed()
+    %       disp('Interlock is closed (safe)');
+    %   else
+    %       disp('WARNING: Interlock is open!');
+    %   end
+    %
     %   % Disable laser and TEC
     %   myLaser.disableLaser();
     %   myLaser.disableTEC();
-    %
-    %   % Close connection
-    %   myLaser.delete;
-    %   myLaser.enableLaser();
-    %
-    %   % Monitor status
-    %   fprintf('Current: %.2f mA\n', myLaser.getMeasuredCurrent());
-    %   fprintf('Power: %.2f mW\n', myLaser.getMeasuredPower());
-    %   fprintf('Temperature: %.2f °C\n', myLaser.getTemperature());
-    %
-    %   % Disable laser
-    %   myLaser.disableLaser();
     %
     %   % Close connection
     %   myLaser.delete;
@@ -142,7 +149,7 @@ classdef ComboSource6301 < VisaIF
     %   - none reported yet
     %
     % development, support and contact:
-    %   - Matthias Henker   (professor)
+    %   - Florian Römer
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
@@ -224,9 +231,6 @@ classdef ComboSource6301 < VisaIF
             if nargin < 1 || isempty(device)
                 device = '';
             end
-
-            % Get class name
-            className = mfilename('class');
 
             % Call superclass constructor with 'Other' as instrument type
             % Note: VisaIF requires 'Other' for Arroyo devices, not 'ComboSource6301'
@@ -560,272 +564,67 @@ classdef ComboSource6301 < VisaIF
         end
 
         % -----------------------------------------------------------------
-        % Current Control Methods
+        % TEC Temperature Control Methods (Arroyo Commands)
         % -----------------------------------------------------------------
 
-        function status = setCurrent(obj, currentMA)
-            % Set laser drive current in mA
+        function status = setTemperature(obj, tempC)
+            % Set TEC temperature setpoint in °C
+            % Arroyo Command: TEC:T <value>
             %
             % Usage:
-            %   status = myLaser.setCurrent(currentMA)
+            %   status = myLaser.setTemperature(tempC)
             %
             % Parameters:
-            %   currentMA - Current setpoint in milliamperes
+            %   tempC - Temperature setpoint in degrees Celsius
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                fprintf('  Setting current to %.3f mA\n', currentMA);
+                fprintf('  Setting temperature to %.2f °C\n', tempC);
             end
 
-            % Convert mA to A for SCPI command
-            currentA = currentMA / 1000;
-            status = obj.write(sprintf('SOUR:CURR %.6f', currentA));
+            status = obj.write(sprintf('TEC:T %.3f', tempC));
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set current failed');
+                disp('  Set temperature failed');
             end
         end
-
-        function [status, currentMA] = getCurrent(obj)
-            % Get current setpoint in mA
-            %
-            % Usage:
-            %   currentMA = myLaser.getCurrent()
-            %   [status, currentMA] = myLaser.getCurrent()
-            %
-            % Returns:
-            %   currentMA - Current setpoint in milliamperes
-            
-            [status, response] = obj.query('SOUR:CURR?');
-            
-            if status == 0
-                currentA = str2double(response);
-                currentMA = currentA * 1000; % Convert A to mA
-            else
-                currentMA = NaN;
-            end
-            
-            if nargout < 2
-                status = currentMA;
-            end
-        end
-
-        function [status, currentMA] = getMeasuredCurrent(obj)
-            % Get measured laser current in mA
-            %
-            % Usage:
-            %   currentMA = myLaser.getMeasuredCurrent()
-            %   [status, currentMA] = myLaser.getMeasuredCurrent()
-            %
-            % Returns:
-            %   currentMA - Measured current in milliamperes
-            
-            [status, response] = obj.query('MEAS:CURR?');
-            
-            if status == 0
-                currentA = str2double(response);
-                currentMA = currentA * 1000; % Convert A to mA
-            else
-                currentMA = NaN;
-            end
-            
-            if nargout < 2
-                status = currentMA;
-            end
-        end
-
-        % -----------------------------------------------------------------
-        % Current Limit Methods
-        % -----------------------------------------------------------------
-
-        function status = setCurrentLimit(obj, limitMA)
-            % Set maximum current limit in mA
-            %
-            % Usage:
-            %   status = myLaser.setCurrentLimit(limitMA)
-            %
-            % Parameters:
-            %   limitMA - Maximum current limit in milliamperes
-            
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                fprintf('  Setting current limit to %.3f mA\n', limitMA);
-            end
-
-            % Convert mA to A for SCPI command
-            limitA = limitMA / 1000;
-            status = obj.write(sprintf('SOUR:CURR:LIM %.6f', limitA));
-
-            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set current limit failed');
-            end
-        end
-
-        function [status, limitMA] = getCurrentLimit(obj)
-            % Get maximum current limit in mA
-            %
-            % Usage:
-            %   limitMA = myLaser.getCurrentLimit()
-            %   [status, limitMA] = myLaser.getCurrentLimit()
-            %
-            % Returns:
-            %   limitMA - Maximum current limit in milliamperes
-            
-            [status, response] = obj.query('SOUR:CURR:LIM?');
-            
-            if status == 0
-                limitA = str2double(response);
-                limitMA = limitA * 1000; % Convert A to mA
-            else
-                limitMA = NaN;
-            end
-            
-            if nargout < 2
-                status = limitMA;
-            end
-        end
-
-        % -----------------------------------------------------------------
-        % Power Control Methods
-        % -----------------------------------------------------------------
-
-        function status = setPower(obj, powerMW)
-            % Set laser output power in mW
-            %
-            % Usage:
-            %   status = myLaser.setPower(powerMW)
-            %
-            % Parameters:
-            %   powerMW - Power setpoint in milliwatts
-            
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                fprintf('  Setting power to %.3f mW\n', powerMW);
-            end
-
-            % Convert mW to W for SCPI command
-            powerW = powerMW / 1000;
-            status = obj.write(sprintf('SOUR:POW %.6f', powerW));
-
-            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set power failed');
-            end
-        end
-
-        function [status, powerMW] = getPower(obj)
-            % Get power setpoint in mW
-            %
-            % Usage:
-            %   powerMW = myLaser.getPower()
-            %   [status, powerMW] = myLaser.getPower()
-            %
-            % Returns:
-            %   powerMW - Power setpoint in milliwatts
-            
-            [status, response] = obj.query('SOUR:POW?');
-            
-            if status == 0
-                powerW = str2double(response);
-                powerMW = powerW * 1000; % Convert W to mW
-            else
-                powerMW = NaN;
-            end
-            
-            if nargout < 2
-                status = powerMW;
-            end
-        end
-
-        function [status, powerMW] = getMeasuredPower(obj)
-            % Get measured laser output power in mW
-            %
-            % Usage:
-            %   powerMW = myLaser.getMeasuredPower()
-            %   [status, powerMW] = myLaser.getMeasuredPower()
-            %
-            % Returns:
-            %   powerMW - Measured power in milliwatts
-            
-            [status, response] = obj.query('MEAS:POW?');
-            
-            if status == 0
-                powerW = str2double(response);
-                powerMW = powerW * 1000; % Convert W to mW
-            else
-                powerMW = NaN;
-            end
-            
-            if nargout < 2
-                status = powerMW;
-            end
-        end
-
-        % -----------------------------------------------------------------
-        % Power Limit Methods
-        % -----------------------------------------------------------------
-
-        function status = setPowerLimit(obj, limitMW)
-            % Set maximum power limit in mW
-            %
-            % Usage:
-            %   status = myLaser.setPowerLimit(limitMW)
-            %
-            % Parameters:
-            %   limitMW - Maximum power limit in milliwatts
-            
-            if ~strcmpi(obj.ShowMessages, 'none')
-                disp([obj.DeviceName ':']);
-                fprintf('  Setting power limit to %.3f mW\n', limitMW);
-            end
-
-            % Convert mW to W for SCPI command
-            limitW = limitMW / 1000;
-            status = obj.write(sprintf('SOUR:POW:LIM %.6f', limitW));
-
-            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set power limit failed');
-            end
-        end
-
-        function [status, limitMW] = getPowerLimit(obj)
-            % Get maximum power limit in mW
-            %
-            % Usage:
-            %   limitMW = myLaser.getPowerLimit()
-            %   [status, limitMW] = myLaser.getPowerLimit()
-            %
-            % Returns:
-            %   limitMW - Maximum power limit in milliwatts
-            
-            [status, response] = obj.query('SOUR:POW:LIM?');
-            
-            if status == 0
-                limitW = str2double(response);
-                limitMW = limitW * 1000; % Convert W to mW
-            else
-                limitMW = NaN;
-            end
-            
-            if nargout < 2
-                status = limitMW;
-            end
-        end
-
-        % -----------------------------------------------------------------
-        % Temperature Monitoring Methods
-        % -----------------------------------------------------------------
 
         function [status, tempC] = getTemperature(obj)
-            % Get laser diode temperature in °C
+            % Get measured TEC temperature in °C
+            % Arroyo Command: TEC:T?
             %
             % Usage:
             %   tempC = myLaser.getTemperature()
             %   [status, tempC] = myLaser.getTemperature()
             %
             % Returns:
-            %   tempC - Temperature in degrees Celsius
+            %   tempC - Measured temperature in degrees Celsius
             
-            [status, response] = obj.query('MEAS:TEMP?');
+            [status, response] = obj.query('TEC:T?');
+            
+            if status == 0
+                tempC = str2double(response);
+            else
+                tempC = NaN;
+            end
+            
+            if nargout < 2
+                status = tempC;
+            end
+        end
+
+        function [status, tempC] = getTempSetpoint(obj)
+            % Get TEC temperature setpoint in °C
+            % Arroyo Command: TEC:SET:T?
+            %
+            % Usage:
+            %   tempC = myLaser.getTempSetpoint()
+            %   [status, tempC] = myLaser.getTempSetpoint()
+            %
+            % Returns:
+            %   tempC - Temperature setpoint in degrees Celsius
+            
+            [status, response] = obj.query('TEC:SET:T?');
             
             if status == 0
                 tempC = str2double(response);
@@ -840,6 +639,7 @@ classdef ComboSource6301 < VisaIF
 
         function [status, tecCurrentA] = getTECCurrent(obj)
             % Get TEC (thermoelectric cooler) current in A
+            % Arroyo Command: TEC:ITE?
             %
             % Usage:
             %   tecCurrentA = myLaser.getTECCurrent()
@@ -848,7 +648,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   tecCurrentA - TEC current in amperes
             
-            [status, response] = obj.query('MEAS:TEC:CURR?');
+            [status, response] = obj.query('TEC:ITE?');
             
             if status == 0
                 tecCurrentA = str2double(response);
@@ -861,149 +661,172 @@ classdef ComboSource6301 < VisaIF
             end
         end
 
-        % -----------------------------------------------------------------
-        % Temperature Limit Methods
-        % -----------------------------------------------------------------
-
-        function status = setTempLimitLow(obj, tempC)
-            % Set minimum temperature limit in °C
+        function status = setTECCurrentLimit(obj, limitA)
+            % Set TEC current limit in A
+            % Arroyo Command: TEC:LIM:ITE <value>
             %
             % Usage:
-            %   status = myLaser.setTempLimitLow(tempC)
+            %   status = myLaser.setTECCurrentLimit(limitA)
             %
             % Parameters:
-            %   tempC - Minimum temperature limit in degrees Celsius
+            %   limitA - TEC current limit in amperes
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                fprintf('  Setting minimum temperature limit to %.2f °C\n', tempC);
+                fprintf('  Setting TEC current limit to %.3f A\n', limitA);
             end
 
-            status = obj.write(sprintf('SOUR:TEMP:LIM:LOW %.3f', tempC));
+            status = obj.write(sprintf('TEC:LIM:ITE %.6f', limitA));
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set minimum temperature limit failed');
+                disp('  Set TEC current limit failed');
             end
         end
 
-        function [status, tempC] = getTempLimitLow(obj)
-            % Get minimum temperature limit in °C
+        function [status, limitA] = getTECCurrentLimit(obj)
+            % Get TEC current limit in A
+            % Arroyo Command: TEC:LIM:ITE?
             %
             % Usage:
-            %   tempC = myLaser.getTempLimitLow()
-            %   [status, tempC] = myLaser.getTempLimitLow()
+            %   limitA = myLaser.getTECCurrentLimit()
+            %   [status, limitA] = myLaser.getTECCurrentLimit()
             %
             % Returns:
-            %   tempC - Minimum temperature limit in degrees Celsius
+            %   limitA - TEC current limit in amperes
             
-            [status, response] = obj.query('SOUR:TEMP:LIM:LOW?');
+            [status, response] = obj.query('TEC:LIM:ITE?');
             
             if status == 0
-                tempC = str2double(response);
+                limitA = str2double(response);
             else
-                tempC = NaN;
+                limitA = NaN;
             end
             
             if nargout < 2
-                status = tempC;
+                status = limitA;
             end
         end
 
-        function status = setTempLimitHigh(obj, tempC)
-            % Set maximum temperature limit in °C
+        % -----------------------------------------------------------------
+        % TEC Output Control Methods (Arroyo Commands)
+        % -----------------------------------------------------------------
+
+        function status = enableTEC(obj)
+            % Enable TEC output
+            % Arroyo Command: TEC:OUT 1
             %
             % Usage:
-            %   status = myLaser.setTempLimitHigh(tempC)
-            %
-            % Parameters:
-            %   tempC - Maximum temperature limit in degrees Celsius
+            %   status = myLaser.enableTEC()
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                fprintf('  Setting maximum temperature limit to %.2f °C\n', tempC);
+                disp('  Enabling TEC output');
             end
 
-            status = obj.write(sprintf('SOUR:TEMP:LIM:HIGH %.3f', tempC));
+            status = obj.write('TEC:OUT 1');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set maximum temperature limit failed');
+                disp('  Enable TEC failed');
             end
         end
 
-        function [status, tempC] = getTempLimitHigh(obj)
-            % Get maximum temperature limit in °C
+        function status = disableTEC(obj)
+            % Disable TEC output
+            % Arroyo Command: TEC:OUT 0
             %
             % Usage:
-            %   tempC = myLaser.getTempLimitHigh()
-            %   [status, tempC] = myLaser.getTempLimitHigh()
+            %   status = myLaser.disableTEC()
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                disp('  Disabling TEC output');
+            end
+
+            status = obj.write('TEC:OUT 0');
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Disable TEC failed');
+            end
+        end
+
+        function [status, isEnabled] = isTECEnabled(obj)
+            % Query TEC output state
+            % Arroyo Command: TEC:OUT?
+            %
+            % Usage:
+            %   isEnabled = myLaser.isTECEnabled()
+            %   [status, isEnabled] = myLaser.isTECEnabled()
             %
             % Returns:
-            %   tempC - Maximum temperature limit in degrees Celsius
+            %   isEnabled - true if TEC is on (1), false if off (0)
             
-            [status, response] = obj.query('SOUR:TEMP:LIM:HIGH?');
+            [status, response] = obj.query('TEC:OUT?');
             
             if status == 0
-                tempC = str2double(response);
+                isEnabled = strcmpi(strtrim(response), '1');
             else
-                tempC = NaN;
+                isEnabled = false;
             end
             
             if nargout < 2
-                status = tempC;
+                status = isEnabled;
             end
         end
 
         % -----------------------------------------------------------------
-        % Operating Mode Methods
+        % TEC Mode Control Methods (Arroyo Commands)
         % -----------------------------------------------------------------
 
-        function status = setModeConstantCurrent(obj)
-            % Set operating mode to constant current
+        function status = setTECModeTemperature(obj)
+            % Set TEC to temperature control mode
+            % Arroyo Command: TEC:MODE:T
             %
             % Usage:
-            %   status = myLaser.setModeConstantCurrent()
+            %   status = myLaser.setTECModeTemperature()
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  Setting mode to constant current');
+                disp('  Setting TEC to temperature mode');
             end
 
-            status = obj.write('SOUR:FUNC:MODE CURR');
+            status = obj.write('TEC:MODE:T');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set mode failed');
+                disp('  Set TEC mode failed');
             end
         end
 
-        function status = setModeConstantPower(obj)
-            % Set operating mode to constant power
+        function status = setTECModeCurrent(obj)
+            % Set TEC to current control mode
+            % Arroyo Command: TEC:MODE:ITE
             %
             % Usage:
-            %   status = myLaser.setModeConstantPower()
+            %   status = myLaser.setTECModeCurrent()
             
             if ~strcmpi(obj.ShowMessages, 'none')
                 disp([obj.DeviceName ':']);
-                disp('  Setting mode to constant power');
+                disp('  Setting TEC to current mode');
             end
 
-            status = obj.write('SOUR:FUNC:MODE POW');
+            status = obj.write('TEC:MODE:ITE');
 
             if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
-                disp('  Set mode failed');
+                disp('  Set TEC mode failed');
             end
         end
 
-        function [status, mode] = getMode(obj)
-            % Get current operating mode
+        function [status, mode] = getTECMode(obj)
+            % Get TEC control mode
+            % Arroyo Command: TEC:MODE?
             %
             % Usage:
-            %   mode = myLaser.getMode()
-            %   [status, mode] = myLaser.getMode()
+            %   mode = myLaser.getTECMode()
+            %   [status, mode] = myLaser.getTECMode()
             %
             % Returns:
-            %   mode - Operating mode ('CURR' or 'POW')
+            %   mode - 'T' for temperature mode, 'ITE' for current mode
             
-            [status, mode] = obj.query('SOUR:FUNC:MODE?');
+            [status, mode] = obj.query('TEC:MODE?');
             
             if status == 0
                 mode = strtrim(mode);
@@ -1017,11 +840,198 @@ classdef ComboSource6301 < VisaIF
         end
 
         % -----------------------------------------------------------------
-        % Status and Safety Methods
+        % TEC PID Control Methods (Arroyo Commands)
         % -----------------------------------------------------------------
+
+        function status = setTECPID(obj, p, i, d)
+            % Set TEC PID control parameters
+            % Arroyo Command: TEC:PID <P>,<I>,<D>
+            %
+            % Usage:
+            %   status = myLaser.setTECPID(p, i, d)
+            %
+            % Parameters:
+            %   p - Proportional gain
+            %   i - Integral gain
+            %   d - Derivative gain
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                fprintf('  Setting TEC PID to P=%.3f, I=%.3f, D=%.3f\n', p, i, d);
+            end
+
+            status = obj.write(sprintf('TEC:PID %.6f,%.6f,%.6f', p, i, d));
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Set TEC PID failed');
+            end
+        end
+
+        function [status, p, i, d] = getTECPID(obj)
+            % Get TEC PID control parameters
+            % Arroyo Command: TEC:PID?
+            %
+            % Usage:
+            %   [p, i, d] = myLaser.getTECPID()
+            %   [status, p, i, d] = myLaser.getTECPID()
+            %
+            % Returns:
+            %   p - Proportional gain
+            %   i - Integral gain
+            %   d - Derivative gain
+            
+            [status, response] = obj.query('TEC:PID?');
+            
+            if status == 0
+                values = sscanf(response, '%f,%f,%f');
+                if length(values) == 3
+                    p = values(1);
+                    i = values(2);
+                    d = values(3);
+                else
+                    p = NaN;
+                    i = NaN;
+                    d = NaN;
+                end
+            else
+                p = NaN;
+                i = NaN;
+                d = NaN;
+            end
+            
+            if nargout < 4
+                % Return as array if fewer outputs requested
+                status = [p, i, d];
+            end
+        end
+
+        % -----------------------------------------------------------------
+        % Temperature Limit Methods (Arroyo Commands)
+        % -----------------------------------------------------------------
+
+        function status = setTECTempLimitHigh(obj, tempC)
+            % Set maximum TEC temperature limit in °C
+            % Arroyo Command: TEC:LIM:THI <value>
+            %
+            % Usage:
+            %   status = myLaser.setTECTempLimitHigh(tempC)
+            %
+            % Parameters:
+            %   tempC - Maximum temperature limit in degrees Celsius
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                fprintf('  Setting TEC max temperature limit to %.2f °C\n', tempC);
+            end
+
+            status = obj.write(sprintf('TEC:LIM:THI %.3f', tempC));
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Set TEC max temperature limit failed');
+            end
+        end
+
+        function status = setTECTempLimitLow(obj, tempC)
+            % Set minimum TEC temperature limit in °C
+            % Arroyo Command: TEC:LIM:TLO <value>
+            %
+            % Usage:
+            %   status = myLaser.setTECTempLimitLow(tempC)
+            %
+            % Parameters:
+            %   tempC - Minimum temperature limit in degrees Celsius
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                fprintf('  Setting TEC min temperature limit to %.2f °C\n', tempC);
+            end
+
+            status = obj.write(sprintf('TEC:LIM:TLO %.3f', tempC));
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Set TEC min temperature limit failed');
+            end
+        end
+
+        function status = setLaserTempLimitHigh(obj, tempC)
+            % Set maximum laser temperature limit in °C
+            % Arroyo Command: LAS:LIM:THI <value>
+            %
+            % Usage:
+            %   status = myLaser.setLaserTempLimitHigh(tempC)
+            %
+            % Parameters:
+            %   tempC - Maximum laser temperature limit in degrees Celsius
+            
+            if ~strcmpi(obj.ShowMessages, 'none')
+                disp([obj.DeviceName ':']);
+                fprintf('  Setting laser max temperature limit to %.2f °C\n', tempC);
+            end
+
+            status = obj.write(sprintf('LAS:LIM:THI %.3f', tempC));
+
+            if ~strcmpi(obj.ShowMessages, 'none') && status ~= 0
+                disp('  Set laser max temperature limit failed');
+            end
+        end
+
+        % -----------------------------------------------------------------
+        % Status and Condition Methods (Arroyo Commands)
+        % -----------------------------------------------------------------
+
+        function [status, conditionCode] = getLaserCondition(obj)
+            % Get laser condition register
+            % Arroyo Command: LAS:COND?
+            %
+            % Usage:
+            %   conditionCode = myLaser.getLaserCondition()
+            %   [status, conditionCode] = myLaser.getLaserCondition()
+            %
+            % Returns:
+            %   conditionCode - Laser condition register value (bitfield)
+            %                   Bit meanings depend on device configuration
+            
+            [status, response] = obj.query('LAS:COND?');
+            
+            if status == 0
+                conditionCode = str2double(response);
+            else
+                conditionCode = NaN;
+            end
+            
+            if nargout < 2
+                status = conditionCode;
+            end
+        end
+
+        function [status, conditionCode] = getTECCondition(obj)
+            % Get TEC condition register
+            % Arroyo Command: TEC:COND?
+            %
+            % Usage:
+            %   conditionCode = myLaser.getTECCondition()
+            %   [status, conditionCode] = myLaser.getTECCondition()
+            %
+            % Returns:
+            %   conditionCode - TEC condition register value (bitfield)
+            %                   Check manual for bit definitions
+            
+            [status, response] = obj.query('TEC:COND?');
+            
+            if status == 0
+                conditionCode = str2double(response);
+            else
+                conditionCode = NaN;
+            end
+            
+            if nargout < 2
+                status = conditionCode;
+            end
+        end
 
         function [status, statusByte] = getStatus(obj)
             % Get device status byte
+            % Arroyo Command: *STB?
             %
             % Usage:
             %   statusByte = myLaser.getStatus()
@@ -1043,8 +1053,33 @@ classdef ComboSource6301 < VisaIF
             end
         end
 
+        function [status, interlockState] = getInterlockState(obj)
+            % Check interlock input state via digital I/O
+            % Arroyo Command: DIO:IN? 0
+            %
+            % Usage:
+            %   interlockState = myLaser.getInterlockState()
+            %   [status, interlockState] = myLaser.getInterlockState()
+            %
+            % Returns:
+            %   interlockState - 1 if interlock closed (safe), 0 if open
+            
+            [status, response] = obj.query('DIO:IN? 0');
+            
+            if status == 0
+                interlockState = str2double(response);
+            else
+                interlockState = NaN;
+            end
+            
+            if nargout < 2
+                status = interlockState;
+            end
+        end
+
         function [status, isClosed] = isInterlockClosed(obj)
-            % Check interlock status
+            % Check if interlock is closed (safe to operate)
+            % Arroyo Command: DIO:IN? 0
             %
             % Usage:
             %   isClosed = myLaser.isInterlockClosed()
@@ -1053,11 +1088,11 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   isClosed - true if interlock is closed (safe), false if open
             
-            [status, response] = obj.query('SYST:INTL?');
+            [status, response] = obj.query('DIO:IN? 0');
             
             if status == 0
-                isClosed = strcmpi(strtrim(response), '1') || ...
-                          strcmpi(strtrim(response), 'CLOSED');
+                interlockState = str2double(response);
+                isClosed = (interlockState == 1);
             else
                 isClosed = false;
             end
@@ -1068,7 +1103,8 @@ classdef ComboSource6301 < VisaIF
         end
 
         function [status, isOverTemp] = isOverTemp(obj)
-            % Check over-temperature condition
+            % Check over-temperature condition using TEC condition register
+            % Arroyo Command: TEC:COND?
             %
             % Usage:
             %   isOverTemp = myLaser.isOverTemp()
@@ -1076,12 +1112,26 @@ classdef ComboSource6301 < VisaIF
             %
             % Returns:
             %   isOverTemp - true if over-temperature detected, false otherwise
+            %
+            % Note: TEC:COND register bit definitions (from Arroyo manual):
+            %   Bit 0 (1)    : Current limit
+            %   Bit 1 (2)    : Voltage limit
+            %   Bit 2 (4)    : Sensor limit
+            %   Bit 3 (8)    : Temperature high limit
+            %   Bit 4 (16)   : Temperature low limit
+            %   Bit 5 (32)   : Sensor shorted
+            %   Bit 6 (64)   : Sensor open
+            %   Bit 7 (128)  : TEC open circuit
+            %   Bit 12 (4096): Thermal run-away
             
-            [status, response] = obj.query('SYST:TEMP:PROT?');
+            [status, response] = obj.query('TEC:COND?');
             
             if status == 0
-                isOverTemp = strcmpi(strtrim(response), '1') || ...
-                            strcmpi(strtrim(response), 'ON');
+                conditionCode = str2double(response);
+                % Check bit 3 (temperature high limit) and bit 12 (thermal run-away)
+                % bitget uses 1-based indexing: bit 3 = index 4, bit 12 = index 13
+                isOverTemp = bitget(conditionCode, 4) == 1 || ...
+                             bitget(conditionCode, 13) == 1;
             else
                 isOverTemp = false;
             end
@@ -1096,16 +1146,21 @@ classdef ComboSource6301 < VisaIF
         % -----------------------------------------------------------------
 
         function errorMsgs = get.ErrorMessages(obj)
-            % Get error messages from device
+            % Get error messages from device using Arroyo commands
             errorMsgs = {};
             
-            % Read all errors from queue
+            % Read all errors from queue using ERR? and ERRSTR?
             for i = 1:10 % Max 10 errors
-                [~, msg] = obj.query('SYST:ERR?');
-                if contains(msg, '0,') || contains(lower(msg), 'no error')
-                    break;
+                [~, errCode] = obj.query('ERR?');
+                errorNum = str2double(errCode);
+                
+                if errorNum == 0
+                    break; % No more errors
                 end
-                errorMsgs{end+1} = strtrim(msg); %#ok<AGROW>
+                
+                % Get error description
+                [~, errStr] = obj.query('ERRSTR?');
+                errorMsgs{end+1} = sprintf('%d: %s', errorNum, strtrim(errStr)); %#ok<AGROW>
             end
             
             if isempty(errorMsgs)

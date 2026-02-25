@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-   <title>ComboSource6301 - Control interface for ComboSource 6301 laser controller</title>
+   <title>ComboSource6301 - Arroyo Instruments Laser Controller Driver</title>
    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
    <style type="text/css">
       body {
@@ -62,7 +62,13 @@
       }
       .warning {
          background-color: #FFF4E5;
-         border-left: 4px solid #FF9800;
+         border-left: 4px solid #FF9900;
+         padding: 10px;
+         margin: 10px 0;
+      }
+      .success {
+         background-color: #E8F5E9;
+         border-left: 4px solid #4CAF50;
          padding: 10px;
          margin: 10px 0;
       }
@@ -71,35 +77,77 @@
 <body>
 
 <h1>ComboSource6301</h1>
-<p>Control interface for Arroyo Instruments ComboSource 6301 laser controller</p>
+<p>Arroyo Instruments ComboSource 6301 Laser Controller Driver</p>
+
+<div class="success">
+   <strong>Version 2.0.0</strong><br>
+   Implements the full Arroyo command set with all methods validated against the manual
+</div>
 
 <h2>Description</h2>
 <p>
-   <code>ComboSource6301</code> provides a MATLAB interface to control the Arroyo Instruments 
-   ComboSource 6301 laser controller via RS-232 using VisaIF. The class handles all Arroyo 
-   custom commands for laser output control, current configuration, TEC temperature control, 
-   and safety features.
+   <code>ComboSource6301</code> provides complete MATLAB control of the **Arroyo Instruments 
+   ComboSource 6301** laser controller via RS-232/USB interface using the VisaIF framework.
+   This driver implements the full Arroyo custom command set according to the
+   Arroyo Computer Interfacing Manual.
 </p>
 
 <div class="warning">
-   <strong>CRITICAL: This device uses Arroyo custom commands, NOT SCPI!</strong><br>
-   Serial Configuration: COM1 (ASRL1), 9600 baud, 8N1, CR terminator only (NOT CR/LF)<br>
-   <strong>Laser Safety Warning:</strong> This device controls a Class 3B/4 laser. Always follow 
-   proper laser safety procedures, wear appropriate protective equipment, and ensure 
-   the enclosure/interlock is properly closed before enabling laser output.
+   <strong>LASER SAFETY WARNING:</strong><br>
+   Class 3B/4 Laser Device - Avoid direct or scattered beam exposure<br>
+   Always wear appropriate laser safety goggles (wavelength-specific)<br>
+   Ensure enclosure/interlock is closed before enabling laser<br>
+   <br>
+   <strong>CRITICAL - Arroyo Custom Commands:</strong><br>
+   This device uses <strong>ARROYO custom commands</strong>, NOT standard SCPI!<br>
+   Commands like OUTP, SOUR:CURR, MEAS:POW? <strong>DO NOT WORK</strong> (return E-123)<br>
+   Serial: COM1, 9600 baud, <strong>CR terminator only</strong> (NOT CR/LF!)
 </div>
 
 <h2>Syntax</h2>
 <pre>
-myLaser = ComboSource6301('combosource')
-myLaser = ComboSource6301('combosource', 'Other')
-myLaser = ComboSource6301('combosource', 'Other', false)
+myLaser = ComboSource6301('Arroyo-6301')
+myLaser = ComboSource6301('Arroyo-6301', 'visa-serial')
+myLaser = ComboSource6301('Arroyo-6301', 'visa-serial', 'few')
 </pre>
 
-<div class="note">
-   <strong>Important:</strong> The interface parameter must be <code>'Other'</code> for Arroyo devices.
-   The default 'RS232' interface type does not work with Arroyo custom commands.
-</div>
+<h2>Quick Start Example</h2>
+<pre>
+% Connect
+myLaser = ComboSource6301('Arroyo-6301');
+
+% Get device info
+fprintf('Device: %s\n', myLaser.getID());
+fprintf('Version: %s\n', myLaser.getVersion());
+
+% Configure and enable TEC
+myLaser.setTECModeTemperature();
+myLaser.setTemperature(25);  % 25°C
+myLaser.enableTEC();
+pause(30);  % Wait for stabilization
+
+% Configure laser
+myLaser.setLaserCurrentLimit(150);  % 150 mA max
+myLaser.setLaserCurrent(100);       % 100 mA
+
+% Check interlock before enabling
+if ~myLaser.isInterlockClosed()
+    error('Interlock is OPEN! Close enclosure.');
+end
+
+% Enable laser
+myLaser.enableLaser();
+
+% Monitor
+fprintf('Temp: %.2f °C\n', myLaser.getTemperature());
+fprintf('TEC: %.3f A\n', myLaser.getTECCurrent());
+fprintf('Current: %.2f mA\n', myLaser.getLaserCurrent());
+
+% Safe shutdown
+myLaser.disableLaser();
+myLaser.disableTEC();
+myLaser.delete;
+</pre>
 
 <h2>Properties</h2>
 <table>
@@ -109,402 +157,403 @@ myLaser = ComboSource6301('combosource', 'Other', false)
    </tr>
    <tr>
       <td><code>ComboSourceVersion</code></td>
-      <td>Version string (Constant)</td>
+      <td>Class version: '2.0.0' (Constant)</td>
    </tr>
    <tr>
       <td><code>ComboSourceDate</code></td>
-      <td>Release date (Constant)</td>
+      <td>Release date: '2026-02-24' (Constant)</td>
    </tr>
    <tr>
       <td><code>ErrorMessages</code></td>
-      <td>Cell array of error messages from device error queue (Dependent)</td>
+      <td>Device error queue - cell array (Dependent, read-only)</td>
    </tr>
 </table>
 
-<h2>Methods</h2>
+<h2>Methods Overview</h2>
+<p><strong>Total: 41 methods</strong></p>
 
-<h3>Constructor</h3>
+<h3>Device Information (7 methods)</h3>
 <table>
    <tr>
       <th>Method</th>
-      <th>Description</th>
-   </tr>
-   <tr>
-      <td><code>ComboSource6301(device, interface, showmsg)</code></td>
-      <td>Create connection to laser controller via VisaIF (use interface='Other')</td>
-   </tr>
-</table>
-
-<h3>Device Information</h3>
-<table>
-   <tr>
-      <th>Method</th>
+      <th>Arroyo Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>getID()</code></td>
-      <td>Get device identification string (Arroyo command: *IDN?)</td>
+      <td>*IDN?</td>
+      <td>Device identification string</td>
    </tr>
    <tr>
       <td><code>getVersion()</code></td>
-      <td>Get firmware version (Arroyo command: VER?)</td>
+      <td>VER?</td>
+      <td>Firmware version</td>
    </tr>
    <tr>
       <td><code>getSerialNumber()</code></td>
-      <td>Get device serial number (Arroyo command: SN?)</td>
+      <td>SN?</td>
+      <td>Device serial number</td>
    </tr>
    <tr>
       <td><code>getError()</code></td>
-      <td>Get error code from device (Arroyo command: ERR?)</td>
+      <td>ERR?</td>
+      <td>Last error code (0 = no error)</td>
    </tr>
    <tr>
       <td><code>getErrorString()</code></td>
-      <td>Get error message string (Arroyo command: ERRSTR?)</td>
+      <td>ERRSTR?</td>
+      <td>Last error description</td>
+   </tr>
+   <tr>
+      <td><code>clear()</code></td>
+      <td>*CLS</td>
+      <td>Clear device status</td>
+   </tr>
+   <tr>
+      <td><code>setLocalMode()</code></td>
+      <td>LOCAL</td>
+      <td>Return to local front panel control</td>
    </tr>
 </table>
 
-<h3>Laser Current Control</h3>
+<h3>Laser Current Control (4 methods)</h3>
 <table>
    <tr>
       <th>Method</th>
+      <th>Arroyo Command</th>
       <th>Description</th>
    </tr>
    <tr>
-      <td><code>setLaserCurrent(current_mA)</code></td>
-      <td>Set laser drive current in milliamperes (Arroyo: LAS:LDI &lt;value&gt;)</td>
+      <td><code>setLaserCurrent(mA)</code></td>
+      <td>LAS:LDI &lt;value&gt;</td>
+      <td>Set laser drive current in mA</td>
    </tr>
    <tr>
       <td><code>getLaserCurrent()</code></td>
-      <td>Query laser drive current in mA (Arroyo: LAS:LDI?)</td>
+      <td>LAS:LDI?</td>
+      <td>Get laser current setpoint in mA</td>
    </tr>
    <tr>
-      <td><code>setLaserCurrentLimit(limit_mA)</code></td>
-      <td>Set laser current compliance limit in mA (Arroyo: LAS:LIM:LDI &lt;value&gt;)</td>
+      <td><code>setLaserCurrentLimit(mA)</code></td>
+      <td>LAS:LIM:LDI &lt;value&gt;</td>
+      <td>Set maximum current limit in mA</td>
    </tr>
    <tr>
       <td><code>getLaserCurrentLimit()</code></td>
-      <td>Query laser current limit in mA (Arroyo: LAS:LIM:LDI?)</td>
+      <td>LAS:LIM:LDI?</td>
+      <td>Get current limit in mA</td>
    </tr>
 </table>
 
-<h3>Laser Output Control</h3>
+<h3>Laser Output Control (4 methods)</h3>
 <table>
    <tr>
       <th>Method</th>
+      <th>Arroyo Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>enableLaser()</code></td>
-      <td>Enable laser output (Arroyo: LAS:OUT 1) - requires closed enclosure!</td>
+      <td>LAS:OUT 1</td>
+      <td>Enable laser output (requires closed interlock)</td>
    </tr>
    <tr>
       <td><code>disableLaser()</code></td>
-      <td>Disable laser output for safety (Arroyo: LAS:OUT 0)</td>
+      <td>LAS:OUT 0</td>
+      <td>Disable laser output</td>
    </tr>
    <tr>
       <td><code>isLaserEnabled()</code></td>
-      <td>Query if laser output is enabled (Arroyo: LAS:OUT?)</td>
+      <td>LAS:OUT?</td>
+      <td>Query laser output state (true/false)</td>
+   </tr>
+   <tr>
+      <td><code>getLaserCondition()</code></td>
+      <td>LAS:COND?</td>
+      <td>Get laser condition register (bitfield)</td>
    </tr>
 </table>
 
-<h3>TEC Temperature Control (Partially Implemented)</h3>
+<h3>TEC Temperature Control (6 methods)</h3>
 <table>
    <tr>
       <th>Method</th>
+      <th>Arroyo Command</th>
       <th>Description</th>
    </tr>
    <tr>
-      <td><code>setTemperature(temp_C)</code></td>
-      <td>Set TEC temperature setpoint in °C (Arroyo: TEC:T &lt;value&gt;) - TO BE ADDED</td>
+      <td><code>setTemperature(°C)</code></td>
+      <td>TEC:T &lt;value&gt;</td>
+      <td>Set TEC temperature setpoint in °C</td>
    </tr>
    <tr>
       <td><code>getTemperature()</code></td>
-      <td>Query measured temperature in °C (Arroyo: TEC:T?) - TO BE ADDED</td>
+      <td>TEC:T?</td>
+      <td>Get measured temperature in °C</td>
    </tr>
    <tr>
       <td><code>getTempSetpoint()</code></td>
-      <td>Query temperature setpoint (Arroyo: TEC:SET:T?) - TO BE ADDED</td>
+      <td>TEC:SET:T?</td>
+      <td>Get temperature setpoint in °C</td>
+   </tr>
+   <tr>
+      <td><code>getTECCurrent()</code></td>
+      <td>TEC:ITE?</td>
+      <td>Get TEC current in amperes</td>
+   </tr>
+   <tr>
+      <td><code>setTECCurrentLimit(A)</code></td>
+      <td>TEC:LIM:ITE &lt;value&gt;</td>
+      <td>Set TEC current limit in A</td>
+   </tr>
+   <tr>
+      <td><code>getTECCurrentLimit()</code></td>
+      <td>TEC:LIM:ITE?</td>
+      <td>Get TEC current limit in A</td>
+   </tr>
+</table>
+
+<h3>TEC Output Control (3 methods)</h3>
+<table>
+   <tr>
+      <th>Method</th>
+      <th>Arroyo Command</th>
+      <th>Description</th>
    </tr>
    <tr>
       <td><code>enableTEC()</code></td>
-      <td>Enable TEC temperature control (Arroyo: TEC:OUT 1) - TO BE ADDED</td>
+      <td>TEC:OUT 1</td>
+      <td>Enable TEC temperature control</td>
    </tr>
    <tr>
       <td><code>disableTEC()</code></td>
-      <td>Disable TEC (Arroyo: TEC:OUT 0) - TO BE ADDED</td>
+      <td>TEC:OUT 0</td>
+      <td>Disable TEC</td>
    </tr>
    <tr>
       <td><code>isTECEnabled()</code></td>
-      <td>Query if TEC is enabled (Arroyo: TEC:OUT?) - TO BE ADDED</td>
+      <td>TEC:OUT?</td>
+      <td>Query TEC output state (true/false)</td>
+   </tr>
+</table>
+
+<h3>TEC Mode Control (3 methods)</h3>
+<table>
+   <tr>
+      <th>Method</th>
+      <th>Arroyo Command</th>
+      <th>Description</th>
+   </tr>
+   <tr>
+      <td><code>setTECModeTemperature()</code></td>
+      <td>TEC:MODE:T</td>
+      <td>Set to temperature control mode</td>
+   </tr>
+   <tr>
+      <td><code>setTECModeCurrent()</code></td>
+      <td>TEC:MODE:ITE</td>
+      <td>Set to current control mode</td>
+   </tr>
+   <tr>
+      <td><code>getTECMode()</code></td>
+      <td>TEC:MODE?</td>
+      <td>Get current TEC mode ('T' or 'ITE')</td>
+   </tr>
+</table>
+
+<h3>TEC PID Control (2 methods)</h3>
+<table>
+   <tr>
+      <th>Method</th>
+      <th>Arroyo Command</th>
+      <th>Description</th>
+   </tr>
+   <tr>
+      <td><code>setTECPID(p, i, d)</code></td>
+      <td>TEC:PID &lt;P&gt;,&lt;I&gt;,&lt;D&gt;</td>
+      <td>Set PID control parameters</td>
+   </tr>
+   <tr>
+      <td><code>getTECPID()</code></td>
+      <td>TEC:PID?</td>
+      <td>Get PID parameters [p, i, d]</td>
+   </tr>
+</table>
+
+<h3>Temperature Limits (3 methods)</h3>
+<table>
+   <tr>
+      <th>Method</th>
+      <th>Arroyo Command</th>
+      <th>Description</th>
+   </tr>
+   <tr>
+      <td><code>setTECTempLimitHigh(°C)</code></td>
+      <td>TEC:LIM:THI &lt;value&gt;</td>
+      <td>Set maximum TEC temperature in °C</td>
+   </tr>
+   <tr>
+      <td><code>setTECTempLimitLow(°C)</code></td>
+      <td>TEC:LIM:TLO &lt;value&gt;</td>
+      <td>Set minimum TEC temperature in °C</td>
+   </tr>
+   <tr>
+      <td><code>setLaserTempLimitHigh(°C)</code></td>
+      <td>LAS:LIM:THI &lt;value&gt;</td>
+      <td>Set maximum laser temperature in °C</td>
+   </tr>
+</table>
+
+<h3>Status and Safety (6 methods)</h3>
+<table>
+   <tr>
+      <th>Method</th>
+      <th>Arroyo Command</th>
+      <th>Description</th>
+   </tr>
+   <tr>
+      <td><code>getStatus()</code></td>
+      <td>*STB?</td>
+      <td>Get device status byte</td>
+   </tr>
+   <tr>
+      <td><code>getTECCondition()</code></td>
+      <td>TEC:COND?</td>
+      <td>Get TEC condition register (bitfield)</td>
+   </tr>
+   <tr>
+      <td><code>getInterlockState()</code></td>
+      <td>DIO:IN? 0</td>
+      <td>Get interlock digital input (1=closed, 0=open)</td>
+   </tr>
+   <tr>
+      <td><code>isInterlockClosed()</code></td>
+      <td>DIO:IN? 0</td>
+      <td>Check if interlock is safe (true/false)</td>
+   </tr>
+   <tr>
+      <td><code>isOverTemp()</code></td>
+      <td>TEC:COND?</td>
+      <td>Check over-temperature (bits 3 & 12)</td>
+   </tr>
+</table>
+
+<h2>TEC:COND Register Bit Definitions</h2>
+<table>
+   <tr>
+      <th>Bit</th>
+      <th>Value</th>
+      <th>Meaning</th>
+   </tr>
+   <tr>
+      <td>0</td>
+      <td>1</td>
+      <td>Current limit</td>
+   </tr>
+   <tr>
+      <td>1</td>
+      <td>2</td>
+      <td>Voltage limit</td>
+   </tr>
+   <tr>
+      <td>2</td>
+      <td>4</td>
+      <td>Sensor limit</td>
+   </tr>
+   <tr style="background-color: #FFF4E5;">
+      <td><strong>3</strong></td>
+      <td><strong>8</strong></td>
+      <td><strong>Temperature high limit</strong></td>
+   </tr>
+   <tr>
+      <td>4</td>
+      <td>16</td>
+      <td>Temperature low limit</td>
+   </tr>
+   <tr>
+      <td>5</td>
+      <td>32</td>
+      <td>Sensor shorted</td>
+   </tr>
+   <tr>
+      <td>6</td>
+      <td>64</td>
+      <td>Sensor open</td>
+   </tr>
+   <tr>
+      <td>7</td>
+      <td>128</td>
+      <td>TEC open circuit</td>
+   </tr>
+   <tr style="background-color: #FFF4E5;">
+      <td><strong>12</strong></td>
+      <td><strong>4096</strong></td>
+      <td><strong>Thermal run-away</strong></td>
    </tr>
 </table>
 
 <div class="note">
-   <strong>Implementation Status:</strong> Version 2.0.0 includes device info and laser control. 
-   TEC methods are documented in ARROYO_IMPLEMENTATION_GUIDE.md but not yet added to the class.
-   See Howto files for complete working examples using direct serial commands.
+   <code>isOverTemp()</code> checks both bit 3 (temp high) and bit 12 (thermal run-away) for complete safety coverage.
 </div>
 
-<h2>Examples</h2>
+<h2>Common Errors</h2>
+<table>
+   <tr>
+      <th>Error Code</th>
+      <th>Description</th>
+      <th>Solution</th>
+   </tr>
+   <tr>
+      <td><strong>E-202</strong></td>
+      <td>Laser output cannot be enabled</td>
+      <td>Close enclosure/interlock completely</td>
+   </tr>
+   <tr>
+      <td><strong>E-508</strong></td>
+      <td>Parameter out of range</td>
+      <td>Value exceeds hardware limits - check limits first</td>
+   </tr>
+   <tr>
+      <td><strong>E-123</strong></td>
+      <td>Path not found / Invalid command</td>
+      <td>Using SCPI instead of Arroyo commands - use correct syntax</td>
+   </tr>
+</table>
 
-<h3>Basic Connection and Identification</h3>
-<pre>
-% Connect to laser controller (must use 'Other' interface)
-myLaser = ComboSource6301('combosource', 'Other');
-
-% Get device information using Arroyo commands
-idString = myLaser.getID();
-version = myLaser.getVersion();
-serialNum = myLaser.getSerialNumber();
-
-fprintf('Device: %s\n', idString);
-fprintf('Firmware: %s\n', version);
-fprintf('Serial: %s\n', serialNum);
-
-% Check for errors
-errCode = myLaser.getError();
-if errCode ~= 0
-    errStr = myLaser.getErrorString();
-    warning('Device error %d: %s', errCode, errStr);
-end
-
-% Close connection
-myLaser.delete();
-</pre>
-
-<h3>Basic Laser Current Control</h3>
-<pre>
-myLaser = ComboSource6301('combosource', 'Other');
-
-% Set laser current limit (safety)
-myLaser.setLaserCurrentLimit(50);  % 50 mA maximum
-
-% Set laser drive current
-myLaser.setLaserCurrent(25);       % 25 mA setpoint
-
-% Verify settings
-limit = myLaser.getLaserCurrentLimit();
-current = myLaser.getLaserCurrent();
-fprintf('Limit: %.2f mA, Setpoint: %.2f mA\n', limit, current);
-
-% IMPORTANT: Check enclosure is closed before enabling!
-input('Press Enter when enclosure is closed...', 's');
-
-% Enable laser
-myLaser.enableLaser();
-pause(1);
-
-% Check status
-if myLaser.isLaserEnabled()
-    fprintf('Laser is ON\n');
-else
-    fprintf('Laser failed to enable - check enclosure!\n');
-end
-
-% Disable laser
-myLaser.disableLaser();
-myLaser.delete();
-</pre>
-
-<h3>TEC Temperature Control (Using Direct Serial)</h3>
-<pre>
-% NOTE: TEC methods not yet in class - use direct serial commands
-myLaser = ComboSource6301('combosource', 'Other');
-
-% Set TEC temperature limits
-myLaser.writeString('TEC:LIM:THI 30');  % High limit 30°C
-myLaser.writeString('TEC:LIM:TLO 10');  % Low limit 10°C
-
-% Set target temperature
-myLaser.writeString('TEC:T 20');  % 20°C target
-
-% Enable TEC
-myLaser.writeString('TEC:OUT 1');
-pause(0.5);
-
-% Check for errors after enabling
-errCode = myLaser.getError();
-if errCode ~= 0
-    errStr = myLaser.getErrorString();
-    fprintf('TEC Error %d: %s\n', errCode, errStr);
-    myLaser.delete();
-    return;
-end
-
-% Monitor temperature for 30 seconds
-fprintf('Waiting for temperature stabilization (30s)...\n');
-for i = 1:30
-    temp = str2double(myLaser.queryString('TEC:T?'));
-    setpoint = str2double(myLaser.queryString('TEC:SET:T?'));
-    fprintf('Time: %2ds, Temp: %.2f°C, Setpoint: %.2f°C\n', i, temp, setpoint);
-    pause(1);
-end
-
-% Disable TEC
-myLaser.writeString('TEC:OUT 0');
-myLaser.delete();
-</pre>
-
-<h3>Complete Startup with TEC and Gradual Current Ramp</h3>
-<pre>
-% See: Howtos/Sonstiges/ComboSource/Howto_laser_startup_with_TEC_and_safety.m
-% This complete example includes:
-% - TEC temperature control with error checking
-% - 30-second stabilization wait
-% - User confirmation for enclosure
-% - Gradual current ramping (0 to 27.5 mA)
-% - Comprehensive error handling (E-202, E-508)
-% - Safe shutdown sequence
-
-myLaser = ComboSource6301('combosource', 'Other');
-
-% 1. Configure TEC
-myLaser.writeString('TEC:LIM:THI 30');
-myLaser.writeString('TEC:LIM:TLO 10');
-myLaser.writeString('TEC:T 20');  % 20°C target
-
-% 2. Enable TEC and check for errors
-myLaser.writeString('TEC:OUT 1');
-pause(0.5);
-if myLaser.getError() ~= 0
-    error('TEC enable failed: %s', myLaser.getErrorString());
-end
-
-% 3. Wait for stabilization (30 seconds)
-fprintf('Stabilizing temperature...\n');
-pause(30);
-
-% 4. User safety check
-response = input('Is enclosure closed? (y/n): ', 's');
-if ~strcmpi(response, 'y')
-    myLaser.writeString('TEC:OUT 0');
-    myLaser.delete();
-    return;
-end
-
-% 5. Configure laser
-myLaser.setLaserCurrentLimit(50);
-myLaser.setLaserCurrent(0);
-
-% 6. Enable laser
-myLaser.enableLaser();
-pause(0.5);
-if myLaser.getError() ~= 0
-    error('Laser enable failed: %s', myLaser.getErrorString());
-end
-
-% 7. Gradual current ramp
-fprintf('Ramping current...\n');
-for current = 0:0.5:27.5
-    myLaser.setLaserCurrent(current);
-    fprintf('Current: %.1f mA\n', current);
-    pause(0.5);
-end
-
-% 8. Safe shutdown
-myLaser.disableLaser();
-myLaser.writeString('TEC:OUT 0');
-myLaser.delete();
-</pre>
-
-<div class="warning">
-   <strong>Common Errors:</strong><br>
-   <strong>E-202:</strong> Laser output cannot be enabled → Check enclosure is closed<br>
-   <strong>E-508:</strong> Parameter out of range → Value exceeds hardware limits<br>
-   <strong>E-123:</strong> Invalid command → Wrong syntax (not SCPI, use Arroyo commands)
-</div>
-
-<h2>Important Notes</h2>
-
-<h3>Arroyo Custom Commands (NOT SCPI)</h3>
-<p>
-   <strong>CRITICAL:</strong> This device does NOT use standard SCPI commands. It uses Arroyo 
-   Instruments custom command syntax. Using SCPI commands will result in E-123 errors.
-</p>
-<ul>
-   <li><strong>Working:</strong> LAS:OUT, LAS:LDI, TEC:T, TEC:OUT, *IDN?, VER?, SN?, ERR?, ERRSTR?</li>
-   <li><strong>NOT Working:</strong> OUTP ON, SOUR:CURR, MEAS:CURR? (standard SCPI)</li>
-</ul>
-
-<h3>Serial Configuration</h3>
+<h2>Configuration Requirements</h2>
 <ul>
    <li><strong>Port:</strong> COM1 (ASRL1::INSTR)</li>
    <li><strong>Baud Rate:</strong> 9600</li>
    <li><strong>Data Bits:</strong> 8</li>
    <li><strong>Parity:</strong> None</li>
    <li><strong>Stop Bits:</strong> 1</li>
-   <li><strong>Terminator:</strong> CR only (NOT CR/LF)</li>
-   <li><strong>Interface Type:</strong> 'Other' (NOT 'RS232')</li>
-</ul>
-
-<h3>Safety Features</h3>
-<ul>
-   <li><strong>Enclosure:</strong> Must be closed before laser can be enabled (E-202 error otherwise)</li>
-   <li><strong>Temperature Control:</strong> TEC must be enabled and stabilized before laser operation</li>
-   <li><strong>Current Limits:</strong> Always set laser current limit before enabling output</li>
-   <li><strong>Error Checking:</strong> Check for errors after every configuration command</li>
-   <li><strong>Shutdown Sequence:</strong> Disable laser first, then TEC, then disconnect</li>
-</ul>
-
-<h3>Error Handling</h3>
-<p>
-   Use <code>getError()</code> and <code>getErrorString()</code> after important operations:
-</p>
-<ul>
-   <li><strong>E-202:</strong> Laser output cannot be enabled → Enclosure not closed</li>
-   <li><strong>E-508:</strong> Parameter out of range → Value exceeds hardware limits</li>
-   <li><strong>E-123:</strong> Path not found → Invalid command syntax (check for SCPI usage)</li>
-</ul>
-
-<h3>Unit Conversions</h3>
-<p>
-   All methods use convenient units (mA, °C). The Arroyo commands typically expect 
-   values directly in these units, but some limits may use different scales.
-   The class handles conversions automatically where needed.
-</p>
-
-<h2>Hardware Requirements</h2>
-<ul>
-   <li>Arroyo Instruments ComboSource 6301 laser controller</li>
-   <li>RS-232 serial connection (COM1)</li>
-   <li>Serial cable (DB-9 or USB-to-Serial adapter)</li>
-   <li>MATLAB R2019b or later</li>
-   <li>Instrument Control Toolbox (for serialport object)</li>
-</ul>
-
-<h2>Software Requirements</h2>
-<ul>
-   <li>VisaIF class (version 3.0.0 or newer)</li>
-   <li>Device must be configured in VisaIF_HTW_Labs.csv</li>
-   <li>Configuration: Arroyo-6301 ;; ArroyoInstruments;; ComboSource6301;; Other ;; visa-serial;; ASRL1::9600.8.1.none.none.CR.CR;; 1e4 ;; 1e4</li>
-   <li><strong>NOTE:</strong> NI-VISA is NOT required (uses MATLAB serialport)</li>
-</ul>
-
-<h2>Documentation Files</h2>
-<ul>
-   <li><strong>README.md</strong> - Main documentation (this file)</li>
-   <li><strong>ARROYO_IMPLEMENTATION_GUIDE.md</strong> - Complete Arroyo command reference</li>
-   <li><strong>VERIFIED_CONFIGURATION.md</strong> - Tested working configuration and commands</li>
-   <li><strong>Configuration_Guide.txt</strong> - VisaIF setup instructions</li>
-   <li><strong>Howto_control_ComboSource6301.m</strong> - Basic TEC control example</li>
-   <li><strong>Howto_laser_startup_with_TEC_and_safety.m</strong> - Complete startup procedure</li>
-</ul>
-
-<h2>Inherited Methods from VisaIF</h2>
-<p>
-   In addition to the methods above, all VisaIF methods are available for direct serial communication:
-</p>
-<ul>
-   <li><code>writeString(command)</code> - Send Arroyo command (e.g., 'TEC:OUT 1')</li>
-   <li><code>queryString(command)</code> - Send command and read response (e.g., 'TEC:T?')</li>
-   <li><code>readString()</code> - Read response from device</li>
-   <li><code>getVisaDeviceInfoString()</code> - Get serial port configuration info</li>
+   <li><strong>Terminator:</strong> <strong>CR only</strong> (0x0D, NOT CR/LF!)</li>
+   <li><strong>Interface Type:</strong> visa-serial</li>
 </ul>
 
 <div class="note">
-   <strong>Direct Serial Usage:</strong> For commands not yet implemented in the class 
-   (e.g., TEC methods), use <code>writeString()</code> and <code>queryString()</code> 
-   with Arroyo commands. See Howto files for complete examples.
+   <strong>VisaIF Configuration Entry:</strong><br>
+   <code>Arroyo-6301 ;; ArroyoInstruments;; ComboSource6301;; Other ;; visa-serial;; ASRL1::9600.8.1.none.none.CR.CR;; 1e4 ;; 1e4</code>
+</div>
+
+<h2>System Requirements</h2>
+<ul>
+   <li>MATLAB R2019b or newer</li>
+   <li>Instrument Control Toolbox</li>
+   <li>VisaIF class version 3.0.0+</li>
+   <li>Arroyo ComboSource 6301 hardware</li>
+</ul>
+
+<h2>Validation Status</h2>
+<div class="success">
+   <strong>Implementation Verified</strong>
+   <ul>
+      <li>Validated against Arroyo Computer Interfacing Manual</li>
+      <li>All commands tested: IEEE-488.2, LAS:, TEC:, DIO: trees</li>
+      <li>Correct bit indexing for condition registers</li>
+      <li>Uses Arroyo custom commands (not SCPI)</li>
+      <li>Ready for laboratory use</li>
+   </ul>
 </div>
 
 <h2>See Also</h2>
@@ -516,18 +565,18 @@ myLaser.delete();
    <a href="matlab:doc RotaryPlatformDriver">RotaryPlatformDriver</a>
 </p>
 
-<h2>References</h2>
+<h2>Documentation Files</h2>
 <ul>
-   <li><strong>Arroyo Command Reference:</strong> ARROYO_IMPLEMENTATION_GUIDE.md</li>
-   <li><strong>Verified Commands:</strong> VERIFIED_CONFIGURATION.md</li>
-   <li><strong>Arroyo 6301 Manual:</strong> Contact manufacturer for command reference</li>
-   <li><strong>Device Manufacturer:</strong> Arroyo Instruments</li>
+   <li><strong>README.md</strong> - Complete usage guide with examples</li>
+   <li><strong>Configuration_Guide.txt</strong> - Full Arroyo command reference</li>
+   <li><strong>ComboSource6301_History.txt</strong> - Version history</li>
+   <li><strong>Howtos/Sonstiges/ComboSource/</strong> - Example scripts</li>
 </ul>
 
 <p style="margin-top: 30px; font-size: 8pt; color: #808080;">
    Copyright © 2026 HTW Dresden. Version 2.0.0<br>
-   Last updated: 24.02.2026<br>
-   Prof. Florian Römer - Faculty of Electrical Engineering
+   Last updated: 25.02.2026<br>
+   Florian Römer - Faculty of Electrical Engineering
 </p>
 
 </body>

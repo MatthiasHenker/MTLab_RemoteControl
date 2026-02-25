@@ -144,51 +144,79 @@ If connection fails:
    - Check device name matches exactly
 
 
-SCPI COMMANDS USED:
--------------------
+ARROYO COMMANDS REFERENCE (v2.0.0):
+------------------------------------
 IMPORTANT: Arroyo devices use CUSTOM command tree, NOT standard SCPI!
 
-VERIFIED Working Commands:
-  *IDN?              - Identification query (IEEE 488.2 standard)
+IEEE-488.2 Commands:
+  *IDN?              - Identification query
+  *CLS               - Clear status
+  *STB?              - Status byte query
   VER?               - Firmware version
-  TIME?              - System time
-  TERMINAL?          - Terminal echo mode query
-  TERMINAL 0/1       - Disable/enable terminal echo
+  SN?                - Serial number
   ERR?               - Last error code
   ERRSTR?            - Last error string
+  LOCAL              - Return to local control
 
-NOTE: Many assumed "standard" SCPI commands DO NOT WORK:
-  ✗ OUTP ON/OFF      - NOT VALID
-  ✗ SOUR:CURR        - NOT VALID  
-  ✗ MEAS:POW?        - NOT VALID
-  ✗ SYST:ERR?        - NOT VALID
-  ✗ TEC:OUT?         - NOT VALID
+Laser Commands (LAS: tree):
+  LAS:LDI <value>    - Set laser drive current (mA)
+  LAS:LDI?           - Query laser current
+  LAS:LIM:LDI <val>  - Set current limit (mA)
+  LAS:LIM:LDI?       - Query current limit
+  LAS:OUT 0/1        - Disable/enable laser
+  LAS:OUT?           - Query laser state
+  LAS:COND?          - Query laser condition register
+  LAS:LIM:THI <val>  - Set laser temp high limit (°C)
 
-These return E-123 "Path not found" error.
+TEC Commands (TEC: tree):
+  TEC:T <value>      - Set temperature setpoint (°C)
+  TEC:T?             - Query measured temperature
+  TEC:SET:T?         - Query temperature setpoint
+  TEC:ITE?           - Query TEC current (A)
+  TEC:LIM:ITE <val>  - Set TEC current limit (A)
+  TEC:LIM:ITE?       - Query TEC current limit
+  TEC:OUT 0/1        - Disable/enable TEC
+  TEC:OUT?           - Query TEC state
+  TEC:MODE:T         - Set temperature control mode
+  TEC:MODE:ITE       - Set current control mode
+  TEC:MODE?          - Query TEC mode
+  TEC:PID <p>,<i>,<d> - Set PID parameters
+  TEC:PID?           - Query PID parameters
+  TEC:LIM:THI <val>  - Set TEC temp high limit (°C)
+  TEC:LIM:TLO <val>  - Set TEC temp low limit (°C)
+  TEC:COND?          - Query TEC condition register
 
-Device Info (Working):
-  *IDN?              - Identification query
-  VER?               - Version query
-  TIME?              - Time query
-  ERR?               - Error query
-  ERRSTR?            - Error string query
+Digital I/O Commands (DIO: tree):
+  DIO:IN? 0          - Query interlock state (port 0)
 
-Output Control:
-  (NEED TO FIND IN MANUAL - standard OUTP commands don't work)
+INVALID COMMANDS (DO NOT USE - Will return E-123):
+  ✗ OUTP ON/OFF      - Use LAS:OUT 0/1 instead
+  ✗ SOUR:CURR        - Use LAS:LDI instead
+  ✗ MEAS:CURR?       - Use LAS:LDI? instead
+  ✗ SOUR:POW         - NOT SUPPORTED
+  ✗ MEAS:POW?        - NOT SUPPORTED
+  ✗ MEAS:TEMP?       - Use TEC:T? instead
+  ✗ SYST:ERR?        - Use ERR? instead
+  ✗ SYST:INTL?       - Use DIO:IN? 0 instead
 
-Current/Power Control:
-  (NEED TO FIND IN MANUAL - standard SOUR commands don't work)
+TEC:COND REGISTER BIT DEFINITIONS:
+  Bit 0 (value 1)    - Current limit
+  Bit 1 (value 2)    - Voltage limit
+  Bit 2 (value 4)    - Sensor limit
+  Bit 3 (value 8)    - Temperature high limit 
+  Bit 4 (value 16)   - Temperature low limit
+  Bit 5 (value 32)   - Sensor shorted
+  Bit 6 (value 64)   - Sensor open
+  Bit 7 (value 128)  - TEC open circuit
+  Bit 12 (value 4096) - Thermal run-away 
 
-Temperature/TEC:
-  (NEED TO FIND IN MANUAL - standard MEAS/TEC commands don't work)
-
-Note: Refer to Arroyo 6300-series Interfacing Manual for actual command syntax.
-The device does NOT follow standard SCPI command structure.
+Note: isOverTemp() checks bits 3 and 12 for safety
 
 
 SUPPORT:
 --------
 For additional help:
 - See ComboSource6301.doc for full HTML documentation
+- See README.md for complete usage examples
 - Run example: Howto_control_ComboSource6301.m
-- Contact: HTW Dresden, Faculty of Electrical Engineering
+- Contact: Florian Römer, HTW Dresden, Faculty of Electrical Engineering
