@@ -60,6 +60,18 @@
          padding: 10px;
          margin: 10px 0;
       }
+      .warning {
+         background-color: #FFF3CD;
+         border-left: 4px solid #FFA500;
+         padding: 10px;
+         margin: 10px 0;
+      }
+      .success {
+         background-color: #D4EDDA;
+         border-left: 4px solid #28A745;
+         padding: 10px;
+         margin: 10px 0;
+      }
    </style>
 </head>
 <body>
@@ -70,17 +82,34 @@
 <h2>Description</h2>
 <p>
    <code>RotaryPlatformDriver</code> provides a MATLAB interface to control a custom
-   rotary platform via serial communication. The class handles all SCPI commands for 
-   position control, limit configuration, and status queries.
+   rotary platform via serial communication using the <strong>VisaIF</strong> class. 
+   The class handles all SCPI commands for position control, limit configuration, and status queries.
 </p>
 <p>
    The device communicates at 115200 baud, 8 data bits, no parity, 1 stop bit, 
-   no flow control, with CR/LF line terminator. The device echoes every command sent to it.
+   no flow control, with LF line terminator. Communication is fully compliant with 
+   <strong>Firmware v1.1.0 SCPI specification</strong>.
 </p>
+
+<div class="success">
+   <strong>✓ 100% SCPI Compliant:</strong> This driver implements all 19 SCPI commands 
+   from the official HTWD-DT-2025 firmware v1.1.0 specification.
+</div>
+
+<h2>Requirements</h2>
+<ul>
+   <li><strong>VisaIF class</strong> must be in MATLAB path</li>
+   <li>Device must be configured in <code>VisaIF_HTW_Labs.csv</code></li>
+   <li>Default configuration: <code>HTWD-DT-2025</code> on COM7</li>
+   <li>MATLAB R2019b or later</li>
+   <li>Instrument Control Toolbox</li>
+</ul>
 
 <h2>Syntax</h2>
 <pre>
-platform = RotaryPlatformDriver(comPort)
+platform = RotaryPlatformDriver()              % Use default COM7 from config
+platform = RotaryPlatformDriver('COM13')       % Override to COM13
+platform = RotaryPlatformDriver({'HTWD-DT-2025', 'COM5'})  % Explicit device and port
 </pre>
 
 <h2>Properties</h2>
@@ -91,11 +120,11 @@ platform = RotaryPlatformDriver(comPort)
    </tr>
    <tr>
       <td><code>RotaryPlatformDriverVersion</code></td>
-      <td>Version string (Constant)</td>
+      <td>Version string (Constant) - Current: 2.1.0</td>
    </tr>
    <tr>
       <td><code>RotaryPlatformDriverDate</code></td>
-      <td>Release date (Constant)</td>
+      <td>Release date (Constant) - Current: 2026-02-25</td>
    </tr>
 </table>
 
@@ -108,8 +137,12 @@ platform = RotaryPlatformDriver(comPort)
       <th>Description</th>
    </tr>
    <tr>
+      <td><code>RotaryPlatformDriver()</code></td>
+      <td>Create connection using default COM7 from config file</td>
+   </tr>
+   <tr>
       <td><code>RotaryPlatformDriver(comPort)</code></td>
-      <td>Create connection to rotary platform on specified COM port</td>
+      <td>Create connection with COM port override (e.g., 'COM13')</td>
    </tr>
 </table>
 
@@ -117,15 +150,18 @@ platform = RotaryPlatformDriver(comPort)
 <table>
    <tr>
       <th>Method</th>
+      <th>SCPI Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>getID()</code></td>
+      <td><code>*IDN?</code></td>
       <td>Get device identification string</td>
    </tr>
    <tr>
       <td><code>getError()</code></td>
-      <td>Get error from error queue</td>
+      <td><code>SYSTem:ERRor?</code></td>
+      <td>Get error from error queue (clears oldest error)</td>
    </tr>
 </table>
 
@@ -133,22 +169,27 @@ platform = RotaryPlatformDriver(comPort)
 <table>
    <tr>
       <th>Method</th>
+      <th>SCPI Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>setAngle(angle)</code></td>
+      <td><code>ROTAtion:ANGLE</code></td>
       <td>Set target angle in degrees (-360 to 360)</td>
    </tr>
    <tr>
       <td><code>getTargetAngle()</code></td>
+      <td><code>ROTAtion:ANGLE?</code></td>
       <td>Query commanded target angle</td>
    </tr>
    <tr>
       <td><code>getPosition()</code></td>
+      <td><code>ROTAtion:POSition?</code></td>
       <td>Query actual current position in degrees</td>
    </tr>
    <tr>
       <td><code>isReached()</code></td>
+      <td><code>ROTAtion:REACHED?</code></td>
       <td>Check if target position is reached and held</td>
    </tr>
 </table>
@@ -157,22 +198,27 @@ platform = RotaryPlatformDriver(comPort)
 <table>
    <tr>
       <th>Method</th>
+      <th>SCPI Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>setUpperLimit(angle)</code></td>
+      <td><code>ROTAtion:LIMit:UPPer</code></td>
       <td>Set upper angle safety limit in degrees</td>
    </tr>
    <tr>
       <td><code>getUpperLimit()</code></td>
+      <td><code>ROTAtion:LIMit:UPPer?</code></td>
       <td>Query upper angle safety limit</td>
    </tr>
    <tr>
       <td><code>setLowerLimit(angle)</code></td>
+      <td><code>ROTAtion:LIMit:LOWer</code></td>
       <td>Set lower angle safety limit in degrees</td>
    </tr>
    <tr>
       <td><code>getLowerLimit()</code></td>
+      <td><code>ROTAtion:LIMit:LOWer?</code></td>
       <td>Query lower angle safety limit</td>
    </tr>
 </table>
@@ -181,18 +227,22 @@ platform = RotaryPlatformDriver(comPort)
 <table>
    <tr>
       <th>Method</th>
+      <th>SCPI Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>lockLocal()</code></td>
+      <td><code>SYSTem:LOCal:LOCK</code></td>
       <td>Disable physical buttons on device</td>
    </tr>
    <tr>
       <td><code>unlockLocal()</code></td>
+      <td><code>SYSTem:LOCal:UNLock</code></td>
       <td>Enable physical buttons on device</td>
    </tr>
    <tr>
       <td><code>isLocked()</code></td>
+      <td><code>SYSTem:LOCal:LOCK?</code></td>
       <td>Query if local control is locked</td>
    </tr>
 </table>
@@ -201,36 +251,48 @@ platform = RotaryPlatformDriver(comPort)
 <table>
    <tr>
       <th>Method</th>
+      <th>SCPI Command</th>
       <th>Description</th>
    </tr>
    <tr>
       <td><code>isMotorEnabled()</code></td>
+      <td><code>MOTOR:ENABLED?</code></td>
       <td>Query if motor is currently active (AND combination of all conditions)</td>
    </tr>
    <tr>
       <td><code>isMotorEnableLocal()</code></td>
-      <td>Query if green enable button is pressed</td>
+      <td><code>MOTOR:ENABLELOCal?</code></td>
+      <td><strong>Query only:</strong> Check if green enable button is pressed</td>
    </tr>
    <tr>
       <td><code>isMotorEnableRemote()</code></td>
+      <td><code>MOTOR:ENABLEREMote?</code></td>
       <td>Query remote motor enable status</td>
    </tr>
    <tr>
       <td><code>setMotorEnableRemote(enable)</code></td>
+      <td><code>MOTOR:ENABLEREMote</code></td>
       <td>Set remote motor enable (true/false) - locks motor when false</td>
    </tr>
    <tr>
       <td><code>isMotorVoltLockout()</code></td>
+      <td><code>MOTOR:VOLTLOCKout?</code></td>
       <td>Query if under-voltage lockout is active</td>
    </tr>
 </table>
 
+<div class="warning">
+   <strong>⚠ Important:</strong> The green button state (<code>MOTOR:ENABLELOCal?</code>) 
+   is <strong>query-only</strong>. There is no SCPI command to remotely press the button. 
+   The button must be physically pressed on the device.
+</div>
+
 <div class="note">
    <strong>Motor Activation Logic:</strong> The motor is active when ALL of the following are true:
    <ul style="margin: 5px 0 0 20px;">
-      <li><code>isMotorEnableLocal() == true</code> - Green button is pressed</li>
+      <li><code>isMotorEnableLocal() == true</code> - Green button is physically pressed</li>
       <li><code>isMotorEnableRemote() == true</code> - No remote lockout active</li>
-      <li><code>isMotorVoltLockout() == false</code> - Power supply is OK</li>
+      <li><code>isMotorVoltLockout() == false</code> - Power supply voltage is OK</li>
    </ul>
    <code>isMotorEnabled()</code> returns the AND combination of all three conditions.
 </div>
@@ -239,17 +301,24 @@ platform = RotaryPlatformDriver(comPort)
 
 <h3>Basic Connection and Movement</h3>
 <pre>
-% Connect to device on COM13
+% Connect to device using default COM7
+platform = RotaryPlatformDriver();
+
+% Or override COM port
 platform = RotaryPlatformDriver('COM13');
+
+% Enable motor (green button must be physically pressed!)
+platform.setMotorEnableRemote(true);
 
 % Move to 90 degrees
 platform.setAngle(90);
 pause(2);
 
-% Check if position reached
-if platform.isReached()
-    disp('Position reached!');
+% Wait for position to be reached
+while ~platform.isReached()
+    pause(0.5);
 end
+disp('Position reached!');
 
 % Get current position
 pos = platform.getPosition();
@@ -261,7 +330,7 @@ platform.delete();
 
 <h3>Configure Safety Limits</h3>
 <pre>
-platform = RotaryPlatformDriver('COM7');
+platform = RotaryPlatformDriver();
 
 % Query current limits
 upper = platform.getUpperLimit();
@@ -271,96 +340,245 @@ fprintf('Current limits: %.1f to %.1f degrees\n', lower, upper);
 % Set new limits (optional)
 platform.setUpperLimit(180);
 platform.setLowerLimit(-180);
+disp('New limits configured');
 </pre>
 
-<h3>Lock Local Control</h3>
+<h3>Lock Local Control During Automation</h3>
 <pre>
 % Disable physical buttons during automated measurement
-platform = RotaryPlatformDriver('COM13');
+platform = RotaryPlatformDriver();
+platform.setMotorEnableRemote(true);
 platform.lockLocal();
+disp('Physical buttons disabled');
 
-% Perform measurements...
+% Perform automated measurements
 for angle = 0:45:180
     platform.setAngle(angle);
+    while ~platform.isReached()
+        pause(0.5);
+    end
+    fprintf('Measuring at %.0f degrees...\n', angle);
+    % ... perform measurement ...
     pause(1);
-    % ... measure ...
 end
 
 % Re-enable physical buttons
 platform.unlockLocal();
+disp('Physical buttons re-enabled');
 platform.delete();
 </pre>
 
-<h3>Check Motor Status</h3>
+<h3>Diagnose Motor Status</h3>
 <pre>
-platform = RotaryPlatformDriver('COM13');
+platform = RotaryPlatformDriver();
 
 % Check overall motor status
 if platform.isMotorEnabled()
-    disp('Motor is powered and active');
+    disp('✓ Motor is powered and active');
 else
     % Diagnose why motor is not active
-    fprintf('Motor is NOT active. Checking conditions:\n');
+    fprintf('✗ Motor is NOT active. Checking conditions:\n');
     
     localBtn = platform.isMotorEnableLocal();
-    fprintf('  Local button pressed: %d\n', localBtn);
+    fprintf('  Green button pressed: %d ', localBtn);
+    if ~localBtn
+        fprintf('← PRESS GREEN BUTTON!\n');
+    else
+        fprintf('\n');
+    end
     
     remoteEnable = platform.isMotorEnableRemote();
-    fprintf('  Remote enable: %d\n', remoteEnable);
+    fprintf('  Remote enable: %d ', remoteEnable);
+    if ~remoteEnable
+        fprintf('← Call setMotorEnableRemote(true)\n');
+    else
+        fprintf('\n');
+    end
     
     voltLockout = platform.isMotorVoltLockout();
-    fprintf('  Voltage lockout: %d\n', voltLockout);
-    
+    fprintf('  Voltage lockout: %d ', voltLockout);
     if voltLockout
-        warning('Under-voltage detected!');
+        fprintf('← CHECK POWER SUPPLY!\n');
+    else
+        fprintf('\n');
     end
 end
+
+platform.delete();
 </pre>
 
-<h3>Remote Motor Lockout</h3>
+<h3>Remote Motor Lockout (Safety Feature)</h3>
 <pre>
-platform = RotaryPlatformDriver('COM13');
+platform = RotaryPlatformDriver();
 
 % Disable motor from remote (safety feature)
-% LCD shows lockout message, green button LED turns off
+% Device LCD shows lockout message, green button LED turns off
 platform.setMotorEnableRemote(false);
-fprintf('Motor locked from remote\n');
+disp('Motor locked from remote');
 
-% Try to move (will not work while locked)
+% Attempt to move (will not work while locked)
 platform.setAngle(90);
 pause(1);
 
-% Check status
+% Verify motor did not move
 if ~platform.isMotorEnabled()
-    disp('Motor did not move (as expected - locked)');
+    disp('✓ Motor did not move (as expected - remote lockout active)');
 end
 
-% Re-enable motor
+% Re-enable motor from remote
 platform.setMotorEnableRemote(true);
-fprintf('Motor unlocked\n');
+disp('Motor unlocked from remote');
+
+% Now movement will work (if green button is pressed)
+if platform.isMotorEnabled()
+    platform.setAngle(90);
+    disp('Moving to 90 degrees...');
+end
+
+platform.delete();
+</pre>
+
+<h3>Error Queue Handling</h3>
+<pre>
+platform = RotaryPlatformDriver();
+
+% Check for errors
+err = platform.getError();
+disp(['Error queue: ' err]);
+
+% Clear all errors from queue
+while ~contains(err, '0,')
+    err = platform.getError();
+    if ~contains(err, '0,')
+        fprintf('Error cleared: %s\n', err);
+    end
+end
+disp('Error queue is now empty');
+
+platform.delete();
 </pre>
 
 <div class="note">
-   <strong>Note:</strong> Always call <code>platform.delete()</code> or <code>clear platform</code> 
-   to properly close the serial connection when finished.
+   <strong>Best Practice:</strong> Always call <code>platform.delete()</code> or <code>clear platform</code> 
+   to properly close the VisaIF connection when finished. The destructor automatically cleans up resources.
 </div>
+
+<h2>Configuration</h2>
+
+<h3>VisaIF Configuration (VisaIF_HTW_Labs.csv)</h3>
+<pre>
+# Drehplattform-Treiber (Rotary Platform Driver)
+HTWD-DT-2025 ;; HTWD ;; DrehTeller2025 ;; Other ;; visa-serial;; ASRL7::115200.8.1.none.none.LF.LF ;; 1e4 ;; 1e4
+</pre>
+
+<p><strong>Configuration breakdown:</strong></p>
+<ul>
+   <li><code>ASRL7</code> - COM7 (change to ASRL13 for COM13, etc.)</li>
+   <li><code>115200</code> - Baud rate</li>
+   <li><code>8.1.none.none</code> - 8 data bits, 1 stop bit, no parity, no flow control</li>
+   <li><code>LF.LF</code> - Line Feed terminator for both read and write</li>
+   <li><code>1e4</code> - 10KB buffer sizes (input and output)</li>
+</ul>
 
 <h2>Hardware Requirements</h2>
 <ul>
-   <li>HTWD-DT-2025 rotary platform</li>
+   <li>HTWD-DT-2025 rotary platform with Firmware v1.1.0 or compatible</li>
    <li>Serial connection (USB-to-Serial or direct COM port)</li>
-   <li>MATLAB R2019b or later (for <code>serialport</code> support)</li>
+   <li>12V DC power supply for motor driver</li>
+   <li>MATLAB R2019b or later</li>
+   <li>Instrument Control Toolbox</li>
+   <li>VisaIF class (HTW Dresden internal)</li>
 </ul>
+
+<h2>Troubleshooting</h2>
+
+<h3>Connection Issues</h3>
+<div class="note">
+   <strong>Problem:</strong> "Device not found in config file"<br>
+   <strong>Solution:</strong>
+   <ul style="margin: 5px 0 0 20px;">
+      <li>Check that <code>HTWD-DT-2025</code> exists in <code>VisaIF_HTW_Labs.csv</code></li>
+      <li>Verify CSV file is in <code>@VisaIF</code> folder and on MATLAB path</li>
+   </ul>
+</div>
+
+<div class="note">
+   <strong>Problem:</strong> "No response from device"<br>
+   <strong>Solution:</strong>
+   <ul style="margin: 5px 0 0 20px;">
+      <li>Check COM port number (use Device Manager on Windows)</li>
+      <li>Verify device is powered on</li>
+      <li>Ensure no other program is using the COM port</li>
+      <li>Try different COM port: <code>RotaryPlatformDriver('COM5')</code></li>
+   </ul>
+</div>
+
+<h3>Motor Not Moving</h3>
+<div class="warning">
+   <strong>Most Common Cause:</strong> Green button not pressed!
+   <ul style="margin: 5px 0 0 20px;">
+      <li>The green button MUST be physically pressed on the device</li>
+      <li>There is no remote command to simulate button press</li>
+      <li>Check: <code>platform.isMotorEnableLocal()</code> should return <code>1</code></li>
+   </ul>
+</div>
+
+<div class="note">
+   <strong>Other possible causes:</strong>
+   <ul style="margin: 5px 0 0 20px;">
+      <li>Remote lockout active: <code>platform.setMotorEnableRemote(true)</code></li>
+      <li>Under-voltage: Check power supply (12V DC)</li>
+      <li>Angle beyond limits: Check with <code>getUpperLimit()</code> and <code>getLowerLimit()</code></li>
+   </ul>
+</div>
+
+<h3>Error Messages</h3>
+<div class="note">
+   <strong>Error:</strong> <code>-113,"Undefined header"</code><br>
+   <strong>Meaning:</strong> A previous SCPI command was not recognized by firmware<br>
+   <strong>Action:</strong> Check firmware version compatibility. This driver requires Firmware v1.1.0.
+</div>
+
+<h2>Version History</h2>
+<table>
+   <tr>
+      <th>Version</th>
+      <th>Date</th>
+      <th>Changes</th>
+   </tr>
+   <tr>
+      <td>2.1.0</td>
+      <td>2026-02-25</td>
+      <td>
+         • Migrated to VisaIF for serial communication<br>
+         • Removed invalid <code>setMotorEnableLocal()</code> method<br>
+         • 100% SCPI compliance with Firmware v1.1.0<br>
+         • Added error queue clearing on initialization<br>
+         • Silent mode by default (no verbose SCPI logging)
+      </td>
+   </tr>
+   <tr>
+      <td>2.0.0</td>
+      <td>2026-01-19</td>
+      <td>
+         • Initial release with direct serialport communication<br>
+         • All 19 SCPI commands implemented<br>
+         • Motor diagnostics added
+      </td>
+   </tr>
+</table>
 
 <h2>See Also</h2>
 <p>
+   <a href="matlab:help VisaIF">VisaIF</a>, 
    <a href="matlab:doc serialport">serialport</a>, 
-   <a href="matlab:doc configureTerminator">configureTerminator</a>
+   <a href="matlab:doc visadev">visadev</a>
 </p>
 
 <p style="margin-top: 30px; font-size: 8pt; color: #808080;">
-   Copyright © 2026 HTW Dresden. Version 2.0.0<br>
-   Last updated: 19.01.2026 by Florian Römer (added motor diagnostics)
+   Copyright © 2026 HTW Dresden<br>
+   Version 2.1.0 - Last updated: 25.02.2026 by Florian Römer<br>
+   Firmware compatibility: HTWD-DT-2025 v1.1.0
 </p>
 
 </body>

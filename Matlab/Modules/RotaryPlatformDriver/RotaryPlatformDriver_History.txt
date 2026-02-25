@@ -1,6 +1,47 @@
 RotaryPlatformDriver - Version History
 =======================================
 
+Version 2.1.0 (2026-02-25)
+--------------------------
+✓ 100% SCPI COMPLIANT with HTWD-DT-2025 Firmware v1.1.0
+
+Major Changes:
+- **Migrated to VisaIF class** for serial communication (replacing direct serialport)
+- **Removed invalid method** setMotorEnableLocal() - this command does not exist in firmware
+  (MOTOR:ENABLELOCal? is query-only, reads green button state)
+- Centralized device configuration in VisaIF_HTW_Labs.csv
+- Silent mode by default (no verbose SCPI logging)
+- Error queue automatically cleared on initialization
+- Improved COM port handling (supports default and override)
+
+Breaking Changes:
+- setMotorEnableLocal() method removed (was never valid - firmware doesn't support it)
+- Constructor now uses VisaIF instead of direct serialport
+- Requires VisaIF class to be in MATLAB path
+- Device must be configured in VisaIF_HTW_Labs.csv
+
+Features:
+- All 19 SCPI commands from Firmware v1.1.0 specification:
+  * Device Info: *IDN?, SYSTem:ERRor?
+  * Position Control: ROTAtion:ANGLE, ROTAtion:POSition?, ROTAtion:REACHED?
+  * Safety Limits: ROTAtion:LIMit:UPPer/LOWer
+  * Local Control: SYSTem:LOCal:LOCK/UNLock
+  * Motor Status: MOTOR:ENABLED?, MOTOR:ENABLELOCal?, MOTOR:ENABLEREMote, MOTOR:VOLTLOCKout?
+- VisaIF integration for unified device management
+- Automatic echo handling by VisaIF
+- Flexible COM port configuration
+- Comprehensive HTML documentation updated
+
+Configuration (VisaIF_HTW_Labs.csv):
+HTWD-DT-2025 ;; HTWD ;; DrehTeller2025 ;; Other ;; visa-serial;; ASRL7::115200.8.1.none.none.LF.LF ;; 1e4 ;; 1e4
+
+Tested with:
+- MATLAB R2024b/R2025b
+- Instrument Control Toolbox
+- VisaIF v3.1.0
+- HTWD-DT-2025 Firmware v1.1.0
+
+
 Version 2.0.0 (2026-01-18)
 --------------------------
 - Added comprehensive HTML documentation (open with: RotaryPlatformDriver.doc())

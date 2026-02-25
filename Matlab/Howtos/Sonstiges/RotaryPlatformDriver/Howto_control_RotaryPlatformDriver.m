@@ -1,8 +1,12 @@
 %% Howto control the rotary platform using RotaryPlatformDriver class
-% 2026-01-18
+% 2026-02-25 - Updated to use VisaIF
 % HTW Dresden - Prof. Florian Römer
 %
-% Requirements: RotaryPlatformDriver, VisaIF, HTWD-DT-2025 connected to COM13
+% Requirements: 
+%   - RotaryPlatformDriver class
+%   - VisaIF class
+%   - HTWD-DT-2025 device configured in VisaIF_HTW_Labs.csv
+%   - Device connected to COM port (default: COM7)
 
 %% Clean workspace
 
@@ -12,9 +16,13 @@ clc;
 
 %% Connect and get device ID
 
-% Create object and connect to COM13 (115200 baud, 8N1, CR/LF)
-% Change 'COM13' to 'COM7' if needed
-myPlatform = RotaryPlatformDriver('COM7');
+% Create object using VisaIF
+% Options:
+%   myPlatform = RotaryPlatformDriver();        % Use default COM7 from config
+%   myPlatform = RotaryPlatformDriver('COM13'); % Override to COM13
+%   myPlatform = RotaryPlatformDriver('COM5');  % Override to COM5
+
+myPlatform = RotaryPlatformDriver();  % Uses COM7 by default
 
 % Get and display device ID
 deviceID = myPlatform.getID();
@@ -22,14 +30,14 @@ disp(['Connected to device: ' deviceID]);
 
 %% Enable motor for remote control
 
-% Enable local motor (unlocks stepper motor for movement)
-% This can be done remotely instead of pressing the green button
-myPlatform.setMotorEnableLocal(true);
-disp('Motor unlocked (local enable set remotely)');
+% NOTE: The green button MUST be physically pressed on the device
+% There is no remote command to simulate the button press
+% MOTOR:ENABLELOCal? is query-only (reads button state)
 
 % Enable remote motor control (required for motor to work)
 myPlatform.setMotorEnableRemote(true);
 disp('Motor enabled for remote control');
+disp('IMPORTANT: Press the green button on the device to enable motor!');
 
 % Check motor status
 motorEnabled = myPlatform.isMotorEnabled();
@@ -39,13 +47,13 @@ voltageLockout = myPlatform.isMotorVoltLockout();
 
 fprintf('Motor status:\n');
 fprintf('  Motor enabled (overall): %d\n', motorEnabled);
-fprintf('  Local enable (unlocked): %d\n', localEnabled);
+fprintf('  Local enable (button):   %d\n', localEnabled);
 fprintf('  Remote enable:           %d\n', remoteEnabled);
 fprintf('  Voltage lockout:         %d\n', voltageLockout);
 
 if ~motorEnabled
     myPlatform.delete();
-    error('Motor is not enabled! Check voltage supply or device status.');
+    error('Motor is not enabled! Press the green button and check voltage supply.');
 end
 
 %% Move to specific angle
@@ -74,15 +82,11 @@ end
 currentAngle = myPlatform.getPosition();
 disp(['Current angle: ' num2str(currentAngle) ' degrees']);
 
-%% Disable motor (lock and disable)
+%% Disable motor (remote lockout)
 
 % Disable remote motor control
 myPlatform.setMotorEnableRemote(false);
 disp('Motor disabled (remote control locked)');
-
-% Lock motor (prevents manual movement)
-myPlatform.setMotorEnableLocal(false);
-disp('Motor locked (manual movement prevented)');
 
 % Verify motor is disabled
 motorEnabled = myPlatform.isMotorEnabled();

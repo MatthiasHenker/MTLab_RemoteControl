@@ -1,25 +1,33 @@
 # RotaryPlatformDriver - MATLAB Control Interface
 
-Control interface for HTWD-DT-2025 rotary platform via serial communication.
+Control interface for HTWD-DT-2025 rotary platform via **VisaIF** serial communication.
 
 ## Overview
 
-The **RotaryPlatformDriver** class provides a comprehensive MATLAB interface for controlling a custom rotary platform. It handles all SCPI commands for position control, safety limits, and motor diagnostics via RS-232/USB serial connection.
+The **RotaryPlatformDriver** class provides a comprehensive MATLAB interface for controlling a custom rotary platform. It uses the **VisaIF** class for serial communication and implements all 19 SCPI commands from Firmware v1.1.0 specification for position control, safety limits, and motor diagnostics.
+
+**✓ 100% SCPI Compliant** with HTWD-DT-2025 Firmware v1.1.0
 
 ## Quick Start
 
 ```matlab
-% Connect to platform
+% Connect to platform (uses default COM7 from config)
+platform = RotaryPlatformDriver();
+
+% Or specify COM port
 platform = RotaryPlatformDriver('COM13');
+
+% Enable motor (green button must be physically pressed!)
+platform.setMotorEnableRemote(true);
 
 % Move to 90 degrees
 platform.setAngle(90);
-pause(2);
 
-% Check if position reached
-if platform.isReached()
-    disp('Position reached!');
+% Wait for movement to complete
+while ~platform.isReached()
+    pause(0.5);
 end
+disp('Position reached!');
 
 % Get current position
 pos = platform.getPosition();
@@ -28,6 +36,14 @@ fprintf('Current position: %.1f degrees\n', pos);
 % Close connection
 platform.delete();
 ```
+
+## Requirements
+
+- **MATLAB R2019b** or later
+- **Instrument Control Toolbox**
+- **VisaIF class** (HTW Dresden internal)
+- Device must be configured in `VisaIF_HTW_Labs.csv`
+- HTWD-DT-2025 hardware with Firmware v1.1.0 or compatible
 
 ## File Structure
 
@@ -39,6 +55,7 @@ RotaryPlatformDriver/
 │   ├── checkParams.m                 # Parameter validation
 │   └── listAvailablePackages.m      # Package information
 ├── RotaryPlatformDriver_History.txt  # Version history and changelog
+├── MIGRATION_TO_VISAIF.md           # Migration guide from v2.0 to v2.1
 └── README.md                         # This file
 ```
 
@@ -47,6 +64,7 @@ RotaryPlatformDriver/
 1. **Add to MATLAB Path**
    ```matlab
    addpath('C:\Path\To\MTLab_RemoteControl\Matlab\Modules\RotaryPlatformDriver');
+   addpath('C:\Path\To\MTLab_RemoteControl\Matlab\Modules\VisaIF');
    savepath;
    ```
 
