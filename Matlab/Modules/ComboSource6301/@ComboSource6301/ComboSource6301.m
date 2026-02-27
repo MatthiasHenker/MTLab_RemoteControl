@@ -81,8 +81,8 @@ classdef ComboSource6301 < VisaIF
     %     - getStatus()          : Get device status byte (*STB?)
     %     - getLaserCondition()  : Get laser condition register (LAS:COND?)
     %     - getTECCondition()    : Get TEC condition register (TEC:COND?)
-    %     - getInterlockState()  : Get interlock digital input (DIO:IN? 0)
-    %     - isInterlockClosed()  : Check if interlock is safe (DIO:IN? 0)
+    %     - getInterlockState()  : Get interlock state from LAS:COND? (bit 9)
+    %     - isInterlockClosed()  : Check if interlock is safe (LAS:COND? bit 9)
     %     - isOverTemp()         : Check over-temp from TEC:COND?
     %
     % PROPERTIES:
@@ -153,8 +153,8 @@ classdef ComboSource6301 < VisaIF
     % ---------------------------------------------------------------------
 
     properties(Constant = true)
-        ComboSourceVersion = '2.0.0';      % release version (updated for Arroyo commands)
-        ComboSourceDate    = '2026-02-24'; % release date
+        ComboSourceVersion = '2.0.1';      % release version (fixed interlock check)
+        ComboSourceDate    = '2026-02-27'; % release date
     end
 
     properties(Dependent, SetAccess = private, GetAccess = public)
@@ -259,6 +259,33 @@ classdef ComboSource6301 < VisaIF
         end
 
         % -----------------------------------------------------------------
+        % Helper method for Arroyo queries (uses write + read)
+        % -----------------------------------------------------------------
+        function [status, response] = queryArroyo(obj, cmd)
+            % Query helper for Arroyo devices 
+            % Uses direct query() method from VisaIF which uses writeread
+            % This is text-based and terminator-aware
+            %
+            % Usage:
+            %   [status, response] = obj.queryArroyo('*IDN?')
+            
+            try
+                [responseBytes, status] = obj.query(cmd);
+                
+                if status == 0 && ~isempty(responseBytes)
+                    response = strtrim(char(responseBytes));
+                else
+                    response = '';
+                end
+                
+            catch ME
+                status = -1;
+                response = '';
+                fprintf('[DEBUG] query() error: %s\n', ME.message);
+            end
+        end
+
+        % -----------------------------------------------------------------
         % Extend methods from super class (VisaIF)
         % Note: reset(), lock(), unlock() are not supported by Arroyo devices
         % -----------------------------------------------------------------
@@ -278,7 +305,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   idString - Format: "Arroyo 6301 SN Ver Build"
             
-            [status, idString] = obj.query('*IDN?');
+            [status, idString] = obj.queryArroyo('*IDN?');
             
             if nargout < 2
                 status = idString;
@@ -296,7 +323,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   version - Firmware version string (e.g., "v2.23")
             
-            [status, version] = obj.query('VER?');
+            [status, version] = obj.queryArroyo('VER?');
             
             if nargout < 2
                 status = version;
@@ -314,7 +341,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   serialNum - Serial number string
             
-            [status, serialNum] = obj.query('SN?');
+            [status, serialNum] = obj.queryArroyo('SN?');
             
             if nargout < 2
                 status = serialNum;
@@ -332,7 +359,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   errorCode - Error number (0 = no error, 1-599 = error code)
             
-            [status, response] = obj.query('ERR?');
+            [status, response] = obj.queryArroyo('ERR?');
             
             if status == 0
                 errorCode = str2double(response);
@@ -356,7 +383,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   errorMsg - Error description text
             
-            [status, errorMsg] = obj.query('ERRSTR?');
+            [status, errorMsg] = obj.queryArroyo('ERRSTR?');
             
             if nargout < 2
                 status = errorMsg;
@@ -438,7 +465,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   currentMA - Current setpoint in milliamperes
             
-            [status, response] = obj.query('LAS:LDI?');
+            [status, response] = obj.queryArroyo('LAS:LDI?');
             
             if status == 0
                 currentMA = str2double(response);
@@ -484,7 +511,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   limitMA - Maximum current limit in milliamperes
             
-            [status, response] = obj.query('LAS:LIM:LDI?');
+            [status, response] = obj.queryArroyo('LAS:LIM:LDI?');
             
             if status == 0
                 limitMA = str2double(response);
@@ -550,7 +577,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   isEnabled - true if laser is on (1), false if off (0)
             
-            [status, response] = obj.query('LAS:OUT?');
+            [status, response] = obj.queryArroyo('LAS:OUT?');
             
             if status == 0
                 isEnabled = strcmpi(strtrim(response), '1');
@@ -600,7 +627,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   tempC - Measured temperature in degrees Celsius
             
-            [status, response] = obj.query('TEC:T?');
+            [status, response] = obj.queryArroyo('TEC:T?');
             
             if status == 0
                 tempC = str2double(response);
@@ -624,7 +651,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   tempC - Temperature setpoint in degrees Celsius
             
-            [status, response] = obj.query('TEC:SET:T?');
+            [status, response] = obj.queryArroyo('TEC:SET:T?');
             
             if status == 0
                 tempC = str2double(response);
@@ -648,7 +675,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   tecCurrentA - TEC current in amperes
             
-            [status, response] = obj.query('TEC:ITE?');
+            [status, response] = obj.queryArroyo('TEC:ITE?');
             
             if status == 0
                 tecCurrentA = str2double(response);
@@ -694,7 +721,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   limitA - TEC current limit in amperes
             
-            [status, response] = obj.query('TEC:LIM:ITE?');
+            [status, response] = obj.queryArroyo('TEC:LIM:ITE?');
             
             if status == 0
                 limitA = str2double(response);
@@ -760,7 +787,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   isEnabled - true if TEC is on (1), false if off (0)
             
-            [status, response] = obj.query('TEC:OUT?');
+            [status, response] = obj.queryArroyo('TEC:OUT?');
             
             if status == 0
                 isEnabled = strcmpi(strtrim(response), '1');
@@ -826,7 +853,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   mode - 'T' for temperature mode, 'ITE' for current mode
             
-            [status, mode] = obj.query('TEC:MODE?');
+            [status, mode] = obj.queryArroyo('TEC:MODE?');
             
             if status == 0
                 mode = strtrim(mode);
@@ -880,7 +907,7 @@ classdef ComboSource6301 < VisaIF
             %   i - Integral gain
             %   d - Derivative gain
             
-            [status, response] = obj.query('TEC:PID?');
+            [status, response] = obj.queryArroyo('TEC:PID?');
             
             if status == 0
                 values = sscanf(response, '%f,%f,%f');
@@ -991,7 +1018,7 @@ classdef ComboSource6301 < VisaIF
             %   conditionCode - Laser condition register value (bitfield)
             %                   Bit meanings depend on device configuration
             
-            [status, response] = obj.query('LAS:COND?');
+            [status, response] = obj.queryArroyo('LAS:COND?');
             
             if status == 0
                 conditionCode = str2double(response);
@@ -1016,7 +1043,7 @@ classdef ComboSource6301 < VisaIF
             %   conditionCode - TEC condition register value (bitfield)
             %                   Check manual for bit definitions
             
-            [status, response] = obj.query('TEC:COND?');
+            [status, response] = obj.queryArroyo('TEC:COND?');
             
             if status == 0
                 conditionCode = str2double(response);
@@ -1040,7 +1067,7 @@ classdef ComboSource6301 < VisaIF
             % Returns:
             %   statusByte - Status byte value
             
-            [status, response] = obj.query('*STB?');
+            [status, response] = obj.queryArroyo('*STB?');
             
             if status == 0
                 statusByte = str2double(response);
@@ -1054,8 +1081,8 @@ classdef ComboSource6301 < VisaIF
         end
 
         function [status, interlockState] = getInterlockState(obj)
-            % Check interlock input state via digital I/O
-            % Arroyo Command: DIO:IN? 0
+            % Check interlock input state via laser condition register
+            % Arroyo Command: LAS:COND? (check bit 9 = interlock error)
             %
             % Usage:
             %   interlockState = myLaser.getInterlockState()
@@ -1063,11 +1090,16 @@ classdef ComboSource6301 < VisaIF
             %
             % Returns:
             %   interlockState - 1 if interlock closed (safe), 0 if open
+            %
+            % Note: Uses LAS:COND? register. Bit 9 (value 512) indicates interlock error.
             
-            [status, response] = obj.query('DIO:IN? 0');
+            [status, response] = obj.queryArroyo('LAS:COND?');
             
             if status == 0
-                interlockState = str2double(response);
+                conditionCode = str2double(response);
+                % Bit 9 (value 512) = Interlock error
+                interlockError = bitand(conditionCode, 512) ~= 0;
+                interlockState = double(~interlockError);  % 1 if closed, 0 if open
             else
                 interlockState = NaN;
             end
@@ -1079,7 +1111,7 @@ classdef ComboSource6301 < VisaIF
 
         function [status, isClosed] = isInterlockClosed(obj)
             % Check if interlock is closed (safe to operate)
-            % Arroyo Command: DIO:IN? 0
+            % Arroyo Command: LAS:COND? (check bit 9 = interlock error)
             %
             % Usage:
             %   isClosed = myLaser.isInterlockClosed()
@@ -1087,14 +1119,21 @@ classdef ComboSource6301 < VisaIF
             %
             % Returns:
             %   isClosed - true if interlock is closed (safe), false if open
+            %
+            % Note: Uses LAS:COND? register. Bit 9 (value 512) indicates interlock error.
+            %       If bit 9 is SET, interlock is OPEN (unsafe).
+            %       If bit 9 is CLEAR, interlock is CLOSED (safe).
             
-            [status, response] = obj.query('DIO:IN? 0');
+            [status, response] = obj.queryArroyo('LAS:COND?');
             
             if status == 0
-                interlockState = str2double(response);
-                isClosed = (interlockState == 1);
+                conditionCode = str2double(response);
+                % Bit 9 (value 512) = Interlock error
+                % If bit is set, interlock is open (unsafe)
+                interlockError = bitand(conditionCode, 512) ~= 0;
+                isClosed = ~interlockError;  % closed if no error
             else
-                isClosed = false;
+                isClosed = false;  % assume unsafe if query fails
             end
             
             if nargout < 2
@@ -1124,7 +1163,7 @@ classdef ComboSource6301 < VisaIF
             %   Bit 7 (128)  : TEC open circuit
             %   Bit 12 (4096): Thermal run-away
             
-            [status, response] = obj.query('TEC:COND?');
+            [status, response] = obj.queryArroyo('TEC:COND?');
             
             if status == 0
                 conditionCode = str2double(response);
@@ -1151,7 +1190,7 @@ classdef ComboSource6301 < VisaIF
             
             % Read all errors from queue using ERR? and ERRSTR?
             for i = 1:10 % Max 10 errors
-                [~, errCode] = obj.query('ERR?');
+                [~, errCode] = obj.queryArroyo('ERR?');
                 errorNum = str2double(errCode);
                 
                 if errorNum == 0
@@ -1159,7 +1198,7 @@ classdef ComboSource6301 < VisaIF
                 end
                 
                 % Get error description
-                [~, errStr] = obj.query('ERRSTR?');
+                [~, errStr] = obj.queryArroyo('ERRSTR?');
                 errorMsgs{end+1} = sprintf('%d: %s', errorNum, strtrim(errStr)); %#ok<AGROW>
             end
             
@@ -1170,3 +1209,4 @@ classdef ComboSource6301 < VisaIF
 
     end
 end
+

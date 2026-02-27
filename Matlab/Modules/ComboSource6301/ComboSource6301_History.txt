@@ -1,6 +1,50 @@
 ComboSource6301 Class - Version History
 =====================================
 
+Version 2.0.1 (2026-02-27)
+-----------------------------------------------
+BUG FIX: Fixed queryArroyo method + interlock check for RS-232 communication
+
+**CRITICAL FIXES:**
+1. Fixed queryArroyo() method that was timing out on all read operations
+   - Changed from write()+read() to direct query() method
+   - query() uses writeread() which is terminator-based (works correctly)
+   - Previous read() was doing fixed-length binary read (always timed out)
+
+2. Fixed interlock check to use proper Arroyo command
+   - Changed from DIO:IN? 0 (not supported) to LAS:COND? (bit 9)
+   - DIO:IN? 0 caused E-123 "Path not found" errors and timeouts
+   - LAS:COND? bit 9 (value 512) indicates interlock error status
+   - If bit 9 is SET: interlock is OPEN (unsafe)
+   - If bit 9 is CLEAR: interlock is CLOSED (safe)
+
+**CHANGES:**
+- queryArroyo(): Now uses obj.query(cmd) instead of obj.write() + obj.read()
+- getInterlockState(): Now checks LAS:COND? bit 9 instead of DIO:IN? 0
+- isInterlockClosed(): Now checks LAS:COND? bit 9 instead of DIO:IN? 0
+- All device methods now work correctly with RS-232/VISA-serial interface
+- Communication is fast and reliable (no timeouts)
+
+**TESTING:**
+- Verified on COM1, 9600 baud, CR terminator
+- All query methods tested and working (*IDN?, VER?, TEC:T?, LAS:LDI?, etc.)
+- Temperature monitoring confirmed working
+- Interlock check confirmed working (LAS:COND? bit 9)
+- Howto scripts updated to use 'none' message mode for clean output
+
+**DOCUMENTATION:**
+- Updated all documentation to reflect LAS:COND? interlock check method
+- Updated README.md, Configuration_Guide.txt, and HTML docs
+- Added README.md in Howtos/ComboSource directory
+- Version numbers updated across all files
+
+**COMPATIBILITY:**
+- Fully backward compatible with v2.0.0 API
+- No method signature changes
+- Only internal implementation fixes
+
+---
+
 Version 2.0.0 (2026-02-24)
 -----------------------------------------------
 MAJOR UPDATE: Complete rewrite for 100% Arroyo manual compliance
@@ -19,7 +63,7 @@ All generic SCPI commands have been removed and replaced with correct Arroyo com
 - Complete LAS: tree implementation (laser control)
 - Complete TEC: tree implementation (temperature control)
 - Enhanced safety features with proper bit checking
-- Interlock status via DIO:IN? 0
+- Interlock status via LAS:COND? (bit 9 = interlock error)
 - Over-temperature detection (TEC:COND bits 3 & 12)
 - Comprehensive error handling (ERR?, ERRSTR?)
 
@@ -74,8 +118,8 @@ All generic SCPI commands have been removed and replaced with correct Arroyo com
 **STATUS AND SAFETY (6):**
 - getStatus()           : Device status (*STB?)
 - getTECCondition()     : TEC condition register (TEC:COND?)
-- getInterlockState()   : Interlock digital input (DIO:IN? 0)
-- isInterlockClosed()   : Check interlock safe (DIO:IN? 0)
+- getInterlockState()   : Interlock from LAS:COND? (bit 9)
+- isInterlockClosed()   : Check interlock safe (LAS:COND? bit 9)
 - isOverTemp()          : Check over-temp (TEC:COND bits 3 & 12)
 
 **TOTAL METHODS: 41** (vs 28 in v1.0.0, but all are different)

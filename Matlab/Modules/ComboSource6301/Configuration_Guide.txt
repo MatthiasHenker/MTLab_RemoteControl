@@ -188,6 +188,8 @@ TEC Commands (TEC: tree):
 
 Digital I/O Commands (DIO: tree):
   DIO:IN? 0          - Query interlock state (port 0)
+                       NOTE: Not supported on all firmware versions!
+                       Use LAS:COND? bit 9 for reliable interlock checking.
 
 INVALID COMMANDS (DO NOT USE - Will return E-123):
   ✗ OUTP ON/OFF      - Use LAS:OUT 0/1 instead
@@ -197,7 +199,7 @@ INVALID COMMANDS (DO NOT USE - Will return E-123):
   ✗ MEAS:POW?        - NOT SUPPORTED
   ✗ MEAS:TEMP?       - Use TEC:T? instead
   ✗ SYST:ERR?        - Use ERR? instead
-  ✗ SYST:INTL?       - Use DIO:IN? 0 instead
+  ✗ SYST:INTL?       - Use LAS:COND? bit 9 instead (DIO:IN? 0 not always available)
 
 TEC:COND REGISTER BIT DEFINITIONS:
   Bit 0 (value 1)    - Current limit
@@ -211,6 +213,13 @@ TEC:COND REGISTER BIT DEFINITIONS:
   Bit 12 (value 4096) - Thermal run-away 
 
 Note: isOverTemp() checks bits 3 and 12 for safety
+
+LAS:COND REGISTER BIT DEFINITIONS:
+  Bit 9 (value 512)  - Interlock error (SET = interlock OPEN/unsafe)
+  
+Note: isInterlockClosed() checks bit 9 from LAS:COND?
+      If bit 9 is SET (1), interlock is OPEN (unsafe)
+      If bit 9 is CLEAR (0), interlock is CLOSED (safe)
 
 
 SUPPORT:

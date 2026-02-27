@@ -67,7 +67,7 @@ myLaser.delete;
 ```
 ComboSource6301/
 ├── @ComboSource6301/
-│   ├── ComboSource6301.m              - Main class file (v2.0.0)
+│   ├── ComboSource6301.m              - Main class file (v2.0.1)
 │   └── ComboSource6301.html           - HTML documentation
 ├── ComboSource6301_History.txt        - Version history
 ├── Configuration_Guide.txt            - Arroyo command reference
@@ -168,8 +168,8 @@ ComboSource6301/
 - `getStatus()` - Get device status byte (*STB?)
 - `getLaserCondition()` - Get laser condition register (LAS:COND?)
 - `getTECCondition()` - Get TEC condition register (TEC:COND?)
-- `getInterlockState()` - Get interlock digital input state (DIO:IN? 0)
-- `isInterlockClosed()` - Check if interlock is safe (DIO:IN? 0)
+- `getInterlockState()` - Get interlock state from LAS:COND? (bit 9)
+- `isInterlockClosed()` - Check if interlock is safe (LAS:COND? bit 9)
 - `isOverTemp()` - Check over-temperature from TEC:COND? (bits 3 & 12)
 
 ## Complete Method Summary
@@ -193,7 +193,7 @@ ComboSource6301/
 ✅ **IEEE-488.2:** `*IDN?`, `*CLS`, `*STB?`, `VER?`, `SN?`  
 ✅ **LAS: Tree:** `LAS:LDI`, `LAS:LIM:LDI`, `LAS:OUT`, `LAS:COND`, `LAS:LIM:THI`  
 ✅ **TEC: Tree:** `TEC:T`, `TEC:SET:T`, `TEC:ITE`, `TEC:LIM:ITE`, `TEC:OUT`, `TEC:MODE`, `TEC:PID`, `TEC:LIM:THI/TLO`, `TEC:COND`  
-✅ **DIO: Tree:** `DIO:IN? 0` (interlock)  
+✅ **Interlock Check:** `LAS:COND?`
 ✅ **Error Handling:** `ERR?`, `ERRSTR?`, `LOCAL`
 
 ## Usage Examples
@@ -465,7 +465,7 @@ end
 - Implemented complete IEEE-488.2 command set (*IDN?, *CLS, *STB?, VER?, SN?)
 - Implemented complete LAS: command tree (LDI, LIM:LDI, OUT, COND, LIM:THI)
 - Implemented complete TEC: command tree (T, SET:T, ITE, LIM:ITE, OUT, MODE, PID, LIM:THI/TLO, COND)
-- Added interlock checking via DIO:IN? 0
+- Added interlock checking via LAS:COND? (bit 9 = interlock error)
 - Added over-temperature detection (TEC:COND bits 3 & 12)
 - Fixed error handling (ERR?, ERRSTR?)
 - Added comprehensive safety features

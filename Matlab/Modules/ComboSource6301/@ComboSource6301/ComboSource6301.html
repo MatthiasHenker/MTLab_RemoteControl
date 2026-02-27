@@ -80,7 +80,7 @@
 <p>Arroyo Instruments ComboSource 6301 Laser Controller Driver</p>
 
 <div class="success">
-   <strong>Version 2.0.0</strong><br>
+   <strong>Version 2.0.1</strong><br>
    Implements the full Arroyo command set with all methods validated against the manual
 </div>
 
@@ -157,11 +157,11 @@ myLaser.delete;
    </tr>
    <tr>
       <td><code>ComboSourceVersion</code></td>
-      <td>Class version: '2.0.0' (Constant)</td>
+      <td>Class version: '2.0.1' (Constant)</td>
    </tr>
    <tr>
       <td><code>ComboSourceDate</code></td>
-      <td>Release date: '2026-02-24' (Constant)</td>
+      <td>Release date: '2026-02-27' (Constant)</td>
    </tr>
    <tr>
       <td><code>ErrorMessages</code></td>
@@ -423,13 +423,13 @@ myLaser.delete;
    </tr>
    <tr>
       <td><code>getInterlockState()</code></td>
-      <td>DIO:IN? 0</td>
-      <td>Get interlock digital input (1=closed, 0=open)</td>
+      <td>LAS:COND? (bit 9)</td>
+      <td>Get interlock state from LAS:COND register (1=closed, 0=open)</td>
    </tr>
    <tr>
       <td><code>isInterlockClosed()</code></td>
-      <td>DIO:IN? 0</td>
-      <td>Check if interlock is safe (true/false)</td>
+      <td>LAS:COND? (bit 9)</td>
+      <td>Check if interlock is safe (true if bit 9 clear)</td>
    </tr>
    <tr>
       <td><code>isOverTemp()</code></td>
@@ -574,8 +574,8 @@ myLaser.delete;
 </ul>
 
 <p style="margin-top: 30px; font-size: 8pt; color: #808080;">
-   Copyright © 2026 HTW Dresden. Version 2.0.0<br>
-   Last updated: 25.02.2026<br>
+   Copyright © 2026 HTW Dresden. Version 2.0.1<br>
+   Last updated: 27.02.2026<br>
    Florian Römer - Faculty of Electrical Engineering
 </p>
 
