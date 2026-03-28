@@ -1074,7 +1074,7 @@ classdef SMU24xx < VisaIF
         end
 
         function outputState = get.OutputState(obj)
-            % get output state: 
+            % get output state:
             %    0 for 'off',
             %    1 for 'on'
             %  NaN for unknown state (error)
