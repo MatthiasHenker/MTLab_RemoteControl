@@ -3,6 +3,7 @@
 % from a Siglent SDS2304X oscilloscope using the Scope class
 %
 % HTW Dresden - Faculty of Electrical Engineering
+% Student: Florain Römer
 % Date: 2026-02-24
 %
 % Requirements:
